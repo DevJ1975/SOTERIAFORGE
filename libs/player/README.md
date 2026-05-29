@@ -20,13 +20,13 @@ Content player library for Soteria FORGE.
 
 ## Content Types
 
-| Type  | Status                                  |
-| ----- | --------------------------------------- |
-| video | Phase 2 (implemented)                   |
-| scorm | Phase 3 (implemented)                   |
-| cmi5  | Phase 3 (implemented)                   |
-| unity | Phase 3 (implemented via cmi5-launcher) |
-| quiz  | Phase 4 (implemented)                   |
+| Type  | Status                                        |
+| ----- | --------------------------------------------- |
+| video | Phase 2 (implemented)                         |
+| scorm | Phase 3 (implemented)                         |
+| cmi5  | Phase 3 (implemented)                         |
+| unity | Phase 3 (implemented via cmi5-launcher)       |
+| quiz  | Phase 4 (implemented)                         |
 | game  | Phase 5 (implemented via GamePlayerComponent) |
 
 ## SCORM / cmi5 Integration

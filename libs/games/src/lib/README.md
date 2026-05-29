@@ -42,7 +42,18 @@ Each component checks `isPlatformBrowser(PLATFORM_ID)` before initialising the e
 
 ### PhaserHostComponent
 
-Accepts a `CardGameConfig` (discriminated union — see `card-game.model.ts`) and renders a minimal Phaser scene showing the card count and title. Emits `(completed)` when the learner clicks Play.
+Accepts a `CardGameConfig` (discriminated union — see `card-game.model.ts`) and renders a fully interactive Phaser 3 scene. Emits `(completed)` when the learner finishes the game.
+
+Four game modes are supported:
+
+| `kind`           | Interaction                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| `flip_reveal`    | Click cards to flip; complete when all revealed                     |
+| `match_pairs`    | Click two matching cards; complete when all pairs matched           |
+| `sort_buckets`   | Click each card to cycle through buckets; complete when all sorted  |
+| `scenario_cards` | Read a prompt and choose a response; advances through all scenarios |
+
+Phaser is only imported inside `initPhaser()` which is guarded by both `isPlatformBrowser` and a canvas-context check, so jsdom tests never load Phaser.
 
 ```html
 <forge-phaser-host [config]="myFlipRevealConfig" (completed)="handleComplete()" />
