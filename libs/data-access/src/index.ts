@@ -6,5 +6,6 @@ export * from './lib/repositories/tenant.repository';
 export * from './lib/repositories/module.repository';
 export * from './lib/repositories/quiz.repository';
 export * from './lib/repositories/badge.repository';
+export * from './lib/repositories/game.repository';
 export * from './lib/repositories/enrollment.repository';
 export * from './lib/repositories/leaderboard.repository';
