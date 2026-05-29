@@ -52,6 +52,11 @@ export class CourseRepository {
     return this.repo(tenantId).list(where('status', '==', 'published'), orderBy('title'));
   }
 
+  /** List all courses for a tenant regardless of status (draft, published, archived). */
+  listAll(tenantId: string) {
+    return this.repo(tenantId).list(orderBy('title'));
+  }
+
   set(tenantId: string, c: Course) {
     return this.repo(tenantId).set(c.id, c);
   }
