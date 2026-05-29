@@ -64,7 +64,11 @@ export class AdminDashboardComponent {
       description: 'Manage tenant members, roles, and invitations (Phase 1+).',
       link: '/members',
     },
-    { title: 'Courses', description: 'Create and assign courses to learners (Phase 1+).' },
+    {
+      title: 'Courses',
+      description: 'Create and assign courses to learners (Phase 1+).',
+      link: '/courses',
+    },
     {
       title: 'Branding',
       description: 'Customize tenant colours, logos, and domain (Phase 1+).',

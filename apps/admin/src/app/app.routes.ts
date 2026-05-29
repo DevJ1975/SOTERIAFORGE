@@ -26,5 +26,16 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/branding.component').then((m) => m.BrandingComponent),
   },
+  {
+    path: 'courses',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/courses.component').then((m) => m.CoursesComponent),
+  },
+  {
+    path: 'courses/:id',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () =>
+      import('./pages/course-editor.component').then((m) => m.CourseEditorComponent),
+  },
   { path: '**', redirectTo: '' },
 ];
