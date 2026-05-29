@@ -19,14 +19,12 @@ export const appRoutes: Routes = [
   {
     path: 'members',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
-    loadComponent: () =>
-      import('./pages/members.component').then((m) => m.MembersComponent),
+    loadComponent: () => import('./pages/members.component').then((m) => m.MembersComponent),
   },
   {
     path: 'branding',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
-    loadComponent: () =>
-      import('./pages/branding.component').then((m) => m.BrandingComponent),
+    loadComponent: () => import('./pages/branding.component').then((m) => m.BrandingComponent),
   },
   { path: '**', redirectTo: '' },
 ];

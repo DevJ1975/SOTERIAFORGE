@@ -36,6 +36,6 @@ export const ingestStatement = onCall(async (request) => {
     },
   };
 
-  await db.doc(`lrs/statements/${id}`).set(statement);
+  await db.doc(`lrs/${id}`).set(statement);
   return { ok: true, id };
 });

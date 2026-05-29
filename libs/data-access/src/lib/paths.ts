@@ -37,14 +37,20 @@ export const FsPaths = {
 
   leaderboard: (tenantId: string, period: string) => `tenants/${tenantId}/leaderboard/${period}`,
 
-  knowledgeBase: (tenantId: string) => `tenants/${tenantId}/ai/knowledgeBase`,
+  // NOTE: Firestore document references must have an EVEN number of path
+  // segments. Intermediate grouping segments (ai/, b2c/) are intentionally
+  // omitted so these resolve to valid documents and match firestore.rules.
+  vectors: (tenantId: string) => `tenants/${tenantId}/vectors`,
+  knowledgeBase: (tenantId: string) => `tenants/${tenantId}/knowledgeBase`,
+  knowledgeDoc: (tenantId: string, docId: string) => `tenants/${tenantId}/knowledgeBase/${docId}`,
   conversationMessages: (tenantId: string, uid: string) =>
-    `tenants/${tenantId}/ai/conversations/${uid}/messages`,
+    `tenants/${tenantId}/conversations/${uid}/messages`,
 
-  catalog: () => 'b2c/catalog',
-  catalogProduct: (productId: string) => `b2c/catalog/${productId}`,
-  b2cCustomer: (uid: string) => `b2c/customers/${uid}`,
+  catalog: () => 'catalog',
+  catalogProduct: (productId: string) => `catalog/${productId}`,
+  b2cCustomer: (uid: string) => `customers/${uid}`,
 
-  lrsStatements: () => 'lrs/statements',
-  stripeEvent: (eventId: string) => `stripe/events/${eventId}`,
+  lrsStatements: () => 'lrs',
+  lrsStatement: (stmtId: string) => `lrs/${stmtId}`,
+  stripeEvent: (eventId: string) => `stripeEvents/${eventId}`,
 } as const;

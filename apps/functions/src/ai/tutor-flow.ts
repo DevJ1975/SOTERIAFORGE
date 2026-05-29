@@ -19,7 +19,7 @@ export const askTutor = onCall(async (request) => {
   // HARD ISOLATION: only this tenant's vectors are ever retrieved.
   // (Phase 6 replaces this with a findNearest vector query / Vertex AI Vector Search.)
   const vectorsRef = db
-    .collection(`tenants/${tenantId}/ai/vectors`)
+    .collection(`tenants/${tenantId}/vectors`)
     .where('tenantId', '==', tenantId)
     .limit(5);
   const snap = await vectorsRef.get();

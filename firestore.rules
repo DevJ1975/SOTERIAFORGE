@@ -99,39 +99,47 @@ service cloud.firestore {
       }
 
       // AI knowledge base + vectors: admin-managed; never client-writable vectors.
-      match /ai/knowledgeBase/{docId} {
+      // Paths are flat under the tenant document to keep Firestore segment counts
+      // even (odd-segment paths are unreachable via the client SDK).
+      match /knowledgeBase/{docId} {
         allow read: if inTenant(tenantId);
         allow write: if isTenantAdmin(tenantId);
       }
-      match /ai/vectors/{docId=**} {
+      match /vectors/{docId=**} {
         allow read, write: if false; // server-side retrieval only
       }
       // Conversations: a learner reads/writes only their own thread.
-      match /ai/conversations/{uid}/messages/{msgId} {
+      match /conversations/{uid}/messages/{msgId} {
         allow read, create: if isSelf(uid) && inTenant(tenantId);
         allow update, delete: if false;
       }
     }
 
     // ---- LRS statements: append-only, written server-side -------------------
-    match /lrs/statements/{stmtId} {
+    // Path is flat (lrs/{stmtId}) so segment count is even and client-reachable
+    // for emulator testing; the allow rules still deny all client writes.
+    match /lrs/{stmtId} {
       allow read: if isSuperadmin();
       allow write: if false;
     }
 
     // ---- B2C storefront -----------------------------------------------------
-    match /b2c/catalog/{productId} {
+    // catalog/{productId} and customers/{uid} are top-level collections so the
+    // path segment count stays even (previously b2c/catalog/{x} was 3 segments —
+    // unreachable as a Firestore document reference from the client SDK).
+    match /catalog/{productId} {
       allow read: if true; // public catalog
       allow write: if isSuperadmin();
     }
-    match /b2c/customers/{uid} {
+    match /customers/{uid} {
       allow read: if isSelf(uid) || isSuperadmin();
       // Entitlements/purchases are written only by verified Stripe webhooks.
       allow write: if false;
     }
 
     // ---- Stripe idempotency log: server-side only ---------------------------
-    match /stripe/events/{eventId} {
+    // Flat collection (even segment count) so it's a valid document path.
+    match /stripeEvents/{eventId} {
       allow read, write: if false;
     }
 

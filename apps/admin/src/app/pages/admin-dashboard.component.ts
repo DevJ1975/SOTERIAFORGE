@@ -59,9 +59,17 @@ interface AdminSection {
 })
 export class AdminDashboardComponent {
   protected readonly sections = signal<AdminSection[]>([
-    { title: 'Members', description: 'Manage tenant members, roles, and invitations (Phase 1+).', link: '/members' },
+    {
+      title: 'Members',
+      description: 'Manage tenant members, roles, and invitations (Phase 1+).',
+      link: '/members',
+    },
     { title: 'Courses', description: 'Create and assign courses to learners (Phase 1+).' },
-    { title: 'Branding', description: 'Customize tenant colours, logos, and domain (Phase 1+).', link: '/branding' },
+    {
+      title: 'Branding',
+      description: 'Customize tenant colours, logos, and domain (Phase 1+).',
+      link: '/branding',
+    },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
     { title: 'AI Knowledge Base', description: 'Upload documents for AI-powered Q&A (Phase 1+).' },
     {

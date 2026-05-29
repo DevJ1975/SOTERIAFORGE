@@ -24,30 +24,35 @@ analytics aggregations run server-side only.
   /games/{gameId}                         Game (engine, config, assetRefs, riveAssetRef)
   /badges/{badgeId}                       Badge (Open Badges 3.0 metadata, criteria)
   /leaderboard/{period}                   Leaderboard (denormalized ranked entries) [server-write]
-  /ai/knowledgeBase/{docId}               KnowledgeSource (ingestion status)
-  /ai/vectors/{docId}                     VectorChunk (embedding) [server-only]
-  /ai/conversations/{uid}/messages/{id}   ChatMessage (citations)
-/lrs/statements/{stmtId}                  XapiStatement [tenant-tagged, server-write]
-/b2c/catalog/{productId}                  CatalogProduct (Stripe priceId, grants)
-/b2c/customers/{uid}                      B2cCustomer (entitlements, purchaseHistory) [server-write]
-/stripe/events/{eventId}                  StripeEventLog (webhook idempotency) [server-only]
+  /knowledgeBase/{docId}                  KnowledgeSource (ingestion status)
+  /vectors/{docId}                        VectorChunk (embedding) [server-only]
+  /conversations/{uid}/messages/{id}      ChatMessage (citations)
+/lrs/{stmtId}                             XapiStatement [tenant-tagged, server-write]
+/catalog/{productId}                      CatalogProduct (Stripe priceId, grants)
+/customers/{uid}                          B2cCustomer (entitlements, purchaseHistory) [server-write]
+/stripeEvents/{eventId}                   StripeEventLog (webhook idempotency) [server-only]
 ```
+
+> **Firestore path rule:** document references must have an **even** number of
+> path segments. Intermediate grouping segments (`ai/`, `b2c/`) are intentionally
+> omitted (e.g. `tenants/{t}/knowledgeBase/{id}`, top-level `catalog/{id}`) so
+> every path resolves to a valid document and matches `firestore.rules`.
 
 ## Write-surface summary (see `firestore.rules`)
 
-| Path                   | Client read          | Client write                                  |
-| ---------------------- | -------------------- | --------------------------------------------- |
-| platform/\*\*          | superadmin           | ✗ (server)                                    |
-| tenants/{t}            | in-tenant            | ✗ (provisioning fn)                           |
-| members/{uid}          | self or tenant_admin | self: profile/activity only (not role/status) |
-| courses/\*\*           | in-tenant            | author roles                                  |
-| enrollments/{uid}      | self or tenant_admin | self only; score validated server-side        |
-| leaderboard            | in-tenant            | ✗ (server, anti-cheat)                        |
-| ai/vectors             | ✗                    | ✗ (server retrieval)                          |
-| ai/conversations/{uid} | self                 | self (create only)                            |
-| lrs/statements         | superadmin           | ✗ (ingest fn)                                 |
-| b2c/catalog            | public               | superadmin                                    |
-| b2c/customers          | self                 | ✗ (Stripe webhook)                            |
+| Path                | Client read          | Client write                                  |
+| ------------------- | -------------------- | --------------------------------------------- |
+| platform/\*\*       | superadmin           | ✗ (server)                                    |
+| tenants/{t}         | in-tenant            | ✗ (provisioning fn)                           |
+| members/{uid}       | self or tenant_admin | self: profile/activity only (not role/status) |
+| courses/\*\*        | in-tenant            | author roles                                  |
+| enrollments/{uid}   | self or tenant_admin | self only; score validated server-side        |
+| leaderboard         | in-tenant            | ✗ (server, anti-cheat)                        |
+| vectors             | ✗                    | ✗ (server retrieval)                          |
+| conversations/{uid} | self                 | self (create only)                            |
+| lrs                 | superadmin           | ✗ (ingest fn)                                 |
+| catalog             | public               | superadmin                                    |
+| customers           | self                 | ✗ (Stripe webhook)                            |
 
 ## Composite index manifest
 
@@ -61,8 +66,8 @@ indexes:
 | `members` (collection)       | role ↑, xp ↓                              |
 | `enrollments` (group)        | tenantId ↑, completed ↑, lastActivityAt ↓ |
 | `knowledgeBase` (collection) | status ↑, createdAt ↓                     |
-| `statements` (collection)    | tenantId ↑, timestamp ↓                   |
-| `statements` (collection)    | actorUid ↑, timestamp ↓                   |
+| `lrs` (collection)           | tenantId ↑, timestamp ↓                   |
+| `lrs` (collection)           | actorUid ↑, timestamp ↓                   |
 | `messages` (collection)      | uid ↑, createdAt ↑                        |
 
 **Field override:** `vectors.embedding` — vector config, dimension 768 (Vertex

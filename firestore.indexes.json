@@ -42,7 +42,7 @@
       ]
     },
     {
-      "collectionGroup": "statements",
+      "collectionGroup": "lrs",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "tenantId", "order": "ASCENDING" },
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "collectionGroup": "statements",
+      "collectionGroup": "lrs",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "actorUid", "order": "ASCENDING" },

@@ -9,7 +9,7 @@ const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 
 /**
  * Stripe webhook. Entitlements are granted ONLY here, on a signature-verified
- * event, and are idempotent via the stripe/events/{eventId} log. The client is
+ * event, and are idempotent via the stripeEvents/{eventId} log. The client is
  * never trusted for payment state.
  */
 export const stripeWebhook = onRequest(
@@ -31,7 +31,7 @@ export const stripeWebhook = onRequest(
     }
 
     // Idempotency: process each event id at most once.
-    const eventRef = db.doc(`stripe/events/${event.id}`);
+    const eventRef = db.doc(`stripeEvents/${event.id}`);
     const already = await eventRef.get();
     if (already.exists) {
       res.status(200).send('Already processed');
@@ -64,7 +64,7 @@ async function grantEntitlement(
   eventId: string,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
-  const customerRef = db.doc(`b2c/customers/${uid}`);
+  const customerRef = db.doc(`customers/${uid}`);
   await customerRef.set(
     {
       uid,

@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -194,11 +188,7 @@ function formToBranding(form: BrandingForm): Branding {
           <!-- Actions -->
           <div class="branding__actions">
             <p-button label="Preview" severity="secondary" (onClick)="preview()" />
-            <p-button
-              label="Save"
-              [loading]="saving()"
-              (onClick)="save()"
-            />
+            <p-button label="Save" [loading]="saving()" (onClick)="save()" />
           </div>
 
           @if (saveError()) {
