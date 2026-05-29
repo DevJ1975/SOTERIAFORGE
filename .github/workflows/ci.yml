@@ -48,8 +48,10 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    env:
-      NODE_OPTIONS: --max-old-space-size=6144
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [learner, admin, superadmin, storefront, functions]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,8 +59,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --legacy-peer-deps
-      - name: Build
-        run: npx nx run-many -t build --parallel=1
+      # One project per runner: no build-time memory contention, and a failing
+      # matrix leg names the exact project.
+      - name: Build ${{ matrix.project }}
+        run: npx nx build ${{ matrix.project }}
 
   rules-tests:
     runs-on: ubuntu-latest
