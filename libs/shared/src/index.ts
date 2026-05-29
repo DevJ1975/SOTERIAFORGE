@@ -15,3 +15,4 @@ export * from './lib/schemas/ai';
 // Utilities
 export * from './lib/util/tenant-resolution';
 export * from './lib/util/validation';
+export * from './lib/util/quiz-grading';

@@ -8,6 +8,7 @@ export { provisionTenant } from './tenants/provision-tenant';
 export { setTenantStatus } from './tenants/lifecycle';
 export { updateBranding } from './tenants/update-branding';
 export { inviteMember, deactivateMember } from './members/invite-member';
+export { submitQuiz } from './quizzes/submit-quiz';
 export { stripeWebhook } from './stripe/webhook';
 export { ingestStatement } from './lrs/ingest';
 export { askTutor } from './ai/tutor-flow';
