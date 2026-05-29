@@ -12,6 +12,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Several Angular AOT/SSR builds are memory-hungry on small runners.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +40,9 @@ jobs:
       - name: Test (affected)
         run: npx nx affected -t test --parallel=3 --ci --coverage
 
+      # Lower parallelism for builds to avoid OOM on 2-vCPU/7GB runners.
       - name: Build (affected)
-        run: npx nx affected -t build --parallel=3
+        run: npx nx affected -t build --parallel=1
 
   rules-tests:
     runs-on: ubuntu-latest
