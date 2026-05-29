@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import type { Enrollment } from '@forge/shared';
 import { EnrollmentRepository } from '@forge/data-access';
-import { computeCourseProgress } from './progress';
 
 /**
  * Application service for enrollment lifecycle management.
@@ -83,12 +82,7 @@ export class EnrollmentService {
 
     const completedModuleIds = prevIds.includes(moduleId) ? prevIds : [...prevIds, moduleId];
 
-    // Re-derive progressPct using the shared pure helper.
-    // We synthesise lightweight "module stubs" — the helper only needs `id`.
-    const stubModules = Array.from({ length: totalModules }, (_, i) => ({
-      id: completedModuleIds[i] ?? `__stub_${i}`,
-    })) as Parameters<typeof computeCourseProgress>[0];
-    // Simpler: just compute ratio directly (avoids stub hacking).
+    // Ratio of completed modules to total.
     const progressPct =
       totalModules > 0 ? Math.round((completedModuleIds.length / totalModules) * 100) : 0;
 
@@ -107,5 +101,30 @@ export class EnrollmentService {
     };
 
     await this.enrollmentRepo.updateProgress(tenantId, courseId, uid, partial);
+  }
+
+  /**
+   * Persist SCORM/cmi5 runtime data for a module under the enrollment's `cmi`
+   * map, namespaced per module so multiple SCORM modules don't collide. Called
+   * by the SCORM runtime on commit/finish.
+   */
+  async saveCmi(
+    tenantId: string,
+    courseId: string,
+    uid: string,
+    moduleId: string,
+    cmi: Record<string, unknown>,
+  ): Promise<void> {
+    const existing = await this.enrollmentRepo.get(tenantId, courseId, uid);
+    const now = new Date().toISOString();
+    const runtime = (existing?.cmi?.['runtime'] as Record<string, unknown>) ?? {};
+    await this.enrollmentRepo.updateProgress(tenantId, courseId, uid, {
+      lastActivityAt: now,
+      updatedAt: now,
+      cmi: {
+        ...(existing?.cmi ?? {}),
+        runtime: { ...runtime, [moduleId]: cmi },
+      },
+    });
   }
 }
