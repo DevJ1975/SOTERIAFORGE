@@ -4,11 +4,11 @@ Course, module, and enrollment domain logic for Soteria FORGE.
 
 ## What's inside
 
-| File | Purpose |
-|------|---------|
-| `progress.ts` | Pure functions: `computeCourseProgress`, `isModuleComplete`, `nextIncompleteModule` |
-| `course.store.ts` | NgRx SignalStore `CourseStore` — state, computed signals, async load methods |
-| `enrollment.service.ts` | `EnrollmentService` — `enroll()` and `markModuleComplete()` |
+| File                    | Purpose                                                                             |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| `progress.ts`           | Pure functions: `computeCourseProgress`, `isModuleComplete`, `nextIncompleteModule` |
+| `course.store.ts`       | NgRx SignalStore `CourseStore` — state, computed signals, async load methods        |
+| `enrollment.service.ts` | `EnrollmentService` — `enroll()` and `markModuleComplete()`                         |
 
 ## Usage
 
@@ -17,16 +17,16 @@ Course, module, and enrollment domain logic for Soteria FORGE.
 ```ts
 import { computeCourseProgress, isModuleComplete, nextIncompleteModule } from '@forge/lms-core';
 
-const pct = computeCourseProgress(modules, completedIds);          // 0–100
+const pct = computeCourseProgress(modules, completedIds); // 0–100
 const done = isModuleComplete(module, { score: 85, progressPct: 90 });
-const next = nextIncompleteModule(modules, completedIds);          // Module | null
+const next = nextIncompleteModule(modules, completedIds); // Module | null
 ```
 
 ### CourseStore (NgRx SignalStore)
 
 ```ts
 @Component({
-  providers: [CourseStore],          // per-component scope
+  providers: [CourseStore], // per-component scope
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CourseViewComponent {

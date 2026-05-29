@@ -125,9 +125,7 @@ export class PhaserHostComponent implements OnDestroy {
         const { width, height } = this.scale;
         // Background
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        this.add
-          .rectangle(width / 2, height / 2, width, height, 0x1a1a2e)
-          .setDepth(0);
+        this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e).setDepth(0);
 
         // Title text
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access

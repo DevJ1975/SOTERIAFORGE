@@ -5,13 +5,7 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: [
-      '**/dist',
-      '**/node_modules',
-      '**/.angular',
-      '**/.nx',
-      'apps/functions/lib',
-    ],
+    ignores: ['**/dist', '**/node_modules', '**/.angular', '**/.nx', 'apps/functions/lib'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -26,7 +20,12 @@ export default [
             { sourceTag: 'scope:shared', onlyDependOnLibsWithTags: ['scope:shared'] },
             {
               sourceTag: 'type:feature',
-              onlyDependOnLibsWithTags: ['type:feature', 'type:data-access', 'type:ui', 'type:util'],
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:data-access',
+                'type:ui',
+                'type:util',
+              ],
             },
             {
               sourceTag: 'type:data-access',

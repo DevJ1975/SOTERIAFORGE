@@ -30,11 +30,7 @@ import { isPlatformBrowser } from '@angular/common';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <canvas
-      #riveCanvas
-      class="rive-canvas"
-      [attr.aria-label]="'Rive character animation'"
-    ></canvas>
+    <canvas #riveCanvas class="rive-canvas" [attr.aria-label]="'Rive character animation'"></canvas>
   `,
   styles: [
     `

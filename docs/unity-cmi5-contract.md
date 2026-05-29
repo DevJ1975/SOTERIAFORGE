@@ -17,13 +17,13 @@ per-game backend work. The contract is: **launch parameters in, xAPI out.**
 FORGE launches the AU (rendered in `forge-unity-embed`, a sandboxed, responsive,
 `@defer`-loaded iframe) with the cmi5 launch query parameters:
 
-| Param | Meaning |
-|---|---|
-| `endpoint` | LRS endpoint the AU posts xAPI statements to |
-| `fetch` | One-time-use URL the AU calls to obtain its auth token |
-| `actor` | xAPI Agent JSON (account.homePage + name = uid; pseudonymous) |
-| `registration` | UUID grouping all statements for this attempt |
-| `activityId` | The AU's activity IRI |
+| Param          | Meaning                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `endpoint`     | LRS endpoint the AU posts xAPI statements to                  |
+| `fetch`        | One-time-use URL the AU calls to obtain its auth token        |
+| `actor`        | xAPI Agent JSON (account.homePage + name = uid; pseudonymous) |
+| `registration` | UUID grouping all statements for this attempt                 |
+| `activityId`   | The AU's activity IRI                                         |
 
 `@forge/standards` `buildLaunchUrl()` / `parseLaunchParams()` implement this.
 The `fetch` flow returns a short-lived auth token scoped to the caller's tenant

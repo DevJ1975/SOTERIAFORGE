@@ -11,10 +11,7 @@ import type { Module } from '@forge/shared';
  *
  * Returns 0 when there are no modules.
  */
-export function computeCourseProgress(
-  modules: Module[],
-  completedModuleIds: string[],
-): number {
+export function computeCourseProgress(modules: Module[], completedModuleIds: string[]): number {
   if (modules.length === 0) return 0;
   const completedSet = new Set(completedModuleIds);
   const completedCount = modules.filter((m) => completedSet.has(m.id)).length;
@@ -54,10 +51,7 @@ export function isModuleComplete(
  * Returns the first module (by ascending `order`) that is NOT in `completedIds`,
  * or `null` when all modules are complete (or the list is empty).
  */
-export function nextIncompleteModule(
-  modules: Module[],
-  completedIds: string[],
-): Module | null {
+export function nextIncompleteModule(modules: Module[], completedIds: string[]): Module | null {
   const completedSet = new Set(completedIds);
   const sorted = [...modules].sort((a, b) => a.order - b.order);
   return sorted.find((m) => !completedSet.has(m.id)) ?? null;

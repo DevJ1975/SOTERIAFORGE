@@ -80,10 +80,7 @@ describe('UnityEmbedComponent', () => {
  */
 @Component({
   template: `
-    <forge-unity-embed
-      [launchUrl]="'https://example.com/unity'"
-      [title]="'Test Game'"
-    />
+    <forge-unity-embed [launchUrl]="'https://example.com/unity'" [title]="'Test Game'" />
   `,
   imports: [UnityEmbedComponent],
   standalone: true,

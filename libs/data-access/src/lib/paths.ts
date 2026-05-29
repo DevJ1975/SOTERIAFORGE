@@ -35,8 +35,7 @@ export const FsPaths = {
   badges: (tenantId: string) => `tenants/${tenantId}/badges`,
   badge: (tenantId: string, badgeId: string) => `tenants/${tenantId}/badges/${badgeId}`,
 
-  leaderboard: (tenantId: string, period: string) =>
-    `tenants/${tenantId}/leaderboard/${period}`,
+  leaderboard: (tenantId: string, period: string) => `tenants/${tenantId}/leaderboard/${period}`,
 
   knowledgeBase: (tenantId: string) => `tenants/${tenantId}/ai/knowledgeBase`,
   conversationMessages: (tenantId: string, uid: string) =>

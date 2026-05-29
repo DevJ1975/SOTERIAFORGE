@@ -1,8 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ThemeService } from '../../theme.service';
 
 /**
@@ -63,11 +59,7 @@ import { ThemeService } from '../../theme.service';
   template: `
     <header class="forge-shell-header">
       @if (tokens().logoUrl) {
-        <img
-          [src]="tokens().logoUrl"
-          alt="Tenant logo"
-          class="forge-shell-logo"
-        />
+        <img [src]="tokens().logoUrl" alt="Tenant logo" class="forge-shell-logo" />
       } @else {
         <span class="forge-shell-wordmark">FORGE</span>
       }

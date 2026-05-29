@@ -38,7 +38,10 @@ export function canAccessTenant(
   return claims.tenantId === tenantId;
 }
 
-export function hasEntitlement(claims: CustomClaims | null | undefined, productId: string): boolean {
+export function hasEntitlement(
+  claims: CustomClaims | null | undefined,
+  productId: string,
+): boolean {
   return !!claims?.entitlements?.includes(productId);
 }
 

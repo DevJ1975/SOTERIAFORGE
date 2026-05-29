@@ -14,9 +14,7 @@
         "browser": "apps/superadmin/src/main.ts",
         "polyfills": ["zone.js"],
         "tsConfig": "apps/superadmin/tsconfig.app.json",
-        "assets": [
-          { "glob": "**/*", "input": "apps/superadmin/public" }
-        ],
+        "assets": [{ "glob": "**/*", "input": "apps/superadmin/public" }],
         "styles": ["apps/superadmin/src/styles.scss"],
         "scripts": []
       },

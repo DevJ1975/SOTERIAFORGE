@@ -8,12 +8,12 @@ AI tutor. Serves **B2B multi-tenant** (white-labeled, isolated tenants) and a
 
 ## Locked architecture decisions (Phase 0)
 
-| Decision | Choice |
-|---|---|
-| Multi-tenancy & identity | **GCIP true multi-tenancy** (Identity Platform tenants) |
-| UI component library | **PrimeNG** (wrapped by `@forge/ui` design system) |
-| App layout | **Four separate apps** — learner, admin, superadmin, storefront |
-| Tenant routing | **Subdomain** (`acme.soteriaforge.com`); B2C on the apex |
+| Decision                 | Choice                                                          |
+| ------------------------ | --------------------------------------------------------------- |
+| Multi-tenancy & identity | **GCIP true multi-tenancy** (Identity Platform tenants)         |
+| UI component library     | **PrimeNG** (wrapped by `@forge/ui` design system)              |
+| App layout               | **Four separate apps** — learner, admin, superadmin, storefront |
+| Tenant routing           | **Subdomain** (`acme.soteriaforge.com`); B2C on the apex        |
 
 See [`docs/adr/0001-phase0-decisions.md`](docs/adr/0001-phase0-decisions.md).
 Deferred decisions (LRS, vector store, LLM provider, video platform) carry the

@@ -17,7 +17,9 @@ export const quizQuestion = baseQuestion.extend({
     .default([]),
   /** Correct answers for fill-in / ordering keyed by option id or text. */
   answerKey: z.array(z.string()).default([]),
-  feedback: z.object({ correct: z.string().optional(), incorrect: z.string().optional() }).optional(),
+  feedback: z
+    .object({ correct: z.string().optional(), incorrect: z.string().optional() })
+    .optional(),
 });
 export type QuizQuestion = z.infer<typeof quizQuestion>;
 

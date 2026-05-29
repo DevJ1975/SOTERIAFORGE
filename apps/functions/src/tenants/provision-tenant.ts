@@ -5,9 +5,7 @@ import { LEADERBOARD_PERIODS } from '@forge/shared';
 import { adminAuth, db } from '../lib/admin';
 
 const provisionInput = z.object({
-  tenantId: z
-    .string()
-    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Must be a DNS-safe label'),
+  tenantId: z.string().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Must be a DNS-safe label'),
   name: z.string().min(1).max(200),
   plan: z.string().default('starter'),
   adminEmail: z.string().email().optional(),

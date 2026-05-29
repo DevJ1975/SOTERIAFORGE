@@ -46,6 +46,9 @@ export class AdminDashboardComponent {
     { title: 'Branding', description: 'Customize tenant colours, logos, and domain (Phase 1+).' },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
     { title: 'AI Knowledge Base', description: 'Upload documents for AI-powered Q&A (Phase 1+).' },
-    { title: 'Reports', description: 'Export completion, compliance, and usage reports (Phase 1+).' },
+    {
+      title: 'Reports',
+      description: 'Export completion, compliance, and usage reports (Phase 1+).',
+    },
   ]);
 }

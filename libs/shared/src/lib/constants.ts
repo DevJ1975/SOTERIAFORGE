@@ -4,7 +4,13 @@
  */
 
 /** Roles encoded as Firebase custom claims. */
-export const ROLES = ['superadmin', 'tenant_admin', 'instructor', 'learner', 'b2c_customer'] as const;
+export const ROLES = [
+  'superadmin',
+  'tenant_admin',
+  'instructor',
+  'learner',
+  'b2c_customer',
+] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Roles that may author content. */

@@ -15,15 +15,16 @@ import { TutorService, TUTOR_FUNCTIONS } from './tutor.service';
 @Injectable()
 class TutorServiceStub extends TutorService {
   stubbedAnswer = 'Photosynthesis converts sunlight into energy.';
-  stubbedCitations = [
-    { sourceId: 'src-001', label: 'Biology 101', moduleId: 'mod-001' },
-  ];
+  stubbedCitations = [{ sourceId: 'src-001', label: 'Biology 101', moduleId: 'mod-001' }];
 
   protected override invoke(
     _question: string,
     _tenantId: string,
     _uid: string,
-  ): Promise<{ answer: string; citations: Array<{ sourceId: string; label?: string; moduleId?: string }> }> {
+  ): Promise<{
+    answer: string;
+    citations: Array<{ sourceId: string; label?: string; moduleId?: string }>;
+  }> {
     return Promise.resolve({
       answer: this.stubbedAnswer,
       citations: this.stubbedCitations,
@@ -38,7 +39,10 @@ class TutorServiceErrorStub extends TutorService {
     _question: string,
     _tenantId: string,
     _uid: string,
-  ): Promise<{ answer: string; citations: Array<{ sourceId: string; label?: string; moduleId?: string }> }> {
+  ): Promise<{
+    answer: string;
+    citations: Array<{ sourceId: string; label?: string; moduleId?: string }>;
+  }> {
     return Promise.reject(new Error('Callable failed'));
   }
 }

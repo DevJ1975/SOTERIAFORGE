@@ -6,13 +6,13 @@ here behind explicit authorization checks.
 
 ## Functions
 
-| Export | Type | Purpose |
-|---|---|---|
+| Export            | Type     | Purpose                                                                                                       |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
 | `provisionTenant` | callable | Superadmin-only. Creates a GCIP Identity Platform tenant, seeds the `/tenants/{id}` doc + leaderboard config. |
-| `setMemberRole` | callable | Sets a member's role + custom claims (GCIP tenant-aware). Superadmin, or tenant_admin within own tenant. |
-| `stripeWebhook` | https | Signature-verified Stripe events. Grants entitlements idempotently (never trusts the client). |
-| `ingestStatement` | callable | Appends a tenant-tagged xAPI statement (Firestore LRS v1). |
-| `askTutor` | callable | Per-tenant RAG tutor; retrieval is tenant-isolated (LLM wired in Phase 6). |
+| `setMemberRole`   | callable | Sets a member's role + custom claims (GCIP tenant-aware). Superadmin, or tenant_admin within own tenant.      |
+| `stripeWebhook`   | https    | Signature-verified Stripe events. Grants entitlements idempotently (never trusts the client).                 |
+| `ingestStatement` | callable | Appends a tenant-tagged xAPI statement (Firestore LRS v1).                                                    |
+| `askTutor`        | callable | Per-tenant RAG tutor; retrieval is tenant-isolated (LLM wired in Phase 6).                                    |
 
 ## Build & deploy
 

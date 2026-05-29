@@ -58,7 +58,7 @@ export function resolveTenantFromHost(
 
   // 3) Subdomain of the root domain.
   if (cleanHost.endsWith(`.${rootDomain}`)) {
-    const sub = cleanHost.slice(0, -1 * (`.${rootDomain}`.length));
+    const sub = cleanHost.slice(0, -1 * `.${rootDomain}`.length);
     // Only the left-most label is the tenant; ignore deeper nesting.
     const label = sub.split('.').pop() ?? '';
     if (!label || RESERVED_SUBDOMAINS.includes(label as (typeof RESERVED_SUBDOMAINS)[number])) {

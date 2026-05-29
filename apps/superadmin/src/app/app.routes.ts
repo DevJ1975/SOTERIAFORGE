@@ -8,8 +8,7 @@ export const appRoutes: Routes = [
   },
   {
     path: 'forbidden',
-    loadComponent: () =>
-      import('./pages/forbidden.component').then((m) => m.ForbiddenComponent),
+    loadComponent: () => import('./pages/forbidden.component').then((m) => m.ForbiddenComponent),
   },
   {
     path: '',

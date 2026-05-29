@@ -38,12 +38,18 @@ export const CourseStore = signalStore(
   withComputed((store) => ({
     /** Percentage of modules completed (0–100). */
     progressPct: computed(() =>
-      computeCourseProgress(store.modules(), completedIdsFromEnrollment(store.enrollment(), store.modules())),
+      computeCourseProgress(
+        store.modules(),
+        completedIdsFromEnrollment(store.enrollment(), store.modules()),
+      ),
     ),
 
     /** Next module the learner should work on. */
     nextModule: computed(() =>
-      nextIncompleteModule(store.modules(), completedIdsFromEnrollment(store.enrollment(), store.modules())),
+      nextIncompleteModule(
+        store.modules(),
+        completedIdsFromEnrollment(store.enrollment(), store.modules()),
+      ),
     ),
 
     /** True when all modules are completed (derived from enrollment flag). */
@@ -109,10 +115,7 @@ export const CourseStore = signalStore(
  * Fallback: if `enrollment.completed` is true and no explicit list is stored,
  * all module ids are returned (covers legacy / externally written enrollments).
  */
-function completedIdsFromEnrollment(
-  enrollment: Enrollment | null,
-  modules: Module[],
-): string[] {
+function completedIdsFromEnrollment(enrollment: Enrollment | null, modules: Module[]): string[] {
   if (!enrollment) return [];
 
   // Prefer explicit CMI-stored list

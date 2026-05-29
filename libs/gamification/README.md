@@ -15,13 +15,13 @@ Pure functions; no state.
 **Default curve:** Level N requires a cumulative total XP of `floor(100 × N^1.5)` to reach.
 
 | Level | Cumulative XP threshold |
-|-------|------------------------|
-| 1     | 100                    |
-| 2     | 282                    |
-| 3     | 519                    |
-| 4     | 800                    |
-| 5     | 1118                   |
-| 10    | 3162                   |
+| ----- | ----------------------- |
+| 1     | 100                     |
+| 2     | 282                     |
+| 3     | 519                     |
+| 4     | 800                     |
+| 5     | 1118                    |
+| 10    | 3162                    |
 
 ```ts
 import { xpForLevel, levelForXp } from '@forge/gamification';
@@ -42,6 +42,7 @@ Both functions accept an optional `LevelCurve` override `{ baseXp, exponent }`.
 Pure functions; no state.
 
 **Rules (UTC calendar dates only):**
+
 - Same UTC day as last activity → no change (idempotent).
 - Exactly the next UTC calendar day → streak + 1.
 - Gap > 1 day → streak resets to 1.
@@ -104,8 +105,7 @@ export class MyComponent {
 }
 ```
 
-> **Anti-cheat guarantee:**
-> `XpService` is **optimistic / local only** — it lets the UI respond instantly,
+> **Anti-cheat guarantee:** > `XpService` is **optimistic / local only** — it lets the UI respond instantly,
 > but it is NEVER the authoritative source of truth.
 >
 > All XP-granting events (course completions, quiz passes, etc.) are validated

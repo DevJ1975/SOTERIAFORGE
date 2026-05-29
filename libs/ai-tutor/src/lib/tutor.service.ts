@@ -5,7 +5,10 @@ import type { ChatMessage } from '@forge/shared';
 /** UUID generator compatible with both browser (Web Crypto) and Node/Jest. */
 function newUUID(): string {
   // Web Crypto API (browsers, Node ≥ 19 global, Deno)
-  if (typeof crypto !== 'undefined' && typeof (crypto as Crypto & { randomUUID?: () => string }).randomUUID === 'function') {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof (crypto as Crypto & { randomUUID?: () => string }).randomUUID === 'function'
+  ) {
     return (crypto as Crypto & { randomUUID: () => string }).randomUUID();
   }
   // Node.js `crypto` module (Jest / server-side)
@@ -57,10 +60,7 @@ export class TutorService {
    * Override this method in tests to avoid real Firebase calls.
    */
   protected invoke(question: string, tenantId: string, uid: string): Promise<AskTutorResponse> {
-    const callable = httpsCallable<AskTutorRequest, AskTutorResponse>(
-      this.functions,
-      'askTutor',
-    );
+    const callable = httpsCallable<AskTutorRequest, AskTutorResponse>(this.functions, 'askTutor');
     return callable({ question, tenantId, uid }).then((result) => result.data);
   }
 

@@ -1,6 +1,6 @@
 # @forge/standards — SCORM / xAPI / cmi5 Standards Engine
 
-This library is the client-side standards engine for SOTERIAFORGE.  It owns all
+This library is the client-side standards engine for SOTERIAFORGE. It owns all
 SCORM, xAPI, and cmi5 concerns and provides the glue between e-learning content
 and the platform's enrolment, completion, and gamification systems.
 
@@ -13,14 +13,14 @@ and the platform's enrolment, completion, and gamification systems.
 An Angular injectable service (provided in root) that:
 
 - **`buildStatement(opts)`** — Constructs a spec-compliant xAPI statement
-  object.  The learner is represented as an Agent with a pseudonymous
-  `account.name` (Firebase UID) and `account.homePage` (platform URL).  Every
+  object. The learner is represented as an Agent with a pseudonymous
+  `account.name` (Firebase UID) and `account.homePage` (platform URL). Every
   statement is tenant-tagged via
   `context.extensions[XAPI_TENANT_EXTENSION]` so that the LRS can enforce
   tenant isolation.
 
 - **`send(statement)`** — Forwards a statement to the `ingestStatement` Firebase
-  callable function via `@angular/fire/functions`.  Gracefully no-ops (with a
+  callable function via `@angular/fire/functions`. Gracefully no-ops (with a
   console warning) if `Functions` is not available in the current DI context,
   e.g. during unit tests.
 
@@ -68,7 +68,7 @@ Pure functions for the cmi5 launch URL protocol:
   parameters (`endpoint`, `fetch`, `actor`, `registration`, `activityId`) to a
   base AU URL.
 - **`parseLaunchParams(url)`** — Extracts those parameters back out of a launch
-  URL.  Accepts a string or a `URL` object.  Missing params are returned as
+  URL. Accepts a string or a `URL` object. Missing params are returned as
   empty strings.
 
 ---
@@ -96,8 +96,8 @@ gamification: GamificationService  →  XP, badges, leaderboard
 ```
 
 When a SCORM commit fires, `ScormRuntimeService` calls the host's `persist`
-callback with the raw CMI object.  The host (typically `lms-core`) writes this
-to the learner's enrolment document in Firestore.  A Cloud Function watches for
+callback with the raw CMI object. The host (typically `lms-core`) writes this
+to the learner's enrolment document in Firestore. A Cloud Function watches for
 the `lesson_status` / `success_status` transition and:
 
 1. Marks the enrolment as complete.
@@ -105,7 +105,7 @@ the `lesson_status` / `success_status` transition and:
    awards XP, evaluates badge criteria, and updates the leaderboard.
 
 For xAPI-native (cmi5) content, the AU sends statements directly to the LRS via
-`XapiClient.send()`.  The `ingestStatement` Cloud Function receives the
+`XapiClient.send()`. The `ingestStatement` Cloud Function receives the
 statement, validates tenant scope, writes it to the LRS collection, and
 similarly triggers the gamification pipeline when a `completed` or `passed`
 statement arrives.

@@ -14,9 +14,7 @@
         "browser": "apps/learner/src/main.ts",
         "polyfills": ["zone.js"],
         "tsConfig": "apps/learner/tsconfig.app.json",
-        "assets": [
-          { "glob": "**/*", "input": "apps/learner/public" }
-        ],
+        "assets": [{ "glob": "**/*", "input": "apps/learner/public" }],
         "styles": ["apps/learner/src/styles.scss"],
         "scripts": []
       },

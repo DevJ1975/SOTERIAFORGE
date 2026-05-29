@@ -14,9 +14,7 @@
         "browser": "apps/admin/src/main.ts",
         "polyfills": ["zone.js"],
         "tsConfig": "apps/admin/tsconfig.app.json",
-        "assets": [
-          { "glob": "**/*", "input": "apps/admin/public" }
-        ],
+        "assets": [{ "glob": "**/*", "input": "apps/admin/public" }],
         "styles": ["apps/admin/src/styles.scss"],
         "scripts": []
       },

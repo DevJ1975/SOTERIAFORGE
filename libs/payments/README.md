@@ -20,6 +20,7 @@ Entitlements flow exclusively through the server:
    `EntitlementStore.entitlements` reflects the new state.
 
 **Gating must be enforced at two layers:**
+
 - **Route guard** — use `EntitlementStore.canAccess(productId)` or
   `hasEntitlement(claims, productId)` from `@forge/auth`.
 - **Content delivery** — Firestore security rules and/or Cloud Function auth
@@ -33,14 +34,17 @@ Entitlements flow exclusively through the server:
 ```ts
 isEntitled(entitlements: string[], productId: string): boolean
 ```
+
 Returns `true` if `productId` is in `entitlements` OR the `'all_access'` sentinel is present.
 
 ```ts
 resolveAccess(product: CatalogProduct, entitlements: string[]): AccessResult
 ```
+
 Returns `{ allowed: boolean; reason?: string }`.
 
 **Entitlement convention:**
+
 - `'all_access'` in the user's entitlements array → may access **any** product.
 - `product.grants.kind === 'all_access'` → user must hold that specific `product.id`.
 - `course` / `module` products → user must hold `product.id` in their entitlements.

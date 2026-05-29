@@ -2,7 +2,11 @@ import { type EnvironmentProviders, makeEnvironmentProviders } from '@angular/co
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
-import { ReCaptchaEnterpriseProvider, initializeAppCheck, provideAppCheck } from '@angular/fire/app-check';
+import {
+  ReCaptchaEnterpriseProvider,
+  initializeAppCheck,
+  provideAppCheck,
+} from '@angular/fire/app-check';
 
 export interface FirebaseProvidersOptions {
   firebase: Record<string, string>;

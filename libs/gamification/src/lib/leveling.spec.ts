@@ -44,9 +44,7 @@ describe('xpForLevel', () => {
 
     it('respects custom curve monotonically', () => {
       for (let lvl = 1; lvl < 20; lvl++) {
-        expect(xpForLevel(lvl + 1, customCurve)).toBeGreaterThan(
-          xpForLevel(lvl, customCurve),
-        );
+        expect(xpForLevel(lvl + 1, customCurve)).toBeGreaterThan(xpForLevel(lvl, customCurve));
       }
     });
   });

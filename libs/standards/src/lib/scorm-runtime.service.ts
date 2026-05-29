@@ -144,8 +144,7 @@ export class ScormRuntimeService {
     // SCORM 2004: cmi.score.scaled
     const cmiAny = cmi as Record<string, Record<string, Record<string, unknown>>>;
     const scaled =
-      cmiAny?.['cmi']?.['score']?.['scaled'] ??
-      cmiAny?.['cmi']?.['core']?.['score']?.['raw'];
+      cmiAny?.['cmi']?.['score']?.['scaled'] ?? cmiAny?.['cmi']?.['core']?.['score']?.['raw'];
     if (typeof scaled === 'number') {
       this.score.set(scaled);
     } else if (typeof scaled === 'string') {

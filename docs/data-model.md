@@ -35,35 +35,35 @@ analytics aggregations run server-side only.
 
 ## Write-surface summary (see `firestore.rules`)
 
-| Path | Client read | Client write |
-|---|---|---|
-| platform/** | superadmin | ✗ (server) |
-| tenants/{t} | in-tenant | ✗ (provisioning fn) |
-| members/{uid} | self or tenant_admin | self: profile/activity only (not role/status) |
-| courses/** | in-tenant | author roles |
-| enrollments/{uid} | self or tenant_admin | self only; score validated server-side |
-| leaderboard | in-tenant | ✗ (server, anti-cheat) |
-| ai/vectors | ✗ | ✗ (server retrieval) |
-| ai/conversations/{uid} | self | self (create only) |
-| lrs/statements | superadmin | ✗ (ingest fn) |
-| b2c/catalog | public | superadmin |
-| b2c/customers | self | ✗ (Stripe webhook) |
+| Path                   | Client read          | Client write                                  |
+| ---------------------- | -------------------- | --------------------------------------------- |
+| platform/\*\*          | superadmin           | ✗ (server)                                    |
+| tenants/{t}            | in-tenant            | ✗ (provisioning fn)                           |
+| members/{uid}          | self or tenant_admin | self: profile/activity only (not role/status) |
+| courses/\*\*           | in-tenant            | author roles                                  |
+| enrollments/{uid}      | self or tenant_admin | self only; score validated server-side        |
+| leaderboard            | in-tenant            | ✗ (server, anti-cheat)                        |
+| ai/vectors             | ✗                    | ✗ (server retrieval)                          |
+| ai/conversations/{uid} | self                 | self (create only)                            |
+| lrs/statements         | superadmin           | ✗ (ingest fn)                                 |
+| b2c/catalog            | public               | superadmin                                    |
+| b2c/customers          | self                 | ✗ (Stripe webhook)                            |
 
 ## Composite index manifest
 
 Tracked in [`firestore.indexes.json`](../firestore.indexes.json). Current
 indexes:
 
-| Collection (scope) | Fields |
-|---|---|
-| `courses` (collection) | status ↑, title ↑ |
-| `members` (collection) | status ↑, displayName ↑ |
-| `members` (collection) | role ↑, xp ↓ |
-| `enrollments` (group) | tenantId ↑, completed ↑, lastActivityAt ↓ |
-| `knowledgeBase` (collection) | status ↑, createdAt ↓ |
-| `statements` (collection) | tenantId ↑, timestamp ↓ |
-| `statements` (collection) | actorUid ↑, timestamp ↓ |
-| `messages` (collection) | uid ↑, createdAt ↑ |
+| Collection (scope)           | Fields                                    |
+| ---------------------------- | ----------------------------------------- |
+| `courses` (collection)       | status ↑, title ↑                         |
+| `members` (collection)       | status ↑, displayName ↑                   |
+| `members` (collection)       | role ↑, xp ↓                              |
+| `enrollments` (group)        | tenantId ↑, completed ↑, lastActivityAt ↓ |
+| `knowledgeBase` (collection) | status ↑, createdAt ↓                     |
+| `statements` (collection)    | tenantId ↑, timestamp ↓                   |
+| `statements` (collection)    | actorUid ↑, timestamp ↓                   |
+| `messages` (collection)      | uid ↑, createdAt ↑                        |
 
 **Field override:** `vectors.embedding` — vector config, dimension 768 (Vertex
 AI `text-embedding` default; adjust to the chosen model). Used by Firestore

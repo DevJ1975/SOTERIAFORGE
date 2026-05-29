@@ -7,7 +7,9 @@ import { isEntitled, resolveAccess } from './entitlements';
 // ---------------------------------------------------------------------------
 const NOW = '2024-01-01T00:00:00.000Z';
 
-function makeProduct(overrides: Partial<CatalogProduct> & Pick<CatalogProduct, 'id' | 'grants'>): CatalogProduct {
+function makeProduct(
+  overrides: Partial<CatalogProduct> & Pick<CatalogProduct, 'id' | 'grants'>,
+): CatalogProduct {
   const defaults: CatalogProduct = {
     createdAt: NOW,
     id: overrides.id,
@@ -45,7 +47,9 @@ const allAccessProduct = makeProduct({
 // ---------------------------------------------------------------------------
 describe('isEntitled', () => {
   it('returns true when productId is in the entitlements array', () => {
-    expect(isEntitled(['course-intro-to-safety', 'module-chapter-1'], 'course-intro-to-safety')).toBe(true);
+    expect(
+      isEntitled(['course-intro-to-safety', 'module-chapter-1'], 'course-intro-to-safety'),
+    ).toBe(true);
   });
 
   it('returns false when productId is NOT in the entitlements array', () => {

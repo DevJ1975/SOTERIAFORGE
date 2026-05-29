@@ -131,7 +131,9 @@ export class UnityEmbedComponent implements OnInit, OnDestroy {
       if (ev.source == null) return;
 
       // Verify the source is our embedded iframe
-      const iframe = this.elementRef.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      const iframe = this.elementRef.nativeElement.querySelector(
+        'iframe',
+      ) as HTMLIFrameElement | null;
       if (iframe && ev.source !== iframe.contentWindow) return;
 
       // Accept only plain objects with a string `type` field

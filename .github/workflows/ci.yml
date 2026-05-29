@@ -52,4 +52,4 @@ jobs:
       - name: Install Firebase CLI
         run: npm i -g firebase-tools
       - name: Firestore rules tests (emulator)
-        run: firebase emulators:exec --only firestore "npx nx test data-access --testPathPattern=rules"
+        run: firebase emulators:exec --only firestore "npx nx test-rules data-access"

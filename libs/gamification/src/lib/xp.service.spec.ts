@@ -183,9 +183,7 @@ describe('XpService', () => {
     describe('invalid inputs', () => {
       it('throws RangeError for negative XP amount', () => {
         const member = makeMember();
-        expect(() => service.awardXp(member, -1, '2024-03-15T10:00:00.000Z')).toThrow(
-          RangeError,
-        );
+        expect(() => service.awardXp(member, -1, '2024-03-15T10:00:00.000Z')).toThrow(RangeError);
       });
     });
   });

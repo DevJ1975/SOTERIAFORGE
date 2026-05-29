@@ -8,14 +8,12 @@ export const appRoutes: Routes = [
   },
   {
     path: 'forbidden',
-    loadComponent: () =>
-      import('./pages/forbidden.component').then((m) => m.ForbiddenComponent),
+    loadComponent: () => import('./pages/forbidden.component').then((m) => m.ForbiddenComponent),
   },
   {
     path: '',
     canActivate: [authGuard, tenantGuard],
-    loadComponent: () =>
-      import('./pages/dashboard.component').then((m) => m.DashboardComponent),
+    loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent),
   },
   { path: '**', redirectTo: '' },
 ];

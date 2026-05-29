@@ -6,17 +6,17 @@ Interactive card-game shells and game-engine integrations for the SOTERIAFORGE p
 
 This library provides Angular standalone components that wrap three different game engines and expose a unified, no-code–configurable interface for learner-facing mini-games.
 
-| Component | Engine | Selector |
-|-----------|--------|----------|
-| `PhaserHostComponent` | Phaser 3 | `forge-phaser-host` |
+| Component                | Engine                  | Selector               |
+| ------------------------ | ----------------------- | ---------------------- |
+| `PhaserHostComponent`    | Phaser 3                | `forge-phaser-host`    |
 | `RiveCharacterComponent` | Rive (@rive-app/canvas) | `forge-rive-character` |
-| `UnityEmbedComponent` | Unity WebGL (cmi5/xAPI) | `forge-unity-embed` |
+| `UnityEmbedComponent`    | Unity WebGL (cmi5/xAPI) | `forge-unity-embed`    |
 
 ## Key design decisions
 
 ### Lazy / dynamic imports
 
-All three game engines (Phaser, Rive, Unity) are heavy dependencies.  They are loaded at runtime via `import()` — **never** at module scope — so:
+All three game engines (Phaser, Rive, Unity) are heavy dependencies. They are loaded at runtime via `import()` — **never** at module scope — so:
 
 - SSR (Angular Universal / `@angular/ssr`) does not crash on missing browser globals (`window`, `document`, `WebGL`).
 - jsdom (Jest test environment) is not polluted by WebGL / Canvas APIs.
@@ -28,7 +28,7 @@ Host apps should wrap these components with Angular's `@defer` block so the comp
 
 ```html
 @defer (on viewport) {
-  <forge-phaser-host [config]="gameConfig" (completed)="onComplete()" />
+<forge-phaser-host [config]="gameConfig" (completed)="onComplete()" />
 }
 ```
 
@@ -45,10 +45,7 @@ Each component checks `isPlatformBrowser(PLATFORM_ID)` before initialising the e
 Accepts a `CardGameConfig` (discriminated union — see `card-game.model.ts`) and renders a minimal Phaser scene showing the card count and title. Emits `(completed)` when the learner clicks Play.
 
 ```html
-<forge-phaser-host
-  [config]="myFlipRevealConfig"
-  (completed)="handleComplete()"
-/>
+<forge-phaser-host [config]="myFlipRevealConfig" (completed)="handleComplete()" />
 ```
 
 ### RiveCharacterComponent
@@ -93,11 +90,11 @@ Cross-reference: **`docs/unity-cmi5-contract.md`** — defines the full cmi5 lau
 
 `CardGameConfig` is a discriminated union with four kinds:
 
-| Kind | Description |
-|------|-------------|
-| `flip_reveal` | Cards with hidden faces; learner flips to reveal |
-| `match_pairs` | Memory / match-pairs game |
-| `sort_buckets` | Drag-and-drop cards into labelled buckets |
-| `scenario_cards` | Read a situation, pick the best response |
+| Kind             | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `flip_reveal`    | Cards with hidden faces; learner flips to reveal |
+| `match_pairs`    | Memory / match-pairs game                        |
+| `sort_buckets`   | Drag-and-drop cards into labelled buckets        |
+| `scenario_cards` | Read a situation, pick the best response         |
 
 Use `validateCardGameConfig(config)` to get an array of validation error strings before persisting to Firestore. An empty array means the config is valid.

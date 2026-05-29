@@ -16,16 +16,16 @@ A shared Angular component library providing PrimeNG-based UI components with pe
 
 All design tokens are surfaced as CSS custom properties prefixed with `--forge-`:
 
-| Token key        | CSS custom property       | Example value            |
-|-----------------|--------------------------|--------------------------|
-| `colorPrimary`  | `--forge-color-primary`  | `#1d4ed8`               |
-| `colorSurface`  | `--forge-color-surface`  | `#ffffff`               |
-| `colorAccent`   | `--forge-color-accent`   | `#7c3aed`               |
-| `colorText`     | `--forge-color-text`     | `#111827`               |
-| `colorTextMuted`| `--forge-color-text-muted`| `#6b7280`              |
-| `fontFamily`    | `--forge-font-family`    | `'Inter', system-ui`    |
-| `radius`        | `--forge-radius`         | `0.375rem`              |
-| `logoUrl`       | `--forge-logo-url`       | `https://…/logo.svg`   |
+| Token key        | CSS custom property        | Example value        |
+| ---------------- | -------------------------- | -------------------- |
+| `colorPrimary`   | `--forge-color-primary`    | `#1d4ed8`            |
+| `colorSurface`   | `--forge-color-surface`    | `#ffffff`            |
+| `colorAccent`    | `--forge-color-accent`     | `#7c3aed`            |
+| `colorText`      | `--forge-color-text`       | `#111827`            |
+| `colorTextMuted` | `--forge-color-text-muted` | `#6b7280`            |
+| `fontFamily`     | `--forge-font-family`      | `'Inter', system-ui` |
+| `radius`         | `--forge-radius`           | `0.375rem`           |
+| `logoUrl`        | `--forge-logo-url`         | `https://…/logo.svg` |
 
 `ThemeService.applyTheme(tokens)` iterates all tokens and calls `document.documentElement.style.setProperty(name, value)` — no page reload required.
 
@@ -70,12 +70,7 @@ Because `ThemeService` injects Angular's `DOCUMENT` token (not the global `docum
 A thin wrapper over PrimeNG `p-button` with signal inputs.
 
 ```html
-<forge-button
-  label="Save"
-  severity="primary"
-  [loading]="isSaving()"
-  (clicked)="onSave($event)"
-/>
+<forge-button label="Save" severity="primary" [loading]="isSaving()" (clicked)="onSave($event)" />
 ```
 
 **Inputs:** `label` (string), `severity` (PrimeNG severity union), `disabled` (boolean), `loading` (boolean)
