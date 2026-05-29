@@ -37,5 +37,15 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./pages/course-editor.component').then((m) => m.CourseEditorComponent),
   },
+  {
+    path: 'quizzes',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/quizzes.component').then((m) => m.QuizzesComponent),
+  },
+  {
+    path: 'quizzes/:id',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/quiz-editor.component').then((m) => m.QuizEditorComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

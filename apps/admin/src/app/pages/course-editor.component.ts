@@ -14,9 +14,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { CourseAuthoringService } from '@forge/lms-core';
-import { CourseRepository, ModuleRepository } from '@forge/data-access';
+import { CourseRepository, ModuleRepository, QuizRepository } from '@forge/data-access';
 import { TenantService } from '@forge/auth';
 import { CONTENT_TYPES, type ContentType, type Course, type Module } from '@forge/shared';
+import type { Quiz } from '@forge/shared';
+
+interface QuizOption {
+  label: string;
+  value: string;
+}
 
 @Component({
   selector: 'forge-admin-course-editor',
@@ -57,13 +63,22 @@ import { CONTENT_TYPES, type ContentType, type Course, type Module } from '@forg
               placeholder="Content type"
               aria-label="Content type"
             />
-            <input
-              pInputText
-              type="text"
-              placeholder="Video URL or asset ref (optional)"
-              [(ngModel)]="newExternalUrl"
-              aria-label="Video URL or asset ref"
-            />
+            @if (newContentType === 'quiz') {
+              <p-select
+                [options]="quizOptions()"
+                [(ngModel)]="newQuizRef"
+                placeholder="Select quiz"
+                aria-label="Select quiz"
+              />
+            } @else {
+              <input
+                pInputText
+                type="text"
+                placeholder="Video URL or asset ref (optional)"
+                [(ngModel)]="newExternalUrl"
+                aria-label="Video URL or asset ref"
+              />
+            }
             <p-button
               label="Add Module"
               [loading]="addingModule()"
@@ -164,6 +179,7 @@ export class CourseEditorComponent implements OnInit {
 
   private readonly courseRepo = inject(CourseRepository);
   private readonly moduleRepo = inject(ModuleRepository);
+  private readonly quizRepo = inject(QuizRepository);
   private readonly authoringService = inject(CourseAuthoringService);
   private readonly tenantService = inject(TenantService);
 
@@ -177,9 +193,12 @@ export class CourseEditorComponent implements OnInit {
   protected readonly modulesLoading = signal(false);
   protected readonly modulesError = signal<string | null>(null);
 
+  protected readonly quizOptions = signal<QuizOption[]>([]);
+
   protected newModuleTitle = '';
   protected newContentType: ContentType | null = null;
   protected newExternalUrl = '';
+  protected newQuizRef = '';
   protected readonly addingModule = signal(false);
   protected readonly addModuleError = signal<string | null>(null);
 
@@ -202,8 +221,12 @@ export class CourseEditorComponent implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const c = await this.courseRepo.getById(tid, courseId);
+      const [c, quizList] = await Promise.all([
+        this.courseRepo.getById(tid, courseId),
+        this.quizRepo.list(tid),
+      ]);
       this.course.set(c);
+      this.quizOptions.set((quizList as Quiz[]).map((q) => ({ label: q.title, value: q.id })));
       await this.loadModules(tid, courseId);
     } catch (err) {
       this.loadError.set((err as Error).message ?? 'Failed to load course');
@@ -232,16 +255,19 @@ export class CourseEditorComponent implements OnInit {
     this.addingModule.set(true);
     this.addModuleError.set(null);
     try {
+      const isQuiz = this.newContentType === 'quiz';
       await this.authoringService.addModule({
         tenantId: tid,
         courseId,
         title: this.newModuleTitle.trim(),
         contentType: this.newContentType,
-        externalUrl: this.newExternalUrl.trim() || undefined,
+        assetRef: isQuiz && this.newQuizRef ? this.newQuizRef : undefined,
+        externalUrl: !isQuiz && this.newExternalUrl.trim() ? this.newExternalUrl.trim() : undefined,
       });
       this.newModuleTitle = '';
       this.newContentType = null;
       this.newExternalUrl = '';
+      this.newQuizRef = '';
       await this.loadModules(tid, courseId);
     } catch (err) {
       this.addModuleError.set((err as Error).message ?? 'Failed to add module');

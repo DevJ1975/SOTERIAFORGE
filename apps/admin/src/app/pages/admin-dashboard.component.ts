@@ -74,6 +74,11 @@ export class AdminDashboardComponent {
       description: 'Customize tenant colours, logos, and domain (Phase 1+).',
       link: '/branding',
     },
+    {
+      title: 'Quizzes',
+      description: 'Build and manage quizzes for courses (Phase 4).',
+      link: '/quizzes',
+    },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
     { title: 'AI Knowledge Base', description: 'Upload documents for AI-powered Q&A (Phase 1+).' },
     {

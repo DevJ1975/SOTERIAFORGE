@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { CourseRepository, ModuleRepository } from '@forge/data-access';
+import { CourseRepository, ModuleRepository, QuizRepository } from '@forge/data-access';
 import { CourseAuthoringService } from '@forge/lms-core';
 import { CourseEditorComponent } from './course-editor.component';
 
@@ -49,6 +49,7 @@ describe('CourseEditorComponent', () => {
           provide: CourseAuthoringService,
           useValue: { addModule: jest.fn() },
         },
+        { provide: QuizRepository, useValue: { list: async () => [] } },
         { provide: TenantService, useValue: { tenantId: () => 'acme' } },
       ],
     }).compileComponents();
