@@ -11,7 +11,7 @@
  */
 
 import {
-  AfterNextRenderRef,
+  AfterRenderRef,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -65,7 +65,7 @@ export class RiveCharacterComponent implements OnDestroy {
 
   private readonly platformId = inject(PLATFORM_ID);
   private readonly injector = inject(Injector);
-  private afterRenderRef: AfterNextRenderRef | null = null;
+  private afterRenderRef: AfterRenderRef | null = null;
 
   // ---- Lifecycle ---------------------------------------------------------------
 

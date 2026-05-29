@@ -1,6 +1,6 @@
 # @forge/player
 
-Phase 3 content player library for Soteria FORGE.
+Content player library for Soteria FORGE.
 
 ## Public API
 
@@ -8,6 +8,7 @@ Phase 3 content player library for Soteria FORGE.
 
 - **`VideoPlayerComponent`** (`forge-video-player`) — Renders YouTube/Vimeo URLs as sandboxed responsive iframes; plain URLs as HTML5 `<video controls>`. Signal inputs: `url` (required), `title` (optional). Outputs: `progress` (0-100), `completed`.
 - **`ModulePlayerComponent`** (`forge-module-player`) — Dispatcher component that renders the correct player based on `module().contentType`. Signal inputs: `module`, `courseId`, `tenantId`, `uid`. Injects `EnrollmentService` to persist SCORM CMI data via `saveCmi`.
+- **`GamePlayerComponent`** (`forge-game-player`) — Loads a `Game` record from `GameRepository` and renders the appropriate engine component (`forge-phaser-host` for Phaser/PixiJS games, `forge-rive-character` for Rive games). Signal inputs: `gameId`, `courseId`, `moduleId`, `tenantId`, `uid`. Calls `PlayerProgressService.recordCompletion` on the `completed` event. OnPush, SSR-safe (skips Firestore on the server).
 
 ### Services
 
@@ -25,8 +26,8 @@ Phase 3 content player library for Soteria FORGE.
 | scorm | Phase 3 (implemented)                   |
 | cmi5  | Phase 3 (implemented)                   |
 | unity | Phase 3 (implemented via cmi5-launcher) |
-| quiz  | Phase 4 (placeholder)                   |
-| game  | Phase 5 (placeholder)                   |
+| quiz  | Phase 4 (implemented)                   |
+| game  | Phase 5 (implemented via GamePlayerComponent) |
 
 ## SCORM / cmi5 Integration
 

@@ -79,6 +79,11 @@ export class AdminDashboardComponent {
       description: 'Build and manage quizzes for courses (Phase 4).',
       link: '/quizzes',
     },
+    {
+      title: 'Games',
+      description: 'Create and configure no-code card games for courses (Phase 5).',
+      link: '/games',
+    },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
     { title: 'AI Knowledge Base', description: 'Upload documents for AI-powered Q&A (Phase 1+).' },
     {

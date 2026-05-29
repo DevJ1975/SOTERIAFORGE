@@ -47,5 +47,15 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/quiz-editor.component').then((m) => m.QuizEditorComponent),
   },
+  {
+    path: 'games',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/games.component').then((m) => m.GamesComponent),
+  },
+  {
+    path: 'games/:id',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/game-editor.component').then((m) => m.GameEditorComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

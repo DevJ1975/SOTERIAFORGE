@@ -27,6 +27,7 @@
       "@forge/auth": ["libs/auth/src/index.ts"],
       "@forge/data-access": ["libs/data-access/src/index.ts"],
       "@forge/games": ["libs/games/src/index.ts"],
+      "@forge/games/model": ["libs/games/src/lib/card-game.model.ts"],
       "@forge/gamification": ["libs/gamification/src/index.ts"],
       "@forge/lms-core": ["libs/lms-core/src/index.ts"],
       "@forge/payments": ["libs/payments/src/index.ts"],

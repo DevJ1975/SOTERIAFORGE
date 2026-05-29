@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { QuizRepository } from '@forge/data-access';
+import { GameRepository, QuizRepository } from '@forge/data-access';
 import { EnrollmentService, QuizSubmissionService } from '@forge/lms-core';
 import { ScormRuntimeService } from '@forge/standards';
 import { ModulePlayerComponent } from './module-player.component';
@@ -42,6 +42,10 @@ const mockQuizRepository: Partial<QuizRepository> = {
   getById: jest.fn().mockResolvedValue(null),
 };
 
+const mockGameRepository: Partial<GameRepository> = {
+  getById: jest.fn().mockResolvedValue(null),
+};
+
 const mockQuizSubmissionService: Partial<QuizSubmissionService> = {
   submit: jest.fn().mockResolvedValue(undefined),
 };
@@ -75,6 +79,7 @@ describe('ModulePlayerComponent', () => {
         { provide: ScormRuntimeService, useValue: mockScormRuntimeService },
         { provide: QuizRepository, useValue: mockQuizRepository },
         { provide: QuizSubmissionService, useValue: mockQuizSubmissionService },
+        { provide: GameRepository, useValue: mockGameRepository },
       ],
     }).compileComponents();
 
@@ -168,11 +173,21 @@ describe('ModulePlayerComponent', () => {
     expect(hasQuizContent).toBe(true);
   });
 
-  it('shows placeholder text for game module', () => {
-    const gameModule: Module = { ...videoModule, contentType: 'game', id: 'mod-5' };
+  it('renders forge-game-player (or its defer placeholder) for game module', () => {
+    const gameModule: Module = {
+      ...videoModule,
+      contentType: 'game',
+      id: 'mod-5',
+      assetRef: 'game-abc',
+    };
     fixture.componentRef.setInput('module', gameModule);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('game player');
+    const text = el.textContent ?? '';
+    const hasGameContent =
+      el.querySelector('forge-game-player') !== null ||
+      text.includes('Loading game') ||
+      text.includes('No game configured');
+    expect(hasGameContent).toBe(true);
   });
 });

@@ -4,3 +4,4 @@ export { PlayerProgressService } from './lib/player-progress.service';
 export type { PlayerContext } from './lib/player-progress.service';
 export { ModulePlayerComponent } from './lib/module-player.component';
 export { QuizPlayerComponent } from './lib/quiz-player.component';
+export { GamePlayerComponent } from './lib/game-player.component';

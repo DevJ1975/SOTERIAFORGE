@@ -14,12 +14,22 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { CourseAuthoringService } from '@forge/lms-core';
-import { CourseRepository, ModuleRepository, QuizRepository } from '@forge/data-access';
+import {
+  CourseRepository,
+  GameRepository,
+  ModuleRepository,
+  QuizRepository,
+} from '@forge/data-access';
 import { TenantService } from '@forge/auth';
 import { CONTENT_TYPES, type ContentType, type Course, type Module } from '@forge/shared';
-import type { Quiz } from '@forge/shared';
+import type { Game, Quiz } from '@forge/shared';
 
 interface QuizOption {
+  label: string;
+  value: string;
+}
+
+interface GameOption {
   label: string;
   value: string;
 }
@@ -69,6 +79,13 @@ interface QuizOption {
                 [(ngModel)]="newQuizRef"
                 placeholder="Select quiz"
                 aria-label="Select quiz"
+              />
+            } @else if (newContentType === 'game') {
+              <p-select
+                [options]="gameOptions()"
+                [(ngModel)]="newGameRef"
+                placeholder="Select game"
+                aria-label="Select game"
               />
             } @else {
               <input
@@ -180,6 +197,7 @@ export class CourseEditorComponent implements OnInit {
   private readonly courseRepo = inject(CourseRepository);
   private readonly moduleRepo = inject(ModuleRepository);
   private readonly quizRepo = inject(QuizRepository);
+  private readonly gameRepo = inject(GameRepository);
   private readonly authoringService = inject(CourseAuthoringService);
   private readonly tenantService = inject(TenantService);
 
@@ -194,11 +212,13 @@ export class CourseEditorComponent implements OnInit {
   protected readonly modulesError = signal<string | null>(null);
 
   protected readonly quizOptions = signal<QuizOption[]>([]);
+  protected readonly gameOptions = signal<GameOption[]>([]);
 
   protected newModuleTitle = '';
   protected newContentType: ContentType | null = null;
   protected newExternalUrl = '';
   protected newQuizRef = '';
+  protected newGameRef = '';
   protected readonly addingModule = signal(false);
   protected readonly addModuleError = signal<string | null>(null);
 
@@ -221,12 +241,14 @@ export class CourseEditorComponent implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [c, quizList] = await Promise.all([
+      const [c, quizList, gameList] = await Promise.all([
         this.courseRepo.getById(tid, courseId),
         this.quizRepo.list(tid),
+        this.gameRepo.list(tid),
       ]);
       this.course.set(c);
       this.quizOptions.set((quizList as Quiz[]).map((q) => ({ label: q.title, value: q.id })));
+      this.gameOptions.set((gameList as Game[]).map((g) => ({ label: g.title, value: g.id })));
       await this.loadModules(tid, courseId);
     } catch (err) {
       this.loadError.set((err as Error).message ?? 'Failed to load course');
@@ -256,18 +278,26 @@ export class CourseEditorComponent implements OnInit {
     this.addModuleError.set(null);
     try {
       const isQuiz = this.newContentType === 'quiz';
+      const isGame = this.newContentType === 'game';
       await this.authoringService.addModule({
         tenantId: tid,
         courseId,
         title: this.newModuleTitle.trim(),
         contentType: this.newContentType,
-        assetRef: isQuiz && this.newQuizRef ? this.newQuizRef : undefined,
-        externalUrl: !isQuiz && this.newExternalUrl.trim() ? this.newExternalUrl.trim() : undefined,
+        assetRef:
+          isQuiz && this.newQuizRef
+            ? this.newQuizRef
+            : isGame && this.newGameRef
+              ? this.newGameRef
+              : undefined,
+        externalUrl:
+          !isQuiz && !isGame && this.newExternalUrl.trim() ? this.newExternalUrl.trim() : undefined,
       });
       this.newModuleTitle = '';
       this.newContentType = null;
       this.newExternalUrl = '';
       this.newQuizRef = '';
+      this.newGameRef = '';
       await this.loadModules(tid, courseId);
     } catch (err) {
       this.addModuleError.set((err as Error).message ?? 'Failed to add module');

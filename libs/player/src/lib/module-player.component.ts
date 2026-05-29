@@ -5,6 +5,7 @@ import { ScormPlayerComponent, Cmi5LauncherComponent } from '@forge/standards';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 import { VideoPlayerComponent } from './video-player.component';
 import { QuizPlayerComponent } from './quiz-player.component';
+import { GamePlayerComponent } from './game-player.component';
 
 const HOME_PAGE = 'https://soteriaforge.com';
 
@@ -28,7 +29,13 @@ function _generateUUID(): string {
 @Component({
   selector: 'forge-module-player',
   standalone: true,
-  imports: [VideoPlayerComponent, ScormPlayerComponent, Cmi5LauncherComponent, QuizPlayerComponent],
+  imports: [
+    VideoPlayerComponent,
+    ScormPlayerComponent,
+    Cmi5LauncherComponent,
+    QuizPlayerComponent,
+    GamePlayerComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @switch (module().contentType) {
@@ -130,9 +137,23 @@ function _generateUUID(): string {
         }
       }
       @case ('game') {
-        <div class="forge-module-player__placeholder">
-          <p>game player — Phase 5</p>
-        </div>
+        @defer {
+          @if (module().assetRef; as gameId) {
+            <forge-game-player
+              [gameId]="gameId"
+              [courseId]="courseId()"
+              [moduleId]="module().id"
+              [tenantId]="tenantId()"
+              [uid]="uid()"
+            />
+          } @else {
+            <div class="forge-module-player__no-url">
+              <p>No game configured for this module.</p>
+            </div>
+          }
+        } @placeholder {
+          <div class="forge-module-player__loading">Loading game player…</div>
+        }
       }
       @default {
         <div class="forge-module-player__placeholder">
