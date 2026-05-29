@@ -48,6 +48,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +65,19 @@ jobs:
       # One project per runner: no build-time memory contention, and a failing
       # matrix leg names the exact project.
       - name: Build ${{ matrix.project }}
-        run: npx nx build ${{ matrix.project }}
+        run: |
+          set +e
+          npx nx build ${{ matrix.project }} 2>&1 | tee /tmp/build.log
+          exit ${PIPESTATUS[0]}
+      # Surface the actual error (CI-only failures we cannot otherwise inspect).
+      - name: Report build failure
+        if: failure() && github.event.pull_request.number
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --body "$(printf '### CI build (%s) failed\n\n```\n%s\n```\n' '${{ matrix.project }}' "$(tail -c 8000 /tmp/build.log)")"
 
   rules-tests:
     runs-on: ubuntu-latest
