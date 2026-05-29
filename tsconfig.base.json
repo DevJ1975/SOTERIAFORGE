@@ -32,6 +32,7 @@
       "@forge/payments": ["libs/payments/src/index.ts"],
       "@forge/shared": ["libs/shared/src/index.ts"],
       "@forge/standards": ["libs/standards/src/index.ts"],
+      "@forge/tenant": ["libs/tenant/src/index.ts"],
       "@forge/ui": ["libs/ui/src/index.ts"]
     }
   },
