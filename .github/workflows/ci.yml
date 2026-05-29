@@ -54,8 +54,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - run: npm ci --legacy-peer-deps
-      - name: Install Firebase CLI
-        run: npm i -g firebase-tools
+      # Use the workspace-pinned firebase-tools (verified locally), not latest global.
       - name: Firestore rules tests (emulator)
         # demo-* project ids run the emulator with no credentials required.
-        run: firebase emulators:exec --only firestore --project demo-soteria-forge "npx nx test-rules data-access"
+        run: npx firebase emulators:exec --only firestore --project demo-soteria-forge "npx nx test-rules data-access --skip-nx-cache"
