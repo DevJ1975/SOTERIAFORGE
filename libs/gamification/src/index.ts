@@ -18,3 +18,5 @@ export * from './lib/leveling';
 export * from './lib/streaks';
 export * from './lib/leaderboard';
 export * from './lib/xp.service';
+export { XpBadgeComponent } from './lib/xp-badge.component';
+export { LeaderboardComponent } from './lib/leaderboard.component';

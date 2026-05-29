@@ -1,7 +1,8 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { EnrollmentService } from '@forge/lms-core';
+import { QuizRepository } from '@forge/data-access';
+import { EnrollmentService, QuizSubmissionService } from '@forge/lms-core';
 import { ScormRuntimeService } from '@forge/standards';
 import { ModulePlayerComponent } from './module-player.component';
 import { PlayerProgressService } from './player-progress.service';
@@ -37,6 +38,14 @@ const mockScormRuntimeService: Partial<ScormRuntimeService> = {
   score: jest.fn().mockReturnValue(null) as never,
 };
 
+const mockQuizRepository: Partial<QuizRepository> = {
+  getById: jest.fn().mockResolvedValue(null),
+};
+
+const mockQuizSubmissionService: Partial<QuizSubmissionService> = {
+  submit: jest.fn().mockResolvedValue(undefined),
+};
+
 const videoModule: Module = {
   id: 'mod-1',
   courseId: 'course-1',
@@ -64,6 +73,8 @@ describe('ModulePlayerComponent', () => {
         { provide: PlayerProgressService, useValue: mockPlayerProgressService },
         { provide: EnrollmentService, useValue: mockEnrollmentService },
         { provide: ScormRuntimeService, useValue: mockScormRuntimeService },
+        { provide: QuizRepository, useValue: mockQuizRepository },
+        { provide: QuizSubmissionService, useValue: mockQuizSubmissionService },
       ],
     }).compileComponents();
 
@@ -143,12 +154,18 @@ describe('ModulePlayerComponent', () => {
     expect(hasUnityContent).toBe(true);
   });
 
-  it('shows placeholder text for quiz module', () => {
+  it('renders forge-quiz-player (or its defer placeholder) for quiz module', () => {
     const quizModule: Module = { ...videoModule, contentType: 'quiz', id: 'mod-4' };
     fixture.componentRef.setInput('module', quizModule);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('quiz player');
+    // Before defer resolves, the @placeholder is shown; after, forge-quiz-player renders.
+    const text = el.textContent ?? '';
+    const hasQuizContent =
+      el.querySelector('forge-quiz-player') !== null ||
+      text.includes('Loading quiz') ||
+      text.includes('No quiz configured');
+    expect(hasQuizContent).toBe(true);
   });
 
   it('shows placeholder text for game module', () => {

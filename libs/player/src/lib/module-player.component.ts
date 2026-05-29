@@ -4,6 +4,7 @@ import { EnrollmentService } from '@forge/lms-core';
 import { ScormPlayerComponent, Cmi5LauncherComponent } from '@forge/standards';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 import { VideoPlayerComponent } from './video-player.component';
+import { QuizPlayerComponent } from './quiz-player.component';
 
 const HOME_PAGE = 'https://soteriaforge.com';
 
@@ -27,7 +28,7 @@ function _generateUUID(): string {
 @Component({
   selector: 'forge-module-player',
   standalone: true,
-  imports: [VideoPlayerComponent, ScormPlayerComponent, Cmi5LauncherComponent],
+  imports: [VideoPlayerComponent, ScormPlayerComponent, Cmi5LauncherComponent, QuizPlayerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @switch (module().contentType) {
@@ -110,9 +111,23 @@ function _generateUUID(): string {
         }
       }
       @case ('quiz') {
-        <div class="forge-module-player__placeholder">
-          <p>quiz player — Phase 4</p>
-        </div>
+        @defer {
+          @if (module().assetRef; as quizId) {
+            <forge-quiz-player
+              [quizId]="quizId"
+              [courseId]="courseId()"
+              [moduleId]="module().id"
+              [tenantId]="tenantId()"
+              [uid]="uid()"
+            />
+          } @else {
+            <div class="forge-module-player__no-url">
+              <p>No quiz configured for this module.</p>
+            </div>
+          }
+        } @placeholder {
+          <div class="forge-module-player__loading">Loading quiz player…</div>
+        }
       }
       @case ('game') {
         <div class="forge-module-player__placeholder">
