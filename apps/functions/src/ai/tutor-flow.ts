@@ -1,11 +1,13 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
+import { getProviders } from './providers';
+import { retrieveTopK } from './retrieval';
 
 /**
- * Per-tenant RAG tutor (skeleton). The security-critical invariant lives here:
- * retrieval is ALWAYS filtered to the caller's tenant, so no cross-tenant
- * content can ever ground an answer. The embedding + LLM provider are wired in
- * Phase 6 (Genkit + Vertex AI / Anthropic behind a provider interface).
+ * Per-tenant RAG tutor. Hard isolation invariant: retrieval is scoped to the
+ * caller's tenant only (validated from the auth claim), so no cross-tenant
+ * content can ever ground an answer. Answers cite the tenant's own sources.
  */
 export const askTutor = onCall(async (request) => {
   const caller = request.auth;
@@ -16,24 +18,39 @@ export const askTutor = onCall(async (request) => {
   const question = String((request.data as { question?: unknown })?.question ?? '').trim();
   if (!question) throw new HttpsError('invalid-argument', 'A question is required.');
 
-  // HARD ISOLATION: only this tenant's vectors are ever retrieved.
-  // (Phase 6 replaces this with a findNearest vector query / Vertex AI Vector Search.)
-  const vectorsRef = db
-    .collection(`tenants/${tenantId}/vectors`)
-    .where('tenantId', '==', tenantId)
-    .limit(5);
-  const snap = await vectorsRef.get();
-  const citations = snap.docs.map((d) => ({
-    sourceId: d.get('sourceId'),
-    label: d.get('citation.label') ?? undefined,
-    moduleId: d.get('citation.moduleId') ?? undefined,
+  const { embedding, llm } = getProviders();
+
+  // Embed the question and retrieve tenant-isolated context.
+  const queryEmbedding = await embedding.embed(question);
+  const context = await retrieveTopK(tenantId, queryEmbedding, 5);
+
+  // Ground the answer; cite the tenant's own sources.
+  const answer = await llm.answer(question, context);
+  const citations = context.map((c) => ({
+    sourceId: c.citation.sourceId,
+    moduleId: c.citation.moduleId,
+    label: c.citation.label,
   }));
 
-  // Placeholder answer until the LLM provider is wired in Phase 6.
-  return {
-    answer:
-      'The AI tutor is not yet connected to a model provider (Phase 6). Retrieval is tenant-isolated.',
-    citations,
+  // Persist the conversation turn (learner reads only their own thread).
+  const uid = caller.uid;
+  const now = new Date().toISOString();
+  const base = `tenants/${tenantId}/conversations/${uid}/messages`;
+  await db.doc(`${base}/${randomUUID()}`).set({
     tenantId,
-  };
+    uid,
+    role: 'user',
+    content: question,
+    createdAt: now,
+  });
+  await db.doc(`${base}/${randomUUID()}`).set({
+    tenantId,
+    uid,
+    role: 'assistant',
+    content: answer,
+    citations,
+    createdAt: new Date().toISOString(),
+  });
+
+  return { answer, citations, tenantId };
 });

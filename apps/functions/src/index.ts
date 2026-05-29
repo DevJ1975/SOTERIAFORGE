@@ -12,3 +12,4 @@ export { submitQuiz } from './quizzes/submit-quiz';
 export { stripeWebhook } from './stripe/webhook';
 export { ingestStatement } from './lrs/ingest';
 export { askTutor } from './ai/tutor-flow';
+export { ingestKnowledge } from './ai/ingest-knowledge';

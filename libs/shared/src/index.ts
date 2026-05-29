@@ -16,3 +16,4 @@ export * from './lib/schemas/ai';
 export * from './lib/util/tenant-resolution';
 export * from './lib/util/validation';
 export * from './lib/util/quiz-grading';
+export * from './lib/util/vector';
