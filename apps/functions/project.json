@@ -9,13 +9,15 @@
       "executor": "nx:run-commands",
       "dependsOn": ["typecheck"],
       "options": {
-        "command": "npx esbuild apps/functions/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=apps/functions/lib/index.js --packages=external --tsconfig=tsconfig.base.json --sourcemap"
+        "command": "node apps/functions/build.mjs"
       },
       "outputs": ["{projectRoot}/lib"]
     },
     "typecheck": {
       "executor": "nx:run-commands",
-      "options": { "command": "npx tsc --noEmit -p apps/functions/tsconfig.app.json" }
+      "options": {
+        "command": "node ./node_modules/typescript/bin/tsc --noEmit -p apps/functions/tsconfig.app.json"
+      }
     },
     "lint": { "executor": "@nx/eslint:lint" },
     "serve": {
