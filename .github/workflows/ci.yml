@@ -48,8 +48,14 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # The Firestore emulator requires a JRE.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: npm ci --legacy-peer-deps
       - name: Install Firebase CLI
         run: npm i -g firebase-tools
       - name: Firestore rules tests (emulator)
-        run: firebase emulators:exec --only firestore "npx nx test-rules data-access"
+        # demo-* project ids run the emulator with no credentials required.
+        run: firebase emulators:exec --only firestore --project demo-soteria-forge "npx nx test-rules data-access"

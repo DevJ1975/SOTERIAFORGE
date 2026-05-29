@@ -13,7 +13,8 @@ import { resolve } from 'node:path';
  * RBAC acceptance probe. Runs ONLY under the Firestore emulator:
  *   firebase emulators:exec --only firestore "npx nx test-rules data-access"
  */
-const PROJECT_ID = 'soteria-forge-rules-test';
+// Match the emulator's project (demo-* needs no credentials in CI).
+const PROJECT_ID = process.env['GCLOUD_PROJECT'] ?? 'demo-soteria-forge';
 
 let testEnv: RulesTestEnvironment;
 
