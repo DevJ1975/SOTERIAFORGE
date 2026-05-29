@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.angular
+.nx
+.firebase
+.vercel
+package-lock.json

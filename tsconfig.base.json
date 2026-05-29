@@ -1,0 +1,39 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "esnext",
+    "lib": ["ES2022", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "useDefineForClassFields": false,
+    "paths": {
+      "@forge/ai-tutor": ["libs/ai-tutor/src/index.ts"],
+      "@forge/auth": ["libs/auth/src/index.ts"],
+      "@forge/data-access": ["libs/data-access/src/index.ts"],
+      "@forge/games": ["libs/games/src/index.ts"],
+      "@forge/gamification": ["libs/gamification/src/index.ts"],
+      "@forge/lms-core": ["libs/lms-core/src/index.ts"],
+      "@forge/payments": ["libs/payments/src/index.ts"],
+      "@forge/shared": ["libs/shared/src/index.ts"],
+      "@forge/standards": ["libs/standards/src/index.ts"],
+      "@forge/ui": ["libs/ui/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}
