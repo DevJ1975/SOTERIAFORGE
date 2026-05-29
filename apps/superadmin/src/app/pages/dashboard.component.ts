@@ -1,24 +1,34 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 
 interface PlatformSection {
   title: string;
   description: string;
+  link?: string;
 }
 
 @Component({
   selector: 'forge-superadmin-dashboard',
   standalone: true,
-  imports: [CardModule],
+  imports: [CardModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="superadmin-dash">
       <h1>Platform Administration</h1>
       <div class="superadmin-dash__grid">
         @for (section of sections; track section.title) {
-          <p-card [header]="section.title">
-            <p>{{ section.description }}</p>
-          </p-card>
+          @if (section.link) {
+            <a [routerLink]="section.link" class="superadmin-dash__link">
+              <p-card [header]="section.title">
+                <p>{{ section.description }}</p>
+              </p-card>
+            </a>
+          } @else {
+            <p-card [header]="section.title">
+              <p>{{ section.description }}</p>
+            </p-card>
+          }
         }
       </div>
     </section>
@@ -36,6 +46,14 @@ interface PlatformSection {
         gap: 1.25rem;
         margin-top: 1.5rem;
       }
+      .superadmin-dash__link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+      }
+      .superadmin-dash__link:hover p-card {
+        opacity: 0.85;
+      }
     `,
   ],
 })
@@ -44,6 +62,7 @@ export class SuperadminDashboardComponent {
     {
       title: 'Tenants',
       description: 'Manage tenant organisations, provisioning, and configuration. (Phase 1+)',
+      link: '/tenants',
     },
     {
       title: 'Global Course Library',

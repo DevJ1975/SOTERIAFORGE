@@ -16,5 +16,10 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./pages/dashboard.component').then((m) => m.SuperadminDashboardComponent),
   },
+  {
+    path: 'tenants',
+    canActivate: [authGuard, superadminGuard],
+    loadComponent: () => import('./pages/tenants.component').then((m) => m.TenantsComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

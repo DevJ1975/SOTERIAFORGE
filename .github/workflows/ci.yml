@@ -10,32 +10,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  format:
     runs-on: ubuntu-latest
-    env:
-      # Several Angular AOT/SSR builds are memory-hungry on small runners.
-      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install
-        run: npm ci --legacy-peer-deps
-
+      - run: npm ci --legacy-peer-deps
       - name: Format check
         run: npx prettier --check .
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
       - name: Lint
         run: npx nx run-many -t lint --parallel=3
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
       - name: Test
-        run: npx nx run-many -t test --parallel=3 --ci --coverage
+        run: npx nx run-many -t test --parallel=2 --ci --coverage
 
-      # parallel=1 keeps memory bounded while building the Angular/SSR apps.
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
       - name: Build
         run: npx nx run-many -t build --parallel=1
 
