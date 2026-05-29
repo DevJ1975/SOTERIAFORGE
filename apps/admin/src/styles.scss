@@ -1,0 +1,22 @@
+/* Admin console global styles. PrimeIcons + per-tenant theming via CSS custom
+   properties applied at runtime by @forge/ui ThemeService. */
+@import 'primeicons/primeicons.css';
+
+:root {
+  --forge-primary: #0b5fff;
+  --forge-surface: #ffffff;
+  --forge-text: #1a1a1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--forge-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+  color: var(--forge-text);
+  background: var(--forge-surface);
+}
