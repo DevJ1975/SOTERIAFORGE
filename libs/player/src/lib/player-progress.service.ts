@@ -1,0 +1,99 @@
+import { Injectable, inject } from '@angular/core';
+import type { Module } from '@forge/shared';
+import { XAPI_TENANT_EXTENSION } from '@forge/shared';
+import { EnrollmentService } from '@forge/lms-core';
+import { XapiClient } from '@forge/standards';
+
+export interface PlayerContext {
+  tenantId: string;
+  courseId: string;
+  module: Module;
+  uid: string;
+}
+
+const HOME_PAGE = 'https://soteriaforge.com';
+
+/**
+ * Bridges content-player events (progress / completion) to the LMS backend
+ * (EnrollmentService) and the xAPI pipeline (XapiClient).
+ *
+ * All methods are fire-and-forget: failures are caught and logged but never
+ * re-thrown so the player UI never breaks due to tracking errors.
+ */
+@Injectable({ providedIn: 'root' })
+export class PlayerProgressService {
+  private readonly enrollmentService = inject(EnrollmentService);
+  private readonly xapi = inject(XapiClient);
+
+  /**
+   * Records a progress percentage for the current module.
+   * Emits an xAPI 'progressed' statement (best-effort).
+   */
+  async recordProgress(ctx: PlayerContext, pct: number): Promise<void> {
+    try {
+      const stmt = this.xapi.buildStatement({
+        uid: ctx.uid,
+        homePage: HOME_PAGE,
+        verb: 'progressed',
+        activityId: this.activityId(ctx),
+        tenantId: ctx.tenantId,
+        result: { scaled: pct / 100 },
+      });
+      await this.xapi.send(stmt);
+    } catch (err) {
+      console.warn('[PlayerProgressService] recordProgress failed', err);
+    }
+  }
+
+  /**
+   * Records module completion:
+   *  1. Marks the module complete in the enrollment (LMS side).
+   *  2. Emits an xAPI 'completed' statement with optional score.
+   */
+  async recordCompletion(ctx: PlayerContext, score?: number): Promise<void> {
+    try {
+      // We don't know totalModules here — use 1 as minimum safe fallback.
+      // CourseDetailComponent should pass a real count; this service is
+      // intentionally thin and leaves orchestration to the caller.
+      await this.enrollmentService.markModuleComplete(
+        ctx.tenantId,
+        ctx.courseId,
+        ctx.uid,
+        ctx.module.id,
+        1, // caller should update totalModules via CourseStore if needed
+        score,
+      );
+    } catch (err) {
+      console.warn('[PlayerProgressService] markModuleComplete failed', err);
+    }
+
+    try {
+      const stmt = this.xapi.buildStatement({
+        uid: ctx.uid,
+        homePage: HOME_PAGE,
+        verb: 'completed',
+        activityId: this.activityId(ctx),
+        tenantId: ctx.tenantId,
+        result: {
+          completion: true,
+          ...(score !== undefined ? { scaled: score / 100, raw: score } : {}),
+        },
+      });
+      // Stamp tenant id in context.extensions (belt + suspenders)
+      stmt.context = {
+        ...(stmt.context ?? {}),
+        extensions: {
+          ...(stmt.context?.extensions ?? {}),
+          [XAPI_TENANT_EXTENSION]: ctx.tenantId,
+        },
+      };
+      await this.xapi.send(stmt);
+    } catch (err) {
+      console.warn('[PlayerProgressService] xAPI completed statement failed', err);
+    }
+  }
+
+  private activityId(ctx: PlayerContext): string {
+    return `${HOME_PAGE}/tenants/${ctx.tenantId}/courses/${ctx.courseId}/modules/${ctx.module.id}`;
+  }
+}

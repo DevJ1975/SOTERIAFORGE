@@ -142,7 +142,7 @@ export class ScormRuntimeService {
   private _updateSignals(cmi: Record<string, unknown>): void {
     // SCORM 1.2: cmi.core.score.raw / max
     // SCORM 2004: cmi.score.scaled
-    const cmiAny = cmi as Record<string, Record<string, Record<string, unknown>>>;
+    const cmiAny = cmi as Record<string, Record<string, Record<string, Record<string, unknown>>>>;
     const scaled =
       cmiAny?.['cmi']?.['score']?.['scaled'] ?? cmiAny?.['cmi']?.['core']?.['score']?.['raw'];
     if (typeof scaled === 'number') {

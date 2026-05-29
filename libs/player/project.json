@@ -1,0 +1,26 @@
+{
+  "name": "player",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/player/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/player",
+        "main": "libs/player/src/index.ts",
+        "tsConfig": "libs/player/tsconfig.lib.json",
+        "rootDir": ".",
+        "assets": []
+      }
+    },
+    "lint": { "executor": "@nx/eslint:lint" },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": { "jestConfig": "libs/player/jest.config.ts" }
+    }
+  }
+}

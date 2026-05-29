@@ -15,5 +15,16 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, tenantGuard],
     loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent),
   },
+  {
+    path: 'courses',
+    canActivate: [authGuard, tenantGuard],
+    loadComponent: () => import('./pages/courses.component').then((m) => m.CoursesComponent),
+  },
+  {
+    path: 'courses/:id',
+    canActivate: [authGuard, tenantGuard],
+    loadComponent: () =>
+      import('./pages/course-detail.component').then((m) => m.CourseDetailComponent),
+  },
   { path: '**', redirectTo: '' },
 ];
