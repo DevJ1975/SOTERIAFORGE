@@ -62,7 +62,11 @@ const mockEnrollmentService: Partial<EnrollmentService> = {
 };
 
 const mockAuthService = {
-  principal: () => ({ uid: 'user-1', email: 'test@example.com', claims: { role: 'learner', tenantId: 'tenant-1' } }),
+  principal: () => ({
+    uid: 'user-1',
+    email: 'test@example.com',
+    claims: { role: 'learner', tenantId: 'tenant-1' },
+  }),
 };
 
 const mockTenantService = {

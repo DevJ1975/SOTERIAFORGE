@@ -57,12 +57,7 @@ function toVimeoEmbed(url: string): string {
       </div>
     } @else {
       <!-- HTML5 native video -->
-      <video
-        #videoEl
-        class="forge-video-player__native"
-        controls
-        [title]="title() ?? 'Video'"
-      >
+      <video #videoEl class="forge-video-player__native" controls [title]="title() ?? 'Video'">
         <source [src]="url()" />
         Your browser does not support the video element.
       </video>
@@ -114,8 +109,7 @@ export class VideoPlayerComponent {
   }
 
   get safeEmbedUrl(): SafeResourceUrl {
-    const rawUrl =
-      this.kind === 'youtube' ? toYouTubeEmbed(this.url()) : toVimeoEmbed(this.url());
+    const rawUrl = this.kind === 'youtube' ? toYouTubeEmbed(this.url()) : toVimeoEmbed(this.url());
     return this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl);
   }
 

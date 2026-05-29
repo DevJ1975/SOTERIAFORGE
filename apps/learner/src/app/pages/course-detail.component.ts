@@ -59,9 +59,7 @@ import type { Module, Enrollment } from '@forge/shared';
                 }
               </ul>
             }
-            <div class="course-detail__progress">
-              Progress: {{ progressPct() }}%
-            </div>
+            <div class="course-detail__progress">Progress: {{ progressPct() }}%</div>
           </aside>
 
           <!-- Player area -->

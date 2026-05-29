@@ -19,11 +19,11 @@ Phase 2 content player library for Soteria FORGE.
 
 ## Content Types
 
-| Type | Status |
-|------|--------|
+| Type  | Status                |
+| ----- | --------------------- |
 | video | Phase 2 (implemented) |
 | scorm | Phase 3 (placeholder) |
-| cmi5 | Phase 3 (placeholder) |
+| cmi5  | Phase 3 (placeholder) |
 | unity | Phase 4 (placeholder) |
-| quiz | Phase 4 (placeholder) |
-| game | Phase 5 (placeholder) |
+| quiz  | Phase 4 (placeholder) |
+| game  | Phase 5 (placeholder) |
