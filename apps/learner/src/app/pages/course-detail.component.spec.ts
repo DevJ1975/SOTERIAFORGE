@@ -1,11 +1,13 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@forge/auth';
 import { ModuleRepository, EnrollmentRepository } from '@forge/data-access';
 import { EnrollmentService } from '@forge/lms-core';
 import { PlayerProgressService } from '@forge/player';
+import { TutorService, TUTOR_FUNCTIONS } from '@forge/ai-tutor';
 import { CourseDetailComponent } from './course-detail.component';
-import type { Enrollment, Module } from '@forge/shared';
+import type { Enrollment, Module, ChatMessage } from '@forge/shared';
 import { of } from 'rxjs';
 
 const testEnv: ForgeEnvironment = {
@@ -78,6 +80,17 @@ const mockPlayerProgressService: Partial<PlayerProgressService> = {
   recordCompletion: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockTutorMessages = signal<ChatMessage[]>([]);
+const mockTutorPending = signal(false);
+const mockTutorError = signal<string | null>(null);
+
+const mockTutorService = {
+  messages: mockTutorMessages.asReadonly(),
+  pending: mockTutorPending.asReadonly(),
+  error: mockTutorError.asReadonly(),
+  ask: jest.fn(),
+};
+
 describe('CourseDetailComponent', () => {
   let fixture: ComponentFixture<CourseDetailComponent>;
 
@@ -93,6 +106,8 @@ describe('CourseDetailComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: PlayerProgressService, useValue: mockPlayerProgressService },
+        { provide: TutorService, useValue: mockTutorService },
+        { provide: TUTOR_FUNCTIONS, useValue: {} },
       ],
     }).compileComponents();
 

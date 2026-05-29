@@ -13,12 +13,13 @@ import { ModulePlayerComponent } from '@forge/player';
 import { ModuleRepository, EnrollmentRepository } from '@forge/data-access';
 import { EnrollmentService } from '@forge/lms-core';
 import { AuthService, TenantService } from '@forge/auth';
+import { TutorChatComponent } from '@forge/ai-tutor';
 import type { Module, Enrollment } from '@forge/shared';
 
 @Component({
   selector: 'forge-learner-course-detail',
   standalone: true,
-  imports: [RouterLink, CardModule, ModulePlayerComponent],
+  imports: [RouterLink, CardModule, ModulePlayerComponent, TutorChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="course-detail">
@@ -80,6 +81,17 @@ import type { Module, Enrollment } from '@forge/shared';
             }
           </main>
         </div>
+
+        @if (tenantId() && uid()) {
+          <div class="course-detail__tutor">
+            <details class="course-detail__tutor-panel">
+              <summary class="course-detail__tutor-summary">Ask the AI Tutor</summary>
+              <div class="course-detail__tutor-chat">
+                <forge-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
+              </div>
+            </details>
+          </div>
+        }
       }
     </section>
   `,
@@ -143,6 +155,28 @@ import type { Module, Enrollment } from '@forge/shared';
       }
       .course-detail__player {
         min-height: 20rem;
+      }
+      .course-detail__tutor {
+        margin-top: 1.5rem;
+      }
+      .course-detail__tutor-panel {
+        border: 1px solid var(--forge-border, #e5e7eb);
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+      .course-detail__tutor-summary {
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--surface-50, #f9fafb);
+        list-style: none;
+        user-select: none;
+      }
+      .course-detail__tutor-summary::-webkit-details-marker {
+        display: none;
+      }
+      .course-detail__tutor-chat {
+        height: 24rem;
       }
     `,
   ],

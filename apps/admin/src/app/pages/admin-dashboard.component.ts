@@ -85,7 +85,11 @@ export class AdminDashboardComponent {
       link: '/games',
     },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
-    { title: 'AI Knowledge Base', description: 'Upload documents for AI-powered Q&A (Phase 1+).' },
+    {
+      title: 'AI Knowledge Base',
+      description: 'Upload documents for AI-powered Q&A (Phase 1+).',
+      link: '/knowledge',
+    },
     {
       title: 'Reports',
       description: 'Export completion, compliance, and usage reports (Phase 1+).',

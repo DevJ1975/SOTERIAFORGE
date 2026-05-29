@@ -2,18 +2,19 @@ import { Injectable, InjectionToken, inject, signal } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import type { ChatMessage } from '@forge/shared';
 
-/** UUID generator compatible with both browser (Web Crypto) and Node/Jest. */
+/** UUID generator compatible with both browser (Web Crypto) and Node ≥ 19+/Jest. */
 function newUUID(): string {
-  // Web Crypto API (browsers, Node ≥ 19 global, Deno)
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof (crypto as Crypto & { randomUUID?: () => string }).randomUUID === 'function'
-  ) {
-    return (crypto as Crypto & { randomUUID: () => string }).randomUUID();
+  // Web Crypto API — available in all modern browsers, Node ≥ 19 globals, and
+  // Jest environments that polyfill crypto.randomUUID (see test-setup.ts).
+  const c = globalThis.crypto as Crypto & { randomUUID?: () => string };
+  if (typeof c?.randomUUID === 'function') {
+    return c.randomUUID();
   }
-  // Node.js `crypto` module (Jest / server-side)
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return (require('crypto') as { randomUUID: () => string }).randomUUID();
+  // Fallback: RFC-4122 v4 UUID built from Math.random (test/SSR only).
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    return (ch === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
 
 interface AskTutorRequest {

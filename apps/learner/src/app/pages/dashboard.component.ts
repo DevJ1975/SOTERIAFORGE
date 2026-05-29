@@ -33,6 +33,7 @@ import type { Member } from '@forge/shared';
         <div class="dash__links">
           <a routerLink="/courses" class="dash__link">Browse Courses →</a>
           <a routerLink="/leaderboard" class="dash__link">View Leaderboard →</a>
+          <a routerLink="/tutor" class="dash__link">Ask the AI Tutor →</a>
         </div>
       </p-card>
     </section>

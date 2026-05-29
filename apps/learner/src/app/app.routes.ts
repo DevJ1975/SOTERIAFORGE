@@ -32,5 +32,10 @@ export const appRoutes: Routes = [
     loadComponent: () =>
       import('./pages/leaderboard.component').then((m) => m.LeaderboardPageComponent),
   },
+  {
+    path: 'tutor',
+    canActivate: [authGuard, tenantGuard],
+    loadComponent: () => import('./pages/tutor.component').then((m) => m.TutorPageComponent),
+  },
   { path: '**', redirectTo: '' },
 ];
