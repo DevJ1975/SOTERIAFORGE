@@ -1,9 +1,6 @@
 export default {
   displayName: 'standards',
   preset: '../../jest.preset.js',
-  // Expose Node's built-in fetch to the jsdom environment before any modules load.
-  // @angular/fire → @firebase/auth requires fetch, which jsdom v29 does not provide.
-  globals: { fetch: global.fetch },
   setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
   coverageDirectory: '../../coverage/libs/standards',
   transform: {

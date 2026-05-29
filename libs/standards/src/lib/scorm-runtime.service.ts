@@ -133,8 +133,7 @@ export class ScormRuntimeService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const api = this._api as any;
     if (typeof api.renderCMIToJSONObject === 'function') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      return api.renderCMIToJSONObject() as Record<string, unknown>;
+      return (api.renderCMIToJSONObject as () => Record<string, unknown>)();
     }
     return {};
   }

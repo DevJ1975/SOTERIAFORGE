@@ -1,11 +1,20 @@
+// Prevent @angular/fire from loading Firebase (which needs `fetch` in jsdom).
+// XapiClient only uses `httpsCallable` at runtime (inside `send()`); importing
+// the module itself is enough for DI typing; we never call the real callable
+// in unit tests, so a stub export is sufficient.
+jest.mock('@angular/fire/functions', () => ({
+  Functions: class Functions {},
+  httpsCallable: jest.fn(() => jest.fn()),
+}));
+
 import { TestBed } from '@angular/core/testing';
 import { XapiClient } from './xapi-client';
 import { XAPI_VERBS, XAPI_TENANT_EXTENSION } from '@forge/shared';
 
 /**
  * Unit tests for XapiClient.buildStatement.
- * No live Firebase is used — Functions is not provided, so the service
- * falls back gracefully.
+ * No live Firebase — Functions is not provided (inject optional → null),
+ * so send() gracefully no-ops.
  */
 describe('XapiClient', () => {
   let client: XapiClient;
@@ -13,7 +22,7 @@ describe('XapiClient', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [XapiClient],
-      // Deliberately omit Functions provider — tests the tolerant path.
+      // Deliberately omit Functions provider — tests the optional-inject path.
     });
     client = TestBed.inject(XapiClient);
   });
@@ -105,7 +114,8 @@ describe('XapiClient', () => {
         tenantId: 'tenant-abc',
       });
       expect(stmt.verb.display).toBeDefined();
-      expect(typeof stmt.verb.display!['en-US']).toBe('string');
+      const display = stmt.verb.display ?? {};
+      expect(typeof display['en-US']).toBe('string');
     });
   });
 
@@ -214,6 +224,24 @@ describe('XapiClient', () => {
         tenantId: 'tenant-abc',
       });
       expect(stmt.object.id).toBe('https://example.com/activities/course-99');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // buildStatement — registration
+  // ---------------------------------------------------------------------------
+  describe('buildStatement — registration', () => {
+    it('includes registration UUID in context when provided', () => {
+      const reg = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const stmt = client.buildStatement({
+        uid: 'uid-001',
+        homePage: 'https://example.com',
+        verb: 'launched',
+        activityId: 'https://example.com/activities/course-1',
+        tenantId: 'tenant-abc',
+        registration: reg,
+      });
+      expect(stmt.context?.registration).toBe(reg);
     });
   });
 
