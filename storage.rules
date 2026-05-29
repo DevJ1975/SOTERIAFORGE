@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Soteria FORGE — Cloud Storage rules.
+// Tenant-scoped asset paths; uploads restricted to authors/admins. Public
+// delivery is done via short-lived signed URLs minted server-side, so most
+// read access here is gated by tenant membership.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+    function claims() { return request.auth.token; }
+    function isSuperadmin() { return isSignedIn() && claims().role == 'superadmin'; }
+    function inTenant(tenantId) {
+      return isSuperadmin() || (isSignedIn() && claims().tenantId == tenantId);
+    }
+    function canAuthor(tenantId) {
+      return isSuperadmin()
+        || (isSignedIn() && claims().tenantId == tenantId
+            && (claims().role == 'tenant_admin' || claims().role == 'instructor'));
+    }
+
+    // Per-tenant content: SCORM/cmi5 packages, Unity WebGL builds, sprites, badges.
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read: if inTenant(tenantId);
+      allow write: if canAuthor(tenantId)
+        && request.resource.size < 500 * 1024 * 1024; // 500MB cap
+    }
+
+    // Public B2C marketing/preview assets.
+    match /b2c/public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSuperadmin();
+    }
+
+    // Per-user uploads (avatars, etc.).
+    match /users/{uid}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,143 @@
+rules_version = '2';
+
+// Soteria FORGE — Firestore security rules.
+// Authoritative tenant isolation + RBAC. Privileged writes (claims, provisioning,
+// entitlements, leaderboard recompute) go through Cloud Functions (admin SDK
+// bypasses rules), so client write surfaces here are deliberately narrow.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers ------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function claims() {
+      return request.auth.token;
+    }
+    function role() {
+      return isSignedIn() ? claims().role : '';
+    }
+    function isSuperadmin() {
+      return role() == 'superadmin';
+    }
+    // True if caller belongs to (or is superadmin for) the given tenant.
+    function inTenant(tenantId) {
+      return isSuperadmin() || (isSignedIn() && claims().tenantId == tenantId);
+    }
+    function isTenantAdmin(tenantId) {
+      return isSuperadmin() || (role() == 'tenant_admin' && claims().tenantId == tenantId);
+    }
+    function canAuthor(tenantId) {
+      return isTenantAdmin(tenantId) || (role() == 'instructor' && claims().tenantId == tenantId);
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---- platform (superadmin only; config seeded server-side) --------------
+    match /platform/{doc=**} {
+      allow read: if isSuperadmin();
+      allow write: if false; // server-side only
+    }
+
+    // ---- tenants ------------------------------------------------------------
+    match /tenants/{tenantId} {
+      // Members of the tenant (and superadmin) may read the tenant doc/branding.
+      allow read: if inTenant(tenantId);
+      // Lifecycle (create/suspend/brand) is a privileged op via Cloud Functions.
+      allow write: if false;
+
+      // members: a user reads their own member doc + admins read all in-tenant.
+      match /members/{uid} {
+        allow read: if isSelf(uid) ? inTenant(tenantId) : isTenantAdmin(tenantId);
+        // Role/status changes are claim-bearing => Cloud Functions only.
+        // Learners may update a constrained set of self fields (profile, activity).
+        allow update: if isSelf(uid) && inTenant(tenantId)
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.tenantId == resource.data.tenantId;
+        allow create, delete: if false;
+      }
+
+      // courses + nested content
+      match /courses/{courseId} {
+        allow read: if inTenant(tenantId);
+        allow create, update, delete: if canAuthor(tenantId);
+
+        match /modules/{moduleId} {
+          allow read: if inTenant(tenantId);
+          allow write: if canAuthor(tenantId);
+        }
+
+        // enrollments: a learner reads/writes only their own progress doc.
+        match /enrollments/{uid} {
+          allow read: if isSelf(uid) ? inTenant(tenantId) : isTenantAdmin(tenantId);
+          allow create, update: if isSelf(uid) && inTenant(tenantId)
+            && request.resource.data.tenantId == tenantId;
+          // Score-bearing completion is validated server-side (anti-cheat).
+          allow delete: if isTenantAdmin(tenantId);
+        }
+      }
+
+      match /quizzes/{quizId} {
+        allow read: if inTenant(tenantId);
+        allow write: if canAuthor(tenantId);
+      }
+      match /games/{gameId} {
+        allow read: if inTenant(tenantId);
+        allow write: if canAuthor(tenantId);
+      }
+      match /badges/{badgeId} {
+        allow read: if inTenant(tenantId);
+        allow write: if canAuthor(tenantId);
+      }
+
+      // leaderboard: readable in-tenant, written only server-side (anti-cheat).
+      match /leaderboard/{period} {
+        allow read: if inTenant(tenantId);
+        allow write: if false;
+      }
+
+      // AI knowledge base + vectors: admin-managed; never client-writable vectors.
+      match /ai/knowledgeBase/{docId} {
+        allow read: if inTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+      match /ai/vectors/{docId=**} {
+        allow read, write: if false; // server-side retrieval only
+      }
+      // Conversations: a learner reads/writes only their own thread.
+      match /ai/conversations/{uid}/messages/{msgId} {
+        allow read, create: if isSelf(uid) && inTenant(tenantId);
+        allow update, delete: if false;
+      }
+    }
+
+    // ---- LRS statements: append-only, written server-side -------------------
+    match /lrs/statements/{stmtId} {
+      allow read: if isSuperadmin();
+      allow write: if false;
+    }
+
+    // ---- B2C storefront -----------------------------------------------------
+    match /b2c/catalog/{productId} {
+      allow read: if true; // public catalog
+      allow write: if isSuperadmin();
+    }
+    match /b2c/customers/{uid} {
+      allow read: if isSelf(uid) || isSuperadmin();
+      // Entitlements/purchases are written only by verified Stripe webhooks.
+      allow write: if false;
+    }
+
+    // ---- Stripe idempotency log: server-side only ---------------------------
+    match /stripe/events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Default deny.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
