@@ -2,6 +2,17 @@ import { Injectable, InjectionToken, inject, signal } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import type { ChatMessage } from '@forge/shared';
 
+/** UUID generator compatible with both browser (Web Crypto) and Node/Jest. */
+function newUUID(): string {
+  // Web Crypto API (browsers, Node ≥ 19 global, Deno)
+  if (typeof crypto !== 'undefined' && typeof (crypto as Crypto & { randomUUID?: () => string }).randomUUID === 'function') {
+    return (crypto as Crypto & { randomUUID: () => string }).randomUUID();
+  }
+  // Node.js `crypto` module (Jest / server-side)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return (require('crypto') as { randomUUID: () => string }).randomUUID();
+}
+
 interface AskTutorRequest {
   question: string;
   tenantId: string;
@@ -58,7 +69,7 @@ export class TutorService {
     const now = new Date().toISOString();
 
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: newUUID(),
       tenantId,
       uid,
       role: 'user',
@@ -75,7 +86,7 @@ export class TutorService {
       const response = await this.invoke(question, tenantId, uid);
 
       const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: newUUID(),
         tenantId,
         uid,
         role: 'assistant',

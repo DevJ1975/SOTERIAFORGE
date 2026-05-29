@@ -22,11 +22,13 @@ import {
   OnDestroy,
   OnInit,
   PLATFORM_ID,
+  computed,
   inject,
   input,
   output,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 /** Shape of postMessage payloads emitted by the Unity build to the host page. */
 export interface UnityShellMessage {
@@ -44,7 +46,7 @@ export interface UnityShellMessage {
       <iframe
         #unityFrame
         class="unity-frame"
-        [src]="launchUrl()"
+        [src]="safeLaunchUrl()"
         [title]="title() || 'Unity game'"
         allow="fullscreen"
         allowfullscreen
@@ -100,8 +102,20 @@ export class UnityEmbedComponent implements OnInit, OnDestroy {
    */
   readonly signal = output<UnityShellMessage>();
 
+  // ---- Computed safe URL -------------------------------------------------------
+
+  /**
+   * Angular's DomSanitizer requires resource URLs to be explicitly trusted.
+   * The cmi5 launch URL is supplied by the LMS platform and is already
+   * validated upstream; bypassing Angular's check here is intentional.
+   */
+  readonly safeLaunchUrl: () => SafeResourceUrl = computed(() =>
+    this.sanitizer.bypassSecurityTrustResourceUrl(this.launchUrl()),
+  );
+
   // ---- Private state -----------------------------------------------------------
 
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly elementRef = inject(ElementRef);
   private messageListener: ((ev: MessageEvent) => void) | null = null;
