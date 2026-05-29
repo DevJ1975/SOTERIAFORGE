@@ -48,6 +48,7 @@ export const FsPaths = {
 
   catalog: () => 'catalog',
   catalogProduct: (productId: string) => `catalog/${productId}`,
+  b2cCustomerCollection: () => 'customers',
   b2cCustomer: (uid: string) => `customers/${uid}`,
 
   lrsStatements: () => 'lrs',
