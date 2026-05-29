@@ -10,6 +10,7 @@ import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { FORGE_ENV } from '@forge/auth';
 import { provideForgeFirebase } from '@forge/data-access';
+import { provideTenantTheme } from '@forge/tenant';
 import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
 
@@ -27,5 +28,6 @@ export const appConfig: ApplicationConfig = {
       appCheckSiteKey: environment.appCheckSiteKey,
       useEmulators: !environment.production,
     }),
+    provideTenantTheme(),
   ],
 };
