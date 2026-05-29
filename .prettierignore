@@ -6,3 +6,6 @@ coverage
 .firebase
 .vercel
 package-lock.json
+# Generated build output
+apps/functions/lib
+**/*.min.js

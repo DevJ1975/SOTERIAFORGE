@@ -24,7 +24,10 @@ describe('tenant admin API wrappers', () => {
     callableImpl.mockResolvedValue({ data: { ok: true, tenantId: 'acme', gcipTenantId: 'g1' } });
     const svc = TestBed.inject(TenantAdminService);
     const res = await svc.provisionTenant({ tenantId: 'acme', name: 'Acme' });
-    expect(callableImpl).toHaveBeenCalledWith('provisionTenant', { tenantId: 'acme', name: 'Acme' });
+    expect(callableImpl).toHaveBeenCalledWith('provisionTenant', {
+      tenantId: 'acme',
+      name: 'Acme',
+    });
     expect(res.tenantId).toBe('acme');
   });
 

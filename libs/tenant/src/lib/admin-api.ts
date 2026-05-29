@@ -25,7 +25,10 @@ export class TenantAdminService {
   private readonly fns = inject(Functions);
 
   provisionTenant(input: ProvisionTenantInput) {
-    return httpsCallable<ProvisionTenantInput, { ok: boolean; tenantId: string; gcipTenantId: string }>(
+    return httpsCallable<
+      ProvisionTenantInput,
+      { ok: boolean; tenantId: string; gcipTenantId: string }
+    >(
       this.fns,
       'provisionTenant',
     )(input).then((r) => r.data);

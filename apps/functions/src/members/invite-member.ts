@@ -103,9 +103,11 @@ export const deactivateMember = onCall(async (request) => {
     : adminAuth;
 
   await authClient.updateUser(uid, { disabled: true });
-  await db.doc(`tenants/${tenantId}/members/${uid}`).set(
-    { status: 'deactivated', updatedAt: new Date().toISOString(), updatedBy: caller.uid },
-    { merge: true },
-  );
+  await db
+    .doc(`tenants/${tenantId}/members/${uid}`)
+    .set(
+      { status: 'deactivated', updatedAt: new Date().toISOString(), updatedBy: caller.uid },
+      { merge: true },
+    );
   return { ok: true };
 });

@@ -30,9 +30,8 @@ export const updateBranding = onCall(async (request) => {
     throw new HttpsError('permission-denied', 'Not allowed to brand this tenant.');
   }
 
-  await db.doc(`tenants/${tenantId}`).set(
-    { branding, updatedAt: new Date().toISOString(), updatedBy: caller.uid },
-    { merge: true },
-  );
+  await db
+    .doc(`tenants/${tenantId}`)
+    .set({ branding, updatedAt: new Date().toISOString(), updatedBy: caller.uid }, { merge: true });
   return { ok: true };
 });
