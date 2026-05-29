@@ -5,7 +5,10 @@ import type {
   SnapshotOptions,
 } from '@angular/fire/firestore';
 import { parseOrThrow } from '@forge/shared';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
+
+/** A zod schema whose output is T, with any input type (defaults/transforms ok). */
+export type SchemaOf<T> = ZodType<T, ZodTypeDef, unknown>;
 
 /**
  * Build a type-safe Firestore converter backed by a zod schema. Data is
@@ -13,7 +16,7 @@ import type { ZodType } from 'zod';
  * The document `id` is injected from the snapshot id when present in the schema.
  */
 export function zodConverter<T extends { id?: string } & DocumentData>(
-  schema: ZodType<T>,
+  schema: SchemaOf<T>,
   context = 'document',
 ): FirestoreDataConverter<T> {
   return {

@@ -14,8 +14,7 @@ import {
   updateDoc,
 } from '@angular/fire/firestore';
 import type { Observable } from 'rxjs';
-import type { ZodType } from 'zod';
-import { zodConverter } from './converters';
+import { type SchemaOf, zodConverter } from './converters';
 
 /**
  * Generic Firestore repository bound to a collection path and a zod schema.
@@ -28,7 +27,7 @@ export class BaseRepository<T extends { id?: string } & DocumentData> {
   constructor(
     protected readonly fs: Firestore,
     protected readonly collectionPath: string,
-    schema: ZodType<T>,
+    schema: SchemaOf<T>,
     context = 'document',
   ) {
     this.converter = zodConverter<T>(schema, context);
