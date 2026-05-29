@@ -1,6 +1,8 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
+import { EnrollmentService } from '@forge/lms-core';
+import { ScormRuntimeService } from '@forge/standards';
 import { ModulePlayerComponent } from './module-player.component';
 import { PlayerProgressService } from './player-progress.service';
 import type { Module } from '@forge/shared';
@@ -21,6 +23,18 @@ const testEnv: ForgeEnvironment = {
 const mockPlayerProgressService: Partial<PlayerProgressService> = {
   recordProgress: jest.fn().mockResolvedValue(undefined),
   recordCompletion: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockEnrollmentService: Partial<EnrollmentService> = {
+  saveCmi: jest.fn().mockResolvedValue(undefined),
+  markModuleComplete: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockScormRuntimeService: Partial<ScormRuntimeService> = {
+  initialize: jest.fn().mockResolvedValue(undefined),
+  terminate: jest.fn(),
+  completed: jest.fn().mockReturnValue(false) as never,
+  score: jest.fn().mockReturnValue(null) as never,
 };
 
 const videoModule: Module = {
@@ -48,6 +62,8 @@ describe('ModulePlayerComponent', () => {
         provideRouter([]),
         { provide: FORGE_ENV, useValue: testEnv },
         { provide: PlayerProgressService, useValue: mockPlayerProgressService },
+        { provide: EnrollmentService, useValue: mockEnrollmentService },
+        { provide: ScormRuntimeService, useValue: mockScormRuntimeService },
       ],
     }).compileComponents();
 
@@ -71,20 +87,60 @@ describe('ModulePlayerComponent', () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
-  it('shows placeholder text for scorm module', () => {
-    const scormModule: Module = { ...videoModule, contentType: 'scorm', id: 'mod-2' };
+  it('renders forge-scorm-player (or its defer placeholder) for scorm module', () => {
+    const scormModule: Module = {
+      ...videoModule,
+      contentType: 'scorm',
+      id: 'mod-2',
+      externalUrl: 'https://cdn.example.com/scorm/index.html',
+    };
     fixture.componentRef.setInput('module', scormModule);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('scorm player');
+    // The @defer placeholder shows "Loading SCORM player…" before it resolves,
+    // and once resolved it renders forge-scorm-player.
+    const text = el.textContent ?? '';
+    const hasScormContent =
+      el.querySelector('forge-scorm-player') !== null ||
+      text.includes('Loading SCORM') ||
+      text.includes('No SCORM URL');
+    expect(hasScormContent).toBe(true);
   });
 
-  it('shows placeholder text for cmi5 module', () => {
-    const cmi5Module: Module = { ...videoModule, contentType: 'cmi5', id: 'mod-3' };
+  it('renders forge-cmi5-launcher (or its defer placeholder) for cmi5 module', () => {
+    const cmi5Module: Module = {
+      ...videoModule,
+      contentType: 'cmi5',
+      id: 'mod-3',
+      externalUrl: 'https://cdn.example.com/au/index.html',
+    };
     fixture.componentRef.setInput('module', cmi5Module);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('cmi5 player');
+    const text = el.textContent ?? '';
+    const hasCmi5Content =
+      el.querySelector('forge-cmi5-launcher') !== null ||
+      text.includes('Loading cmi5') ||
+      text.includes('No cmi5 URL');
+    expect(hasCmi5Content).toBe(true);
+  });
+
+  it('renders forge-cmi5-launcher (or its defer placeholder) for unity module', () => {
+    const unityModule: Module = {
+      ...videoModule,
+      contentType: 'unity',
+      id: 'mod-6',
+      externalUrl: 'https://cdn.example.com/unity/index.html',
+    };
+    fixture.componentRef.setInput('module', unityModule);
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    const text = el.textContent ?? '';
+    const hasUnityContent =
+      el.querySelector('forge-cmi5-launcher') !== null ||
+      text.includes('Loading Unity') ||
+      text.includes('No Unity URL');
+    expect(hasUnityContent).toBe(true);
   });
 
   it('shows placeholder text for quiz module', () => {
@@ -101,13 +157,5 @@ describe('ModulePlayerComponent', () => {
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('game player');
-  });
-
-  it('shows placeholder text for unity module', () => {
-    const unityModule: Module = { ...videoModule, contentType: 'unity', id: 'mod-6' };
-    fixture.componentRef.setInput('module', unityModule);
-    fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('unity player');
   });
 });

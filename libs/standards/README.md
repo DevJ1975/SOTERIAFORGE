@@ -60,6 +60,52 @@ await scormRuntime.initialize({
 scormRuntime.terminate();   // clean up window globals
 ```
 
+### `ScormPlayerComponent` (`scorm-player.component.ts`)
+
+A standalone, OnPush Angular component (selector `forge-scorm-player`) that embeds a
+SCORM SCO in a sandboxed, responsive `<iframe>`.
+
+On mount (browser only, via `afterNextRender`/`isPlatformBrowser`), the component
+calls `ScormRuntimeService.initialize()` to mount the SCORM API on `window` **before**
+setting the iframe `src`, ensuring the SCO can find the API on load.
+
+Signal inputs:
+
+- `launchUrl` (required) — absolute URL to the SCO's entry point.
+- `scormVersion` — `'1.2' | '2004'` (default `'2004'`).
+- `initialCmi?` — seed CMI data to resume a previous session.
+
+Outputs:
+
+- `commit` — emits `Record<string, unknown>` on every SCORM commit.
+- `completed` — emits `{completed: boolean; score?: number}` when the SCO finishes.
+
+Calls `ScormRuntimeService.terminate()` in `ngOnDestroy`.
+
+### `Cmi5LauncherComponent` (`cmi5-launcher.component.ts`)
+
+A standalone, OnPush Angular component (selector `forge-cmi5-launcher`) that launches a
+cmi5 Assignable Unit (AU) in a sandboxed, responsive `<iframe>`.
+
+Builds the full launch URL via `buildLaunchUrl` from `cmi5.ts` and renders it reactively.
+The AU communicates with the LRS directly; this component does not intercept xAPI traffic.
+
+Signal inputs:
+
+- `auUrl` (required) — base URL of the AU.
+- `endpoint` — xAPI LRS endpoint.
+- `fetch` — token fetch URL.
+- `actor` — JSON-serialised xAPI Actor.
+- `registration` — registration UUID.
+- `activityId` — Activity IRI.
+
+Outputs:
+
+- `completed` — emits `{completed: boolean}` as a lightweight side-channel (authoritative
+  tracking runs via the LRS pipeline).
+
+SSR-safe: the iframe is only rendered on the browser via `isPlatformBrowser`.
+
 ### `buildLaunchUrl` / `parseLaunchParams` (`cmi5.ts`)
 
 Pure functions for the cmi5 launch URL protocol:
