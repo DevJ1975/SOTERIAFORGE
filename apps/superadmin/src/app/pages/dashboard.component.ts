@@ -83,6 +83,7 @@ export class SuperadminDashboardComponent {
     {
       title: 'B2C Catalog',
       description: 'Public-facing course marketplace and consumer enrolment flows. (Phase 1+)',
+      link: '/catalog',
     },
   ];
 }

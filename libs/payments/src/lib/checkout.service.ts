@@ -19,7 +19,10 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
  */
 @Injectable({ providedIn: 'root' })
 export class CheckoutService {
-  private readonly functions = inject(Functions);
+  // Optional so the service is SSR-safe: Firebase Functions is a browser-only
+  // feature and `provideFunctions` is deliberately omitted from the server
+  // config. All call sites guard with isPlatformBrowser before invoking.
+  private readonly functions = inject(Functions, { optional: true });
   private readonly document = inject(DOCUMENT);
 
   /** Tracks the last checkout/portal error. Null when no error has occurred. */
@@ -37,6 +40,7 @@ export class CheckoutService {
    */
   async startCheckout(productId: string): Promise<void> {
     this.lastError.set(null);
+    if (!this.functions) return; // no-op on the server (Functions not provided)
     try {
       const fn = httpsCallable<{ productId: string }, { url: string }>(
         this.functions,
@@ -61,6 +65,7 @@ export class CheckoutService {
    */
   async openBillingPortal(): Promise<void> {
     this.lastError.set(null);
+    if (!this.functions) return; // no-op on the server (Functions not provided)
     try {
       const fn = httpsCallable<Record<string, never>, { url: string }>(
         this.functions,

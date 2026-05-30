@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Title, Meta } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
@@ -31,4 +32,15 @@ import { ButtonModule } from 'primeng/button';
     `,
   ],
 })
-export class LandingComponent {}
+export class LandingComponent {
+  constructor() {
+    const title = inject(Title);
+    const meta = inject(Meta);
+    title.setTitle('Soteria FORGE — Verifiable AI-Grounded Safety Training');
+    meta.updateTag({
+      name: 'description',
+      content:
+        'FORGE delivers safety training with video, interactive games, and an AI tutor. Buy a course or go all-access.',
+    });
+  }
+}

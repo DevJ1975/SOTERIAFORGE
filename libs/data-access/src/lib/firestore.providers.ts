@@ -2,6 +2,7 @@ import { type EnvironmentProviders, makeEnvironmentProviders } from '@angular/co
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
+import { connectFunctionsEmulator, getFunctions, provideFunctions } from '@angular/fire/functions';
 import {
   ReCaptchaEnterpriseProvider,
   initializeAppCheck,
@@ -16,7 +17,9 @@ export interface FirebaseProvidersOptions {
 
 /**
  * Standard Firebase wiring for the Angular apps: App + Auth + Firestore +
- * App Check. App Check is required on Firestore/Functions/Storage in prod.
+ * Functions + App Check. App Check is required on Firestore/Functions/Storage
+ * in prod. Functions is wired centrally so every app's callable services
+ * (quiz submit, tenant admin, ingest, tutor, checkout) resolve `Functions`.
  */
 export function provideForgeFirebase(options: FirebaseProvidersOptions): EnvironmentProviders {
   return makeEnvironmentProviders([
@@ -28,6 +31,13 @@ export function provideForgeFirebase(options: FirebaseProvidersOptions): Environ
         connectFirestoreEmulator(fs, '127.0.0.1', 8080);
       }
       return fs;
+    }),
+    provideFunctions(() => {
+      const fns = getFunctions();
+      if (options.useEmulators) {
+        connectFunctionsEmulator(fns, '127.0.0.1', 5001);
+      }
+      return fns;
     }),
     ...(options.appCheckSiteKey
       ? [
