@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
 /** cmi5 launch parameters returned by the `launchCmi5` function. */
-export interface Cmi5LaunchParams {
+export interface Cmi5LaunchResult {
   auUrl: string;
   endpoint: string;
   fetch: string;
@@ -20,10 +20,10 @@ export interface Cmi5LaunchParams {
 export class Cmi5LaunchService {
   private readonly fns = inject(Functions, { optional: true });
 
-  async launch(activityId: string, auUrl: string): Promise<Cmi5LaunchParams | null> {
+  async launch(activityId: string, auUrl: string): Promise<Cmi5LaunchResult | null> {
     if (!this.fns) return null;
     try {
-      const call = httpsCallable<{ activityId: string; auUrl: string }, Cmi5LaunchParams>(
+      const call = httpsCallable<{ activityId: string; auUrl: string }, Cmi5LaunchResult>(
         this.fns,
         'launchCmi5',
       );
