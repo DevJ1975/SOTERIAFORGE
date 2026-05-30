@@ -1,4 +1,9 @@
-import { type EnvironmentProviders, Injectable, inject } from '@angular/core';
+import {
+  type EnvironmentProviders,
+  Injectable,
+  inject,
+  makeEnvironmentProviders,
+} from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { type Translation, type TranslocoLoader, provideTransloco } from '@jsverse/transloco';
 import type { Observable } from 'rxjs';
@@ -22,14 +27,16 @@ export class ForgeTranslocoLoader implements TranslocoLoader {
  * Apps must also provide `provideHttpClient()` for the loader.
  */
 export function provideForgeTransloco(): EnvironmentProviders {
-  return provideTransloco({
-    config: {
-      availableLangs: [...FORGE_LANGS],
-      defaultLang: 'en',
-      fallbackLang: 'en',
-      reRenderOnLangChange: true,
-      missingHandler: { useFallbackTranslation: true },
-    },
-    loader: ForgeTranslocoLoader,
-  });
+  return makeEnvironmentProviders([
+    ...provideTransloco({
+      config: {
+        availableLangs: [...FORGE_LANGS],
+        defaultLang: 'en',
+        fallbackLang: 'en',
+        reRenderOnLangChange: true,
+        missingHandler: { useFallbackTranslation: true },
+      },
+      loader: ForgeTranslocoLoader,
+    }),
+  ]);
 }
