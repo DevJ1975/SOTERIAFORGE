@@ -1,5 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { AuthService } from '@forge/auth';
 
 @Component({
   selector: 'forge-storefront-root',
@@ -11,7 +14,12 @@ import { RouterLink, RouterOutlet } from '@angular/router';
       <a routerLink="/" class="store-header__brand">Soteria FORGE</a>
       <nav class="store-header__nav">
         <a routerLink="/catalog">Catalog</a>
-        <a routerLink="/account">My learning</a>
+        @if (authenticated()) {
+          <a routerLink="/account">My learning</a>
+          <button type="button" class="store-header__signout" (click)="signOut()">Sign out</button>
+        } @else {
+          <a routerLink="/auth">Sign in</a>
+        }
       </nav>
     </header>
     <router-outlet />
@@ -39,6 +47,16 @@ import { RouterLink, RouterOutlet } from '@angular/router';
         margin-left: 1.25rem;
         text-decoration: none;
       }
+      .store-header__signout {
+        background: none;
+        border: none;
+        color: #fff;
+        margin-left: 1.25rem;
+        cursor: pointer;
+        font-size: inherit;
+        padding: 0;
+        text-decoration: none;
+      }
       .store-footer {
         padding: 2rem 1.5rem;
         opacity: 0.7;
@@ -47,4 +65,28 @@ import { RouterLink, RouterOutlet } from '@angular/router';
     `,
   ],
 })
-export class AppComponent {}
+export class AppComponent {
+  /** Always false on the server; updated reactively from Firebase auth in the browser. */
+  protected readonly authenticated = signal(false);
+
+  // Stored for signOut — only set in the browser.
+  private authSvc?: AuthService;
+  private routerSvc?: Router;
+
+  constructor() {
+    // inject() is valid inside the constructor (injection context).
+    // We guard with isBrowser so that AuthService (and Firebase Auth) is never
+    // instantiated during SSR prerender — avoiding auth/invalid-api-key crashes.
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      const auth = inject(AuthService);
+      const router = inject(Router);
+      this.authSvc = auth;
+      this.routerSvc = router;
+      toObservable(auth.isAuthenticated).subscribe((v) => this.authenticated.set(v));
+    }
+  }
+
+  protected signOut(): void {
+    void this.authSvc?.signOutUser().then(() => this.routerSvc?.navigate(['/']));
+  }
+}

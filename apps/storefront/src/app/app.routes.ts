@@ -13,5 +13,9 @@ export const appRoutes: Routes = [
     path: 'account',
     loadComponent: () => import('./pages/account.component').then((m) => m.AccountComponent),
   },
+  {
+    path: 'auth',
+    loadComponent: () => import('./pages/auth.component').then((m) => m.StorefrontAuthComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

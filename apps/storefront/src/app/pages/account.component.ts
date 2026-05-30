@@ -38,7 +38,7 @@ import type { B2cCustomer } from '@forge/shared';
       } @else if (!isSignedIn()) {
         <p-card>
           <p>
-            Please <a routerLink="/">sign in</a> to view your purchased courses and manage your
+            Please <a routerLink="/auth">sign in</a> to view your purchased courses and manage your
             subscription.
           </p>
         </p-card>

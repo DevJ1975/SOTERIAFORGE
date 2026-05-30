@@ -1,5 +1,13 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Auth, authState, signInWithEmailAndPassword, signOut, user } from '@angular/fire/auth';
+import {
+  Auth,
+  authState,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  user,
+} from '@angular/fire/auth';
 import type { CustomClaims, Principal } from '@forge/shared';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { parseClaims } from './claims';
@@ -49,6 +57,20 @@ export class AuthService {
     await this.refreshClaims();
     if (cred.user && !this._claims()) {
       // No claims yet (e.g. just-provisioned user) — force a token refresh once.
+      await cred.user.getIdToken(true);
+      await this.refreshClaims();
+    }
+  }
+
+  async signUp(email: string, password: string, displayName?: string): Promise<void> {
+    this.applyTenantScope();
+    const cred = await createUserWithEmailAndPassword(this.auth, email, password);
+    if (displayName && cred.user) {
+      await updateProfile(cred.user, { displayName });
+    }
+    await this.refreshClaims();
+    if (cred.user && !this._claims()) {
+      // No claims yet for a just-provisioned user — force a token refresh once.
       await cred.user.getIdToken(true);
       await this.refreshClaims();
     }

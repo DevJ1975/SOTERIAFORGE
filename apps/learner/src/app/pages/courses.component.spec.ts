@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { CourseRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@forge/auth';
+import { CourseRepository, EnrollmentRepository } from '@forge/data-access';
 import { CoursesComponent } from './courses.component';
 import type { Course } from '@forge/shared';
 
@@ -35,20 +35,41 @@ const mockCourseRepository: Partial<CourseRepository> = {
   listPublished: jest.fn().mockResolvedValue([mockCourse]),
 };
 
+const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
+  get: jest.fn().mockResolvedValue(null),
+};
+
+const mockAuthService = {
+  principal: () => ({
+    uid: 'user-1',
+    email: 'test@example.com',
+    claims: { role: 'learner', tenantId: 'tenant-1' },
+  }),
+};
+
 const mockTenantService = {
   tenantId: () => 'tenant-1',
 };
+
+/** Flush all pending microtasks and macrotasks. */
+async function flushAll(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+}
 
 describe('CoursesComponent', () => {
   let fixture: ComponentFixture<CoursesComponent>;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [CoursesComponent],
       providers: [
         provideRouter([]),
         { provide: FORGE_ENV, useValue: testEnv },
         { provide: CourseRepository, useValue: mockCourseRepository },
+        { provide: EnrollmentRepository, useValue: mockEnrollmentRepository },
+        { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
       ],
     }).compileComponents();
@@ -69,7 +90,7 @@ describe('CoursesComponent', () => {
 
   it('displays courses after loading', async () => {
     fixture.detectChanges();
-    await fixture.whenStable();
+    await flushAll();
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
@@ -79,10 +100,31 @@ describe('CoursesComponent', () => {
   it('shows "no courses" message when empty', async () => {
     (mockCourseRepository.listPublished as jest.Mock).mockResolvedValueOnce([]);
     fixture.detectChanges();
-    await fixture.whenStable();
+    await flushAll();
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('No published courses');
+  });
+
+  it('shows Assigned tag when enrollment is assigned', async () => {
+    const assignedEnrollment = {
+      uid: 'user-1',
+      courseId: 'course-1',
+      tenantId: 'tenant-1',
+      progressPct: 0,
+      completed: false,
+      assigned: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    (mockEnrollmentRepository.get as jest.Mock).mockResolvedValue(assignedEnrollment);
+
+    fixture.detectChanges();
+    await flushAll();
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Assigned');
   });
 });

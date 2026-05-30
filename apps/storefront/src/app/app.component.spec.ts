@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
+import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@forge/auth';
 import { AppComponent } from './app.component';
 
 const testEnv: ForgeEnvironment = {
@@ -20,7 +21,18 @@ describe('Storefront AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter([]), { provide: FORGE_ENV, useValue: testEnv }],
+      providers: [
+        provideRouter([]),
+        { provide: FORGE_ENV, useValue: testEnv },
+        {
+          provide: AuthService,
+          useValue: {
+            isAuthenticated: signal(false),
+            principal: () => null,
+            signOutUser: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
     }).compileComponents();
   });
 
@@ -30,5 +42,12 @@ describe('Storefront AppComponent', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Soteria FORGE');
     expect(text).toContain('Catalog');
+  });
+
+  it('shows Sign in link when not authenticated', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Sign in');
   });
 });

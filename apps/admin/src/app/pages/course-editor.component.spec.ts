@@ -4,10 +4,11 @@ import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
 import {
   CourseRepository,
   GameRepository,
+  MemberRepository,
   ModuleRepository,
   QuizRepository,
 } from '@forge/data-access';
-import { CourseAuthoringService } from '@forge/lms-core';
+import { AssignmentService, CourseAuthoringService } from '@forge/lms-core';
 import { CourseEditorComponent } from './course-editor.component';
 
 const testEnv: ForgeEnvironment = {
@@ -57,6 +58,11 @@ describe('CourseEditorComponent', () => {
         { provide: QuizRepository, useValue: { list: async () => [] } },
         { provide: GameRepository, useValue: { list: async () => [] } },
         { provide: TenantService, useValue: { tenantId: () => 'acme' } },
+        { provide: MemberRepository, useValue: { listActive: async () => [] } },
+        {
+          provide: AssignmentService,
+          useValue: { assign: jest.fn(async () => ({ assigned: 1, skipped: 0 })) },
+        },
       ],
     }).compileComponents();
   });
