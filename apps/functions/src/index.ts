@@ -11,6 +11,7 @@ export { inviteMember, deactivateMember } from './members/invite-member';
 export { submitQuiz } from './quizzes/submit-quiz';
 export { completeModule } from './lms/complete-module';
 export { assignCourse } from './lms/assign-course';
+export { onScormUpload } from './scorm/on-upload';
 export { stripeWebhook } from './stripe/webhook';
 export { createCheckoutSession, createBillingPortalSession } from './stripe/checkout';
 export { ingestStatement } from './lrs/ingest';
