@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -79,8 +80,11 @@ jobs:
             --repo ${{ github.repository }} \
             --body "$(printf '### CI build (%s) failed\n\n```\n%s\n```\n' '${{ matrix.project }}' "$(tail -c 8000 /tmp/build.log)")"
 
+  # E2E needs a served app + browsers; run on main pushes and manual dispatch,
+  # not on every PR (the learner-e2e project is still linted in the lint job).
   e2e:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
