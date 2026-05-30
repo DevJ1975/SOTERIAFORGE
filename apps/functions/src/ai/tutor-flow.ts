@@ -18,7 +18,7 @@ export const askTutor = onCall(async (request) => {
   const question = String((request.data as { question?: unknown })?.question ?? '').trim();
   if (!question) throw new HttpsError('invalid-argument', 'A question is required.');
 
-  const { embedding, llm } = getProviders();
+  const { embedding, llm } = await getProviders();
 
   // Embed the question and retrieve tenant-isolated context.
   const queryEmbedding = await embedding.embed(question);

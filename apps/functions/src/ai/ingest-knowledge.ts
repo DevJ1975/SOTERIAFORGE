@@ -50,7 +50,7 @@ export const ingestKnowledge = onCall(async (request) => {
   );
 
   try {
-    const { embedding } = getProviders();
+    const { embedding } = await getProviders();
     const chunks = chunkText(text);
 
     // Replace any prior vectors for this source (idempotent re-ingest).

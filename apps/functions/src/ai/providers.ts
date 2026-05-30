@@ -75,13 +75,16 @@ export interface AiProviders {
 }
 
 /**
- * Provider factory. Defaults to the local deterministic providers; wire a real
- * Vertex AI / Genkit adapter here when `VERTEX_PROJECT`/credentials are present.
- *
- * Production adapter (deployment-time): use `@genkit-ai/vertexai` to embed with
- * `text-embedding-004` and generate with `gemini-1.5-pro`, implementing the same
- * two interfaces. Kept behind this factory so the orchestration never changes.
+ * Provider factory. Returns the real Vertex AI adapter when
+ * `FORGE_AI_PROVIDER=vertex` (requires a GCP project + Vertex AI enabled),
+ * otherwise the local deterministic providers. The Vertex module is imported
+ * lazily so Genkit isn't loaded by functions that don't use AI. The RAG
+ * orchestration is identical regardless of provider.
  */
-export function getProviders(): AiProviders {
+export async function getProviders(): Promise<AiProviders> {
+  if (process.env['FORGE_AI_PROVIDER'] === 'vertex') {
+    const { VertexEmbeddingProvider, VertexLlmProvider } = await import('./vertex-providers');
+    return { embedding: new VertexEmbeddingProvider(), llm: new VertexLlmProvider() };
+  }
   return { embedding: new LocalEmbeddingProvider(), llm: new LocalLlmProvider() };
 }

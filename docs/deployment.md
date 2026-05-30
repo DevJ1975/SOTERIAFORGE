@@ -18,8 +18,10 @@ Separate Firebase projects per environment (see `.firebaserc`):
    params `STOREFRONT_URL`, `FUNCTIONS_BASE_URL`.
 3. **Stripe**: create products/prices; add the webhook endpoint
    (`/stripeWebhook`) with the signing secret; map prices into `/catalog`.
-4. **Vector store / LLM** (Phase 6): configure Vertex AI; swap the AI providers
-   factory from the local default to the Vertex adapter.
+4. **Vector store / LLM** (Phase 6): enable Vertex AI on the project, then set
+   `FORGE_AI_PROVIDER=vertex` (optional `VERTEX_LOCATION`) on the functions to
+   switch `getProviders()` from the local default to the Vertex adapter
+   (Gemini 1.5 Pro + text-embedding-004). No code change required.
 5. **Video** (Phase 2): configure Mux (or Cloudflare Stream) if used beyond
    linked video.
 6. **Open Badges 3.0**: provision the issuer key (Ed25519) + hosted issuer
