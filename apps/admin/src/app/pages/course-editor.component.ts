@@ -48,7 +48,7 @@ interface MemberOption {
 }
 
 @Component({
-  selector: 'forge-admin-course-editor',
+  selector: 'assurance-admin-course-editor',
   standalone: true,
   imports: [
     FormsModule,
@@ -234,7 +234,7 @@ interface MemberOption {
         margin-bottom: 0.5rem;
       }
       .course-editor__add-module {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;
@@ -253,7 +253,7 @@ interface MemberOption {
         margin-top: 0.5rem;
       }
       .course-editor__assign {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

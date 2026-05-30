@@ -12,7 +12,7 @@ import { TutorService } from './tutor.service';
  * convenience hint only; the server never trusts it for security decisions.
  */
 @Component({
-  selector: 'forge-tutor-chat',
+  selector: 'assurance-tutor-chat',
   standalone: true,
   imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,7 +50,7 @@ import { TutorService } from './tutor.service';
 
       .tutor-chat__message--user {
         align-self: flex-end;
-        background: var(--forge-color-primary, #4f46e5);
+        background: var(--assurance-color-primary, #4f46e5);
         color: #fff;
       }
 
@@ -71,7 +71,7 @@ import { TutorService } from './tutor.service';
         font-size: 0.75rem;
         padding: 0.125rem 0.5rem;
         border-radius: 9999px;
-        background: var(--forge-color-primary, #4f46e5);
+        background: var(--assurance-color-primary, #4f46e5);
         color: #fff;
         opacity: 0.85;
       }
@@ -106,14 +106,14 @@ import { TutorService } from './tutor.service';
       }
 
       .tutor-chat__input:focus {
-        border-color: var(--forge-color-primary, #4f46e5);
+        border-color: var(--assurance-color-primary, #4f46e5);
       }
 
       .tutor-chat__send-btn {
         padding: 0.5rem 1.25rem;
         border: none;
         border-radius: 0.5rem;
-        background: var(--forge-color-primary, #4f46e5);
+        background: var(--assurance-color-primary, #4f46e5);
         color: #fff;
         font-size: 1rem;
         cursor: pointer;

@@ -22,7 +22,7 @@ import type { CatalogProduct } from '@assurance/shared';
 // tags; the browser fetches and hydrates the product list after bootstrap.
 
 @Component({
-  selector: 'forge-catalog',
+  selector: 'assurance-catalog',
   standalone: true,
   imports: [CardModule, ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -127,7 +127,7 @@ export class CatalogComponent {
     this.meta.updateTag({
       name: 'description',
       content:
-        'Browse FORGE safety-training courses. One-time purchase or all-access subscription.',
+        'Browse ASSURANCE safety-training courses. One-time purchase or all-access subscription.',
     });
 
     // All data fetching is browser-only to avoid Firebase calls during prerender.

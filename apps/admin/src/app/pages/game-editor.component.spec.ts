@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
 import { GameRepository } from '@assurance/data-access';
 import { GameEditorComponent } from './game-editor.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -62,7 +62,7 @@ describe('GameEditorComponent — flip_reveal', () => {
       imports: [GameEditorComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         {
           provide: GameRepository,
           useValue: {
@@ -125,7 +125,7 @@ describe('GameEditorComponent — match_pairs', () => {
       imports: [GameEditorComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         {
           provide: GameRepository,
           useValue: {
@@ -164,7 +164,7 @@ describe('GameEditorComponent — save game', () => {
       imports: [GameEditorComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         {
           provide: GameRepository,
           useValue: { getById: async () => sampleFlipGame, set: setMock },

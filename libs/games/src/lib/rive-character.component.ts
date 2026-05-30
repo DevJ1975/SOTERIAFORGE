@@ -26,7 +26,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 
 @Component({
-  selector: 'forge-rive-character',
+  selector: 'assurance-rive-character',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

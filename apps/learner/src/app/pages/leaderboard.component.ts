@@ -4,7 +4,7 @@ import { TenantService } from '@assurance/auth';
 import { LeaderboardComponent } from '@assurance/gamification';
 
 @Component({
-  selector: 'forge-leaderboard-page',
+  selector: 'assurance-leaderboard-page',
   standalone: true,
   imports: [RouterLink, LeaderboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -16,7 +16,7 @@ import { LeaderboardComponent } from '@assurance/gamification';
       </nav>
 
       @if (tenantId(); as tid) {
-        <forge-leaderboard [tenantId]="tid" period="allTime" />
+        <assurance-leaderboard [tenantId]="tid" period="allTime" />
       } @else {
         <p>Tenant not resolved.</p>
       }
@@ -33,7 +33,7 @@ import { LeaderboardComponent } from '@assurance/gamification';
         margin-bottom: 1.5rem;
       }
       .leaderboard-page__nav a {
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
         font-weight: 500;
       }

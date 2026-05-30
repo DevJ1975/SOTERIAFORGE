@@ -76,13 +76,13 @@ export interface AiProviders {
 
 /**
  * Provider factory. Returns the real Vertex AI adapter when
- * `FORGE_AI_PROVIDER=vertex` (requires a GCP project + Vertex AI enabled),
+ * `ASSURANCE_AI_PROVIDER=vertex` (requires a GCP project + Vertex AI enabled),
  * otherwise the local deterministic providers. The Vertex module is imported
  * lazily so Genkit isn't loaded by functions that don't use AI. The RAG
  * orchestration is identical regardless of provider.
  */
 export async function getProviders(): Promise<AiProviders> {
-  if (process.env['FORGE_AI_PROVIDER'] === 'vertex') {
+  if (process.env['ASSURANCE_AI_PROVIDER'] === 'vertex') {
     const { VertexEmbeddingProvider, VertexLlmProvider } = await import('./vertex-providers');
     return { embedding: new VertexEmbeddingProvider(), llm: new VertexLlmProvider() };
   }

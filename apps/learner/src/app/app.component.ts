@@ -5,7 +5,7 @@ import { TenantService } from '@assurance/auth';
 import { OfflineXapiQueue } from '@assurance/standards';
 
 @Component({
-  selector: 'forge-learner-root',
+  selector: 'assurance-learner-root',
   standalone: true,
   imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -13,21 +13,21 @@ import { OfflineXapiQueue } from '@assurance/standards';
     <!-- Skip link: visually hidden until focused; jumps keyboard users past nav -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <div class="forge-shell">
-      <header class="forge-shell__header" role="banner">
-        <span class="forge-shell__brand">Soteria Assurance</span>
+    <div class="assurance-shell">
+      <header class="assurance-shell__header" role="banner">
+        <span class="assurance-shell__brand">Soteria Assurance</span>
         @if (tenant.tenantId(); as tid) {
-          <span class="forge-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
+          <span class="assurance-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
             tid
           }}</span>
         }
       </header>
 
-      <main id="main-content" class="forge-shell__main" tabindex="-1">
+      <main id="main-content" class="assurance-shell__main" tabindex="-1">
         <router-outlet />
       </main>
 
-      <footer class="forge-shell__footer">
+      <footer class="assurance-shell__footer">
         <span>© {{ year }} Soteria Assurance</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
@@ -35,25 +35,25 @@ import { OfflineXapiQueue } from '@assurance/standards';
   `,
   styles: [
     `
-      .forge-shell__header {
+      .assurance-shell__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0.75rem 1.25rem;
-        background: var(--forge-primary, #0b5fff);
+        background: var(--assurance-primary, #0b5fff);
         color: #fff;
       }
-      .forge-shell__brand {
+      .assurance-shell__brand {
         font-weight: 700;
       }
-      .forge-shell__tenant {
+      .assurance-shell__tenant {
         opacity: 0.85;
         text-transform: capitalize;
       }
-      .forge-shell__main {
+      .assurance-shell__main {
         outline: none;
       }
-      .forge-shell__footer {
+      .assurance-shell__footer {
         display: flex;
         flex-wrap: wrap;
         gap: 0.25rem 1rem;

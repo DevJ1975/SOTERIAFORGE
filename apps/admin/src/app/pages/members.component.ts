@@ -14,7 +14,7 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
 );
 
 @Component({
-  selector: 'forge-admin-members',
+  selector: 'assurance-admin-members',
   standalone: true,
   imports: [FormsModule, ButtonModule, InputTextModule, TableModule, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -126,7 +126,7 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
         padding: 0 1rem;
       }
       .members__invite {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

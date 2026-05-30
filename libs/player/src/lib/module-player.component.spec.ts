@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { GameRepository, QuizRepository } from '@assurance/data-access';
 import { EnrollmentService, QuizSubmissionService } from '@assurance/lms-core';
 import { Cmi5LaunchService, ScormRuntimeService } from '@assurance/standards';
@@ -8,7 +8,7 @@ import { ModulePlayerComponent } from './module-player.component';
 import { PlayerProgressService } from './player-progress.service';
 import type { Module } from '@assurance/shared';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -84,7 +84,7 @@ describe('ModulePlayerComponent', () => {
       imports: [ModulePlayerComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: PlayerProgressService, useValue: mockPlayerProgressService },
         { provide: EnrollmentService, useValue: mockEnrollmentService },
         { provide: ScormRuntimeService, useValue: mockScormRuntimeService },
@@ -115,7 +115,7 @@ describe('ModulePlayerComponent', () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
-  it('renders forge-scorm-player (or its defer placeholder) for scorm module', () => {
+  it('renders assurance-scorm-player (or its defer placeholder) for scorm module', () => {
     const scormModule: Module = {
       ...videoModule,
       contentType: 'scorm',
@@ -126,16 +126,16 @@ describe('ModulePlayerComponent', () => {
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     // The @defer placeholder shows "Loading SCORM player…" before it resolves,
-    // and once resolved it renders forge-scorm-player.
+    // and once resolved it renders assurance-scorm-player.
     const text = el.textContent ?? '';
     const hasScormContent =
-      el.querySelector('forge-scorm-player') !== null ||
+      el.querySelector('assurance-scorm-player') !== null ||
       text.includes('Loading SCORM') ||
       text.includes('No SCORM URL');
     expect(hasScormContent).toBe(true);
   });
 
-  it('renders forge-cmi5-launcher (or its defer placeholder) for cmi5 module', async () => {
+  it('renders assurance-cmi5-launcher (or its defer placeholder) for cmi5 module', async () => {
     const cmi5Module: Module = {
       ...videoModule,
       contentType: 'cmi5',
@@ -150,13 +150,13 @@ describe('ModulePlayerComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     const text = el.textContent ?? '';
     const hasCmi5Content =
-      el.querySelector('forge-cmi5-launcher') !== null ||
+      el.querySelector('assurance-cmi5-launcher') !== null ||
       text.includes('Loading cmi5') ||
       text.includes('No cmi5 URL');
     expect(hasCmi5Content).toBe(true);
   });
 
-  it('renders forge-cmi5-launcher (or its defer placeholder) for unity module', async () => {
+  it('renders assurance-cmi5-launcher (or its defer placeholder) for unity module', async () => {
     const unityModule: Module = {
       ...videoModule,
       contentType: 'unity',
@@ -171,27 +171,27 @@ describe('ModulePlayerComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     const text = el.textContent ?? '';
     const hasUnityContent =
-      el.querySelector('forge-cmi5-launcher') !== null ||
+      el.querySelector('assurance-cmi5-launcher') !== null ||
       text.includes('Loading Unity') ||
       text.includes('No Unity URL');
     expect(hasUnityContent).toBe(true);
   });
 
-  it('renders forge-quiz-player (or its defer placeholder) for quiz module', () => {
+  it('renders assurance-quiz-player (or its defer placeholder) for quiz module', () => {
     const quizModule: Module = { ...videoModule, contentType: 'quiz', id: 'mod-4' };
     fixture.componentRef.setInput('module', quizModule);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    // Before defer resolves, the @placeholder is shown; after, forge-quiz-player renders.
+    // Before defer resolves, the @placeholder is shown; after, assurance-quiz-player renders.
     const text = el.textContent ?? '';
     const hasQuizContent =
-      el.querySelector('forge-quiz-player') !== null ||
+      el.querySelector('assurance-quiz-player') !== null ||
       text.includes('Loading quiz') ||
       text.includes('No quiz configured');
     expect(hasQuizContent).toBe(true);
   });
 
-  it('renders forge-game-player (or its defer placeholder) for game module', () => {
+  it('renders assurance-game-player (or its defer placeholder) for game module', () => {
     const gameModule: Module = {
       ...videoModule,
       contentType: 'game',
@@ -203,7 +203,7 @@ describe('ModulePlayerComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     const text = el.textContent ?? '';
     const hasGameContent =
-      el.querySelector('forge-game-player') !== null ||
+      el.querySelector('assurance-game-player') !== null ||
       text.includes('Loading game') ||
       text.includes('No game configured');
     expect(hasGameContent).toBe(true);

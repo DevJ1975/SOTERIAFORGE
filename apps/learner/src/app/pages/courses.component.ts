@@ -16,7 +16,7 @@ interface CourseWithAssignment {
 }
 
 @Component({
-  selector: 'forge-learner-courses',
+  selector: 'assurance-learner-courses',
   standalone: true,
   imports: [RouterLink, CardModule, TagModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,7 +66,7 @@ interface CourseWithAssignment {
         padding: 0 1rem;
       }
       .courses__status {
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
       .courses__list {
         list-style: none;
@@ -88,12 +88,12 @@ interface CourseWithAssignment {
       }
       .courses__due-date {
         font-size: 0.8125rem;
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
       .courses__link {
         display: inline-block;
         margin-top: 0.75rem;
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
         font-weight: 600;
       }

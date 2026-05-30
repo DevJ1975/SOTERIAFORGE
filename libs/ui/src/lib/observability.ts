@@ -33,7 +33,7 @@ export class ConsoleTelemetrySink implements TelemetrySink {
 
 /** Routes uncaught Angular errors to the telemetry sink (and the console in dev). */
 @Injectable()
-export class ForgeErrorHandler implements ErrorHandler {
+export class AssuranceErrorHandler implements ErrorHandler {
   private readonly sink = inject(TELEMETRY_SINK);
 
   handleError(error: unknown): void {
@@ -49,6 +49,6 @@ export class ForgeErrorHandler implements ErrorHandler {
 export function provideObservability(sink?: Provider): EnvironmentProviders {
   return makeEnvironmentProviders([
     sink ?? { provide: TELEMETRY_SINK, useClass: ConsoleTelemetrySink },
-    { provide: ErrorHandler, useClass: ForgeErrorHandler },
+    { provide: ErrorHandler, useClass: AssuranceErrorHandler },
   ]);
 }

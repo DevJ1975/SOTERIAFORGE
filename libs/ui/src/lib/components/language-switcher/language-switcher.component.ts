@@ -3,11 +3,11 @@ import { TranslocoService } from '@jsverse/transloco';
 
 /**
  * Language selector bound to the active Transloco language. Drop
- * `<forge-language-switcher />` into any app shell; the active language persists
+ * `<assurance-language-switcher />` into any app shell; the active language persists
  * via Transloco for the session.
  */
 @Component({
-  selector: 'forge-language-switcher',
+  selector: 'assurance-language-switcher',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

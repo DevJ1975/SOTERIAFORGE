@@ -1,5 +1,5 @@
 /**
- * Platform-wide constants for Soteria FORGE.
+ * Platform-wide constants for Soteria ASSURANCE.
  * Keep these aligned with Firestore security rules and Cloud Functions claim-setters.
  */
 

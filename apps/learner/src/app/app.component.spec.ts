@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { AppComponent } from './app.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -20,7 +20,7 @@ describe('Learner AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter([]), { provide: FORGE_ENV, useValue: testEnv }],
+      providers: [provideRouter([]), { provide: ASSURANCE_ENV, useValue: testEnv }],
     }).compileComponents();
   });
 

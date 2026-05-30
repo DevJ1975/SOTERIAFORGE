@@ -1,5 +1,5 @@
 /**
- * Pure XP / level math for Soteria FORGE gamification.
+ * Pure XP / level math for Soteria ASSURANCE gamification.
  *
  * ## Default curve
  * Level N requires a **cumulative** total XP of `Math.floor(100 * N^1.5)` to reach.

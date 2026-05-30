@@ -19,7 +19,7 @@ Separate Firebase projects per environment (see `.firebaserc`):
 3. **Stripe**: create products/prices; add the webhook endpoint
    (`/stripeWebhook`) with the signing secret; map prices into `/catalog`.
 4. **Vector store / LLM** (Phase 6): enable Vertex AI on the project, then set
-   `FORGE_AI_PROVIDER=vertex` (optional `VERTEX_LOCATION`) on the functions to
+   `ASSURANCE_AI_PROVIDER=vertex` (optional `VERTEX_LOCATION`) on the functions to
    switch `getProviders()` from the local default to the Vertex adapter
    (Gemini 1.5 Pro + text-embedding-004). No code change required.
 5. **Video** (Phase 2): configure Mux (or Cloudflare Stream) if used beyond

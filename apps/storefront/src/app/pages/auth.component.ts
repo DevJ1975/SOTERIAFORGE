@@ -7,7 +7,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
 
 @Component({
-  selector: 'forge-storefront-auth',
+  selector: 'assurance-storefront-auth',
   standalone: true,
   imports: [FormsModule, ButtonModule, InputTextModule, CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -129,7 +129,7 @@ import { CardModule } from 'primeng/card';
         background: none;
         border: none;
         padding: 0;
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         cursor: pointer;
         font-size: inherit;
         text-decoration: underline;

@@ -23,7 +23,7 @@ import { QuizPlayerComponent } from './quiz-player.component';
 import { GamePlayerComponent } from './game-player.component';
 
 @Component({
-  selector: 'forge-module-player',
+  selector: 'assurance-module-player',
   standalone: true,
   imports: [
     VideoPlayerComponent,
@@ -38,43 +38,43 @@ import { GamePlayerComponent } from './game-player.component';
       @case ('video') {
         @defer {
           @if (videoUrl(); as vurl) {
-            <forge-video-player
+            <assurance-video-player
               [url]="vurl"
               [title]="module().title"
               (progress)="onProgress($event)"
               (completed)="onCompleted()"
             />
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No video URL configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading video player…</div>
+          <div class="assurance-module-player__loading">Loading video player…</div>
         }
       }
       @case ('scorm') {
         @defer {
           @if (contentUrl(); as url) {
-            <forge-scorm-player
+            <assurance-scorm-player
               [launchUrl]="url"
               [scormVersion]="'2004'"
               (commit)="onScormCommit($event)"
               (completed)="onScormCompleted($event)"
             />
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No SCORM URL configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading SCORM player…</div>
+          <div class="assurance-module-player__loading">Loading SCORM player…</div>
         }
       }
       @case ('cmi5') {
         @defer {
           @if (cmi5Params(); as params) {
-            <forge-cmi5-launcher
+            <assurance-cmi5-launcher
               [auUrl]="params.auUrl"
               [endpoint]="params.endpoint"
               [fetch]="params.fetch"
@@ -84,20 +84,20 @@ import { GamePlayerComponent } from './game-player.component';
               (completed)="onCmi5Completed($event)"
             />
           } @else if (cmi5Loading()) {
-            <div class="forge-module-player__loading">Loading cmi5 player…</div>
+            <div class="assurance-module-player__loading">Loading cmi5 player…</div>
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No cmi5 URL configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading cmi5 player…</div>
+          <div class="assurance-module-player__loading">Loading cmi5 player…</div>
         }
       }
       @case ('unity') {
         @defer {
           @if (cmi5Params(); as params) {
-            <forge-cmi5-launcher
+            <assurance-cmi5-launcher
               [auUrl]="params.auUrl"
               [endpoint]="params.endpoint"
               [fetch]="params.fetch"
@@ -107,20 +107,20 @@ import { GamePlayerComponent } from './game-player.component';
               (completed)="onCmi5Completed($event)"
             />
           } @else if (cmi5Loading()) {
-            <div class="forge-module-player__loading">Loading Unity player…</div>
+            <div class="assurance-module-player__loading">Loading Unity player…</div>
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No Unity URL configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading Unity player…</div>
+          <div class="assurance-module-player__loading">Loading Unity player…</div>
         }
       }
       @case ('quiz') {
         @defer {
           @if (module().assetRef; as quizId) {
-            <forge-quiz-player
+            <assurance-quiz-player
               [quizId]="quizId"
               [courseId]="courseId()"
               [moduleId]="module().id"
@@ -128,18 +128,18 @@ import { GamePlayerComponent } from './game-player.component';
               [uid]="uid()"
             />
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No quiz configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading quiz player…</div>
+          <div class="assurance-module-player__loading">Loading quiz player…</div>
         }
       }
       @case ('game') {
         @defer {
           @if (module().assetRef; as gameId) {
-            <forge-game-player
+            <assurance-game-player
               [gameId]="gameId"
               [courseId]="courseId()"
               [moduleId]="module().id"
@@ -147,16 +147,16 @@ import { GamePlayerComponent } from './game-player.component';
               [uid]="uid()"
             />
           } @else {
-            <div class="forge-module-player__no-url">
+            <div class="assurance-module-player__no-url">
               <p>No game configured for this module.</p>
             </div>
           }
         } @placeholder {
-          <div class="forge-module-player__loading">Loading game player…</div>
+          <div class="assurance-module-player__loading">Loading game player…</div>
         }
       }
       @default {
-        <div class="forge-module-player__placeholder">
+        <div class="assurance-module-player__placeholder">
           <p>Unknown content type: {{ module().contentType }}</p>
         </div>
       }
@@ -167,14 +167,14 @@ import { GamePlayerComponent } from './game-player.component';
       :host {
         display: block;
       }
-      .forge-module-player__placeholder,
-      .forge-module-player__loading,
-      .forge-module-player__no-url {
+      .assurance-module-player__placeholder,
+      .assurance-module-player__loading,
+      .assurance-module-player__no-url {
         padding: 2rem;
-        border: 2px dashed var(--forge-border, #ccc);
+        border: 2px dashed var(--assurance-border, #ccc);
         border-radius: 0.5rem;
         text-align: center;
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
     `,
   ],
@@ -204,7 +204,7 @@ export class ModulePlayerComponent {
 
   /**
    * JSON-serialised xAPI Actor from the server-issued params.
-   * Used by `forge-cmi5-launcher`'s `actor` input (which expects a string).
+   * Used by `assurance-cmi5-launcher`'s `actor` input (which expects a string).
    */
   readonly actorJson = computed(() => JSON.stringify(this.cmi5Params()?.actor ?? null));
 

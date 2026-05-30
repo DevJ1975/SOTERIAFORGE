@@ -27,7 +27,7 @@ interface LearnerRow {
 }
 
 @Component({
-  selector: 'forge-admin-reports',
+  selector: 'assurance-admin-reports',
   standalone: true,
   imports: [ButtonModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

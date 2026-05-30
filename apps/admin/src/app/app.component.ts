@@ -3,20 +3,20 @@ import { RouterOutlet } from '@angular/router';
 import { TenantService } from '@assurance/auth';
 
 @Component({
-  selector: 'forge-admin-root',
+  selector: 'assurance-admin-root',
   standalone: true,
   imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="forge-shell">
-      <header class="forge-shell__header">
-        <span class="forge-shell__brand">Soteria Assurance</span>
+    <main class="assurance-shell">
+      <header class="assurance-shell__header">
+        <span class="assurance-shell__brand">Soteria Assurance</span>
         @if (tenant.tenantId(); as tid) {
-          <span class="forge-shell__tenant">Admin · {{ tid }}</span>
+          <span class="assurance-shell__tenant">Admin · {{ tid }}</span>
         }
       </header>
       <router-outlet />
-      <footer class="forge-shell__footer">
+      <footer class="assurance-shell__footer">
         <span>© {{ year }} Soteria Assurance</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
@@ -24,22 +24,22 @@ import { TenantService } from '@assurance/auth';
   `,
   styles: [
     `
-      .forge-shell__header {
+      .assurance-shell__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0.75rem 1.25rem;
-        background: var(--forge-primary, #0b5fff);
+        background: var(--assurance-primary, #0b5fff);
         color: #fff;
       }
-      .forge-shell__brand {
+      .assurance-shell__brand {
         font-weight: 700;
       }
-      .forge-shell__tenant {
+      .assurance-shell__tenant {
         opacity: 0.85;
         text-transform: capitalize;
       }
-      .forge-shell__footer {
+      .assurance-shell__footer {
         display: flex;
         flex-wrap: wrap;
         gap: 0.25rem 1rem;

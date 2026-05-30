@@ -9,7 +9,7 @@ import { TenantAdminService } from '@assurance/tenant';
 import type { Tenant } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-superadmin-tenants',
+  selector: 'assurance-superadmin-tenants',
   standalone: true,
   imports: [FormsModule, ButtonModule, CardModule, InputTextModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

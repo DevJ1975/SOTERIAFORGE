@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { CatalogRepository } from '@assurance/data-access';
 import type { CatalogProduct } from '@assurance/shared';
 import { CatalogComponent } from './catalog.component';
@@ -18,7 +18,7 @@ if (!('randomUUID' in crypto)) {
   });
 }
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -54,7 +54,7 @@ describe('CatalogComponent', () => {
       imports: [CatalogComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: CatalogRepository, useValue: catalogRepoStub },
       ],
     }).compileComponents();

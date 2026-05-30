@@ -25,17 +25,17 @@ import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
  * - `commit`    — emits the raw CMI state on every SCORM commit.
  * - `completed` — emits `{completed: true, score?}` when the SCO finishes.
  *
- * Selector: `forge-scorm-player`
+ * Selector: `assurance-scorm-player`
  */
 @Component({
-  selector: 'forge-scorm-player',
+  selector: 'assurance-scorm-player',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="forge-scorm-player__wrapper">
+    <div class="assurance-scorm-player__wrapper">
       <iframe
         #scormFrame
-        class="forge-scorm-player__frame"
+        class="assurance-scorm-player__frame"
         title="SCORM content"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
         allowfullscreen
@@ -48,7 +48,7 @@ import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
         display: block;
         width: 100%;
       }
-      .forge-scorm-player__wrapper {
+      .assurance-scorm-player__wrapper {
         position: relative;
         width: 100%;
         aspect-ratio: 16 / 9;
@@ -56,7 +56,7 @@ import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
         border-radius: 4px;
         overflow: hidden;
       }
-      .forge-scorm-player__frame {
+      .assurance-scorm-player__frame {
         position: absolute;
         inset: 0;
         width: 100%;

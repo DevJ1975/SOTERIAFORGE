@@ -1,13 +1,13 @@
-import type { ForgeEnvironment } from '@assurance/auth';
+import type { AssuranceEnvironment } from '@assurance/auth';
 
-export const environment: ForgeEnvironment = {
+export const environment: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
     apiKey: 'demo',
     authDomain: 'localhost',
-    projectId: 'soteria-forge-dev',
-    storageBucket: 'soteria-forge-dev.appspot.com',
+    projectId: 'soteria-assurance-dev',
+    storageBucket: 'soteria-assurance-dev.appspot.com',
     messagingSenderId: 'demo',
     appId: 'demo',
   },

@@ -2,16 +2,16 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { ButtonModule } from 'primeng/button';
 
 /**
- * ForgeButtonComponent — a thin design-system wrapper over PrimeNG's `p-button`.
+ * AssuranceButtonComponent — a thin design-system wrapper over PrimeNG's `p-button`.
  *
- * Tokens (--forge-color-primary etc.) are picked up automatically because PrimeNG
+ * Tokens (--assurance-color-primary etc.) are picked up automatically because PrimeNG
  * uses CSS custom properties for its theming layer.
  *
  * @example
- * <forge-button label="Save" severity="primary" (clicked)="save()" />
+ * <assurance-button label="Save" severity="primary" (clicked)="save()" />
  */
 @Component({
-  selector: 'forge-button',
+  selector: 'assurance-button',
   standalone: true,
   imports: [ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,7 +25,7 @@ import { ButtonModule } from 'primeng/button';
     />
   `,
 })
-export class ForgeButtonComponent {
+export class AssuranceButtonComponent {
   /** Button label text. */
   readonly label = input<string>('');
 

@@ -29,31 +29,31 @@ describe('ThemeService', () => {
   });
 
   describe('applyTheme', () => {
-    it('should write --forge-color-primary CSS var onto documentElement', () => {
+    it('should write --assurance-color-primary CSS var onto documentElement', () => {
       const custom: ThemeTokens = { ...DEFAULT_THEME, colorPrimary: '#ff0000' };
       service.applyTheme(custom);
-      const value = document.documentElement.style.getPropertyValue('--forge-color-primary');
+      const value = document.documentElement.style.getPropertyValue('--assurance-color-primary');
       expect(value).toBe('#ff0000');
     });
 
-    it('should write --forge-color-surface CSS var onto documentElement', () => {
+    it('should write --assurance-color-surface CSS var onto documentElement', () => {
       const custom: ThemeTokens = { ...DEFAULT_THEME, colorSurface: '#f0f0f0' };
       service.applyTheme(custom);
-      const value = document.documentElement.style.getPropertyValue('--forge-color-surface');
+      const value = document.documentElement.style.getPropertyValue('--assurance-color-surface');
       expect(value).toBe('#f0f0f0');
     });
 
-    it('should write --forge-font-family CSS var onto documentElement', () => {
+    it('should write --assurance-font-family CSS var onto documentElement', () => {
       const custom: ThemeTokens = { ...DEFAULT_THEME, fontFamily: 'Roboto, sans-serif' };
       service.applyTheme(custom);
-      const value = document.documentElement.style.getPropertyValue('--forge-font-family');
+      const value = document.documentElement.style.getPropertyValue('--assurance-font-family');
       expect(value).toBe('Roboto, sans-serif');
     });
 
-    it('should write --forge-radius CSS var onto documentElement', () => {
+    it('should write --assurance-radius CSS var onto documentElement', () => {
       const custom: ThemeTokens = { ...DEFAULT_THEME, radius: '0.5rem' };
       service.applyTheme(custom);
-      const value = document.documentElement.style.getPropertyValue('--forge-radius');
+      const value = document.documentElement.style.getPropertyValue('--assurance-radius');
       expect(value).toBe('0.5rem');
     });
 
@@ -74,18 +74,18 @@ describe('ThemeService', () => {
     it('should write DEFAULT_THEME CSS vars onto documentElement after reset', () => {
       service.applyTheme({ ...DEFAULT_THEME, colorPrimary: '#aabbcc' });
       service.reset();
-      const value = document.documentElement.style.getPropertyValue('--forge-color-primary');
+      const value = document.documentElement.style.getPropertyValue('--assurance-color-primary');
       expect(value).toBe(DEFAULT_THEME.colorPrimary);
     });
   });
 
   describe('applyBranding', () => {
-    it('should map --forge-color-primary branding color to colorPrimary token', () => {
+    it('should map --assurance-color-primary branding color to colorPrimary token', () => {
       service.applyBranding({
-        colors: { '--forge-color-primary': '#123456' },
+        colors: { '--assurance-color-primary': '#123456' },
       });
       expect(service.tokens().colorPrimary).toBe('#123456');
-      const value = document.documentElement.style.getPropertyValue('--forge-color-primary');
+      const value = document.documentElement.style.getPropertyValue('--assurance-color-primary');
       expect(value).toBe('#123456');
     });
 
@@ -107,7 +107,7 @@ describe('ThemeService', () => {
 
     it('should preserve tokens not overridden by branding', () => {
       service.applyBranding({
-        colors: { '--forge-color-primary': '#abcdef' },
+        colors: { '--assurance-color-primary': '#abcdef' },
       });
       // colorSurface was not in the branding so it keeps DEFAULT_THEME value
       expect(service.tokens().colorSurface).toBe(DEFAULT_THEME.colorSurface);

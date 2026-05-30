@@ -1,6 +1,11 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import {
+  ASSURANCE_ENV,
+  type AssuranceEnvironment,
+  AuthService,
+  TenantService,
+} from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { DashboardComponent } from './dashboard.component';
@@ -8,7 +13,7 @@ import type { Member } from '@assurance/shared';
 
 expect.extend(toHaveNoViolations);
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -62,7 +67,7 @@ describe('DashboardComponent – accessibility', () => {
       imports: [DashboardComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },

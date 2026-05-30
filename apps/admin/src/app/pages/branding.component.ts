@@ -27,17 +27,17 @@ function formToBranding(form: BrandingForm): Branding {
     fontFamily: form.fontFamily || undefined,
     emailFromName: form.emailFromName || undefined,
     colors: {
-      '--forge-color-primary': form.colorPrimary,
-      '--forge-color-surface': form.colorSurface,
-      '--forge-color-accent': form.colorAccent,
-      '--forge-color-text': form.colorText,
-      '--forge-color-text-muted': form.colorTextMuted,
+      '--assurance-color-primary': form.colorPrimary,
+      '--assurance-color-surface': form.colorSurface,
+      '--assurance-color-accent': form.colorAccent,
+      '--assurance-color-text': form.colorText,
+      '--assurance-color-text-muted': form.colorTextMuted,
     },
   };
 }
 
 @Component({
-  selector: 'forge-admin-branding',
+  selector: 'assurance-admin-branding',
   standalone: true,
   imports: [FormsModule, ButtonModule, InputTextModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -305,11 +305,11 @@ export class BrandingComponent implements OnInit {
           faviconUrl: b.faviconUrl ?? '',
           fontFamily: b.fontFamily ?? '',
           emailFromName: b.emailFromName ?? '',
-          colorPrimary: b.colors['--forge-color-primary'] ?? '#1d4ed8',
-          colorSurface: b.colors['--forge-color-surface'] ?? '#ffffff',
-          colorAccent: b.colors['--forge-color-accent'] ?? '#7c3aed',
-          colorText: b.colors['--forge-color-text'] ?? '#111827',
-          colorTextMuted: b.colors['--forge-color-text-muted'] ?? '#6b7280',
+          colorPrimary: b.colors['--assurance-color-primary'] ?? '#1d4ed8',
+          colorSurface: b.colors['--assurance-color-surface'] ?? '#ffffff',
+          colorAccent: b.colors['--assurance-color-accent'] ?? '#7c3aed',
+          colorText: b.colors['--assurance-color-text'] ?? '#111827',
+          colorTextMuted: b.colors['--assurance-color-text-muted'] ?? '#6b7280',
         });
       }
     } finally {

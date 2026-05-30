@@ -2,15 +2,15 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { CardModule } from 'primeng/card';
 
 /**
- * ForgeCardComponent — a design-system wrapper over PrimeNG's `p-card`.
+ * AssuranceCardComponent — a design-system wrapper over PrimeNG's `p-card`.
  *
  * @example
- * <forge-card title="Profile">
+ * <assurance-card title="Profile">
  *   <p>Card body content goes here.</p>
- * </forge-card>
+ * </assurance-card>
  */
 @Component({
-  selector: 'forge-card',
+  selector: 'assurance-card',
   standalone: true,
   imports: [CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,7 +20,7 @@ import { CardModule } from 'primeng/card';
     </p-card>
   `,
 })
-export class ForgeCardComponent {
+export class AssuranceCardComponent {
   /** Card header / title text. */
   readonly title = input<string>('');
 }

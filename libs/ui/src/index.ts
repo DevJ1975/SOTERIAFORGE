@@ -11,7 +11,7 @@ export * from './lib/observability';
 export * from './lib/i18n';
 
 // Components
-export * from './lib/components/forge-button/forge-button.component';
-export * from './lib/components/forge-card/forge-card.component';
+export * from './lib/components/assurance-button/assurance-button.component';
+export * from './lib/components/assurance-card/assurance-card.component';
 export * from './lib/components/page-shell/page-shell.component';
 export * from './lib/components/language-switcher/language-switcher.component';

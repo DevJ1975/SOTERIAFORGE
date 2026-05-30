@@ -1,12 +1,17 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import {
+  ASSURANCE_ENV,
+  type AssuranceEnvironment,
+  AuthService,
+  TenantService,
+} from '@assurance/auth';
 import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
 import { TutorPageComponent } from './tutor.component';
 import type { ChatMessage } from '@assurance/shared';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -52,7 +57,7 @@ describe('TutorPageComponent', () => {
       imports: [TutorPageComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: TutorService, useValue: mockTutorService },
@@ -81,13 +86,13 @@ describe('TutorPageComponent', () => {
     expect(el.querySelector('a[routerLink="/"]')).not.toBeNull();
   });
 
-  it('renders forge-tutor-chat when tenantId and uid are available', () => {
+  it('renders assurance-tutor-chat when tenantId and uid are available', () => {
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('forge-tutor-chat')).not.toBeNull();
+    expect(el.querySelector('assurance-tutor-chat')).not.toBeNull();
   });
 
-  it('does not render forge-tutor-chat when uid is missing', () => {
+  it('does not render assurance-tutor-chat when uid is missing', () => {
     const noUidAuthService = { principal: () => null };
 
     TestBed.resetTestingModule();
@@ -95,7 +100,7 @@ describe('TutorPageComponent', () => {
       imports: [TutorPageComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: noUidAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: TutorService, useValue: mockTutorService },
@@ -107,6 +112,6 @@ describe('TutorPageComponent', () => {
     f.detectChanges();
 
     const el: HTMLElement = f.nativeElement;
-    expect(el.querySelector('forge-tutor-chat')).toBeNull();
+    expect(el.querySelector('assurance-tutor-chat')).toBeNull();
   });
 });

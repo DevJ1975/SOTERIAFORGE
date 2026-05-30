@@ -27,17 +27,17 @@ import { buildLaunchUrl } from './cmi5';
  * `{type: 'cmi5:completed'}`). Authoritative completion tracking runs through
  * the LRS pipeline.
  *
- * Selector: `forge-cmi5-launcher`
+ * Selector: `assurance-cmi5-launcher`
  */
 @Component({
-  selector: 'forge-cmi5-launcher',
+  selector: 'assurance-cmi5-launcher',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isBrowser) {
-      <div class="forge-cmi5-launcher__wrapper">
+      <div class="assurance-cmi5-launcher__wrapper">
         <iframe
-          class="forge-cmi5-launcher__frame"
+          class="assurance-cmi5-launcher__frame"
           [src]="safeLaunchUrl()"
           title="cmi5 content"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
@@ -53,7 +53,7 @@ import { buildLaunchUrl } from './cmi5';
         display: block;
         width: 100%;
       }
-      .forge-cmi5-launcher__wrapper {
+      .assurance-cmi5-launcher__wrapper {
         position: relative;
         width: 100%;
         aspect-ratio: 16 / 9;
@@ -61,7 +61,7 @@ import { buildLaunchUrl } from './cmi5';
         border-radius: 4px;
         overflow: hidden;
       }
-      .forge-cmi5-launcher__frame {
+      .assurance-cmi5-launcher__frame {
         position: absolute;
         inset: 0;
         width: 100%;

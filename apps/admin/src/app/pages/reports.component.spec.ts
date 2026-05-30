@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
 import { MemberRepository, EnrollmentRepository } from '@assurance/data-access';
 import type { Member, Enrollment } from '@assurance/shared';
 import { ReportsComponent } from './reports.component';
@@ -19,7 +19,7 @@ if (typeof URL.revokeObjectURL === 'undefined') {
   });
 }
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -70,7 +70,7 @@ describe('ReportsComponent', () => {
       imports: [ReportsComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: MemberRepository, useValue: memberRepoStub },
         { provide: EnrollmentRepository, useValue: enrollmentRepoStub },
         { provide: TenantService, useValue: { tenantId: () => 'acme' } },

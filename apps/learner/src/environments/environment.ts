@@ -1,6 +1,6 @@
-import type { ForgeEnvironment } from '@assurance/auth';
+import type { AssuranceEnvironment } from '@assurance/auth';
 
-export const environment: ForgeEnvironment = {
+export const environment: AssuranceEnvironment = {
   production: true,
   rootDomain: 'soteriaforge.com',
   firebase: {

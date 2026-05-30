@@ -8,7 +8,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
-import { FORGE_ENV } from '@assurance/auth';
+import { ASSURANCE_ENV } from '@assurance/auth';
 import { provideForgeFirebase } from '@assurance/data-access';
 import { provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
@@ -28,7 +28,7 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withIncrementalHydration(), withEventReplay()),
     provideAnimationsAsync(),
     providePrimeNG({ theme: { preset: Aura } }),
-    { provide: FORGE_ENV, useValue: environment },
+    { provide: ASSURANCE_ENV, useValue: environment },
     provideForgeFirebase({
       firebase: environment.firebase,
       appCheckSiteKey: environment.appCheckSiteKey,

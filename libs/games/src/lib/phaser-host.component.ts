@@ -38,7 +38,7 @@ import type {
 } from './card-game.model';
 
 @Component({
-  selector: 'forge-phaser-host',
+  selector: 'assurance-phaser-host',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

@@ -38,7 +38,7 @@ export interface UnityShellMessage {
 }
 
 @Component({
-  selector: 'forge-unity-embed',
+  selector: 'assurance-unity-embed',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

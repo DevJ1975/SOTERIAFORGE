@@ -1,7 +1,7 @@
 import { InjectionToken } from '@angular/core';
 
 /** Firebase web config + platform settings injected per app/environment. */
-export interface ForgeEnvironment {
+export interface AssuranceEnvironment {
   production: boolean;
   /** Platform apex used for subdomain tenant resolution, e.g. "soteriaforge.com". */
   rootDomain: string;
@@ -22,4 +22,4 @@ export interface ForgeEnvironment {
   gcipTenantMap?: Record<string, string>;
 }
 
-export const FORGE_ENV = new InjectionToken<ForgeEnvironment>('FORGE_ENV');
+export const ASSURANCE_ENV = new InjectionToken<AssuranceEnvironment>('ASSURANCE_ENV');

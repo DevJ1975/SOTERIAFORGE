@@ -22,7 +22,7 @@ import type { B2cCustomer } from '@assurance/shared';
 // time (deploy-time enhancement).
 
 @Component({
-  selector: 'forge-account',
+  selector: 'assurance-account',
   standalone: true,
   imports: [CardModule, ButtonModule, RouterLink, SlicePipe, DecimalPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -139,7 +139,7 @@ export class AccountComponent {
     this.title.setTitle('My Learning — Soteria Assurance');
     this.meta.updateTag({
       name: 'description',
-      content: 'View your purchased courses, entitlements, and manage your FORGE subscription.',
+      content: 'View your purchased courses, entitlements, and manage your ASSURANCE subscription.',
     });
 
     // All data fetching is browser-only to avoid Firebase calls during prerender.

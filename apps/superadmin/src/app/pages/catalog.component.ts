@@ -16,7 +16,7 @@ interface SelectOption<T extends string> {
 }
 
 @Component({
-  selector: 'forge-superadmin-catalog',
+  selector: 'assurance-superadmin-catalog',
   standalone: true,
   imports: [
     FormsModule,

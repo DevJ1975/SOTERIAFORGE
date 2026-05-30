@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
 import { TenantRepository } from '@assurance/data-access';
 import { BrandingService } from '@assurance/tenant';
 import { BrandingComponent } from './branding.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -24,7 +24,7 @@ describe('BrandingComponent', () => {
       imports: [BrandingComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         {
           provide: TenantRepository,
           useValue: { getById: async () => ({ branding: { colors: {} } }) },

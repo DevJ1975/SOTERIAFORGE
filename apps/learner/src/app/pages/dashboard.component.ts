@@ -14,7 +14,7 @@ import { XpBadgeComponent } from '@assurance/gamification';
 import type { Member } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-dashboard',
+  selector: 'assurance-dashboard',
   standalone: true,
   imports: [CardModule, RouterLink, XpBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,7 +24,7 @@ import type { Member } from '@assurance/shared';
 
       @if (member(); as m) {
         <div class="dash__xp-row">
-          <forge-xp-badge [xp]="m.xp" [streakDays]="m.streakDays" />
+          <assurance-xp-badge [xp]="m.xp" [streakDays]="m.streakDays" />
         </div>
       }
 
@@ -59,7 +59,7 @@ import type { Member } from '@assurance/shared';
       }
       .dash__link {
         display: inline-block;
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
         font-weight: 600;
       }

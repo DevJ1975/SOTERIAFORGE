@@ -2,18 +2,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
-  selector: 'forge-superadmin-root',
+  selector: 'assurance-superadmin-root',
   standalone: true,
   imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="forge-shell">
-      <header class="forge-shell__header">
-        <span class="forge-shell__brand">Soteria Assurance</span>
-        <span class="forge-shell__tenant">Platform Admin</span>
+    <main class="assurance-shell">
+      <header class="assurance-shell__header">
+        <span class="assurance-shell__brand">Soteria Assurance</span>
+        <span class="assurance-shell__tenant">Platform Admin</span>
       </header>
       <router-outlet />
-      <footer class="forge-shell__footer">
+      <footer class="assurance-shell__footer">
         <span>© {{ year }} Soteria Assurance</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
@@ -21,21 +21,21 @@ import { RouterOutlet } from '@angular/router';
   `,
   styles: [
     `
-      .forge-shell__header {
+      .assurance-shell__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0.75rem 1.25rem;
-        background: var(--forge-primary, #0b5fff);
+        background: var(--assurance-primary, #0b5fff);
         color: #fff;
       }
-      .forge-shell__brand {
+      .assurance-shell__brand {
         font-weight: 700;
       }
-      .forge-shell__tenant {
+      .assurance-shell__tenant {
         opacity: 0.85;
       }
-      .forge-shell__footer {
+      .assurance-shell__footer {
         display: flex;
         flex-wrap: wrap;
         gap: 0.25rem 1rem;

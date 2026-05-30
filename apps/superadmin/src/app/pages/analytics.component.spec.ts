@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { AnalyticsService, type PlatformAnalytics } from '../services/analytics.service';
 import { AnalyticsComponent } from './analytics.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -58,7 +58,7 @@ describe('AnalyticsComponent', () => {
       imports: [AnalyticsComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AnalyticsService, useValue: analyticsServiceStub },
       ],
     }).compileComponents();

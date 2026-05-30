@@ -23,7 +23,7 @@ import {
 type GameKind = CardGameConfig['kind'];
 
 @Component({
-  selector: 'forge-admin-game-editor',
+  selector: 'assurance-admin-game-editor',
   standalone: true,
   imports: [RouterLink, FormsModule, ButtonModule, InputTextModule, SelectModule, CheckboxModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -323,7 +323,7 @@ type GameKind = CardGameConfig['kind'];
         margin-bottom: 1rem;
       }
       .game-editor__section {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

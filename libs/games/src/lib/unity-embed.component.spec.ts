@@ -80,7 +80,7 @@ describe('UnityEmbedComponent', () => {
  */
 @Component({
   template: `
-    <forge-unity-embed [launchUrl]="'https://example.com/unity'" [title]="'Test Game'" />
+    <assurance-unity-embed [launchUrl]="'https://example.com/unity'" [title]="'Test Game'" />
   `,
   imports: [UnityEmbedComponent],
   standalone: true,
@@ -96,7 +96,7 @@ describe('UnityEmbedComponent — host component integration', () => {
     const fixture = TestBed.createComponent(TestHostComponent);
     fixture.detectChanges();
 
-    const iframe = fixture.nativeElement.querySelector('forge-unity-embed iframe');
+    const iframe = fixture.nativeElement.querySelector('assurance-unity-embed iframe');
     expect(iframe).toBeTruthy();
   });
 });

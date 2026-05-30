@@ -10,7 +10,7 @@ import { TenantService } from '@assurance/auth';
 import type { Quiz } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-admin-quizzes',
+  selector: 'assurance-admin-quizzes',
   standalone: true,
   imports: [RouterLink, FormsModule, ButtonModule, InputTextModule, InputNumberModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -102,7 +102,7 @@ import type { Quiz } from '@assurance/shared';
         padding: 0 1rem;
       }
       .quizzes__new-form {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

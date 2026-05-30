@@ -5,7 +5,7 @@ import { AnalyticsService } from '../services/analytics.service';
 import type { PlatformAnalytics, TenantAnalyticsRow } from '../services/analytics.service';
 
 @Component({
-  selector: 'forge-superadmin-analytics',
+  selector: 'assurance-superadmin-analytics',
   standalone: true,
   imports: [CardModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

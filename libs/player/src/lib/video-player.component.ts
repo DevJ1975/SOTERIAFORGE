@@ -40,14 +40,14 @@ function toVimeoEmbed(url: string): string {
 }
 
 @Component({
-  selector: 'forge-video-player',
+  selector: 'assurance-video-player',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (kind === 'youtube' || kind === 'vimeo') {
-      <div class="forge-video-player__embed-wrapper">
+      <div class="assurance-video-player__embed-wrapper">
         <iframe
-          class="forge-video-player__iframe"
+          class="assurance-video-player__iframe"
           [src]="safeEmbedUrl"
           [title]="title() ?? 'Video'"
           frameborder="0"
@@ -57,7 +57,7 @@ function toVimeoEmbed(url: string): string {
       </div>
     } @else {
       <!-- HTML5 native video -->
-      <video #videoEl class="forge-video-player__native" controls [title]="title() ?? 'Video'">
+      <video #videoEl class="assurance-video-player__native" controls [title]="title() ?? 'Video'">
         <source [src]="url()" />
         Your browser does not support the video element.
       </video>
@@ -69,13 +69,13 @@ function toVimeoEmbed(url: string): string {
         display: block;
         width: 100%;
       }
-      .forge-video-player__embed-wrapper {
+      .assurance-video-player__embed-wrapper {
         position: relative;
         padding-top: 56.25%; /* 16:9 */
         height: 0;
         overflow: hidden;
       }
-      .forge-video-player__iframe {
+      .assurance-video-player__iframe {
         position: absolute;
         top: 0;
         left: 0;
@@ -83,7 +83,7 @@ function toVimeoEmbed(url: string): string {
         height: 100%;
         border: 0;
       }
-      .forge-video-player__native {
+      .assurance-video-player__native {
         display: block;
         width: 100%;
         max-height: 70vh;

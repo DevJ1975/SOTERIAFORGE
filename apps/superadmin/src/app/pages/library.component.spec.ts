@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { LibraryRepository, TenantRepository } from '@assurance/data-access';
 import type { Course, Tenant } from '@assurance/shared';
 import { LibraryService, type ShareLibraryCourseResult } from '../services/library.service';
@@ -19,7 +19,7 @@ if (!('randomUUID' in crypto)) {
   });
 }
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -76,7 +76,7 @@ describe('LibraryComponent', () => {
       imports: [LibraryComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: LibraryRepository, useValue: libraryRepoStub },
         { provide: TenantRepository, useValue: tenantRepoStub },
         { provide: LibraryService, useValue: libraryServiceStub },

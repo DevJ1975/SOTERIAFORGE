@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
 import { QuizRepository } from '@assurance/data-access';
 import { QuizzesComponent } from './quizzes.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -34,7 +34,7 @@ describe('QuizzesComponent', () => {
       imports: [QuizzesComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: QuizRepository, useValue: { list: async () => [sampleQuiz], set: jest.fn() } },
         { provide: TenantService, useValue: { tenantId: () => 'acme' } },
       ],
@@ -92,7 +92,7 @@ describe('QuizzesComponent — create quiz', () => {
       imports: [QuizzesComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: QuizRepository, useValue: { list: async () => [], set: setMock } },
         { provide: TenantService, useValue: { tenantId: () => 'acme' } },
       ],

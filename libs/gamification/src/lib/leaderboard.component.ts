@@ -7,7 +7,7 @@ import type { Leaderboard, LeaderboardEntry, LeaderboardPeriod } from '@assuranc
  * Data is fetched once on init from {@link LeaderboardRepository}.
  */
 @Component({
-  selector: 'forge-leaderboard',
+  selector: 'assurance-leaderboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -54,29 +54,29 @@ import type { Leaderboard, LeaderboardEntry, LeaderboardPeriod } from '@assuranc
         align-items: center;
         gap: 0.75rem;
         padding: 0.625rem 0.75rem;
-        border-bottom: 1px solid var(--forge-border, #e5e7eb);
+        border-bottom: 1px solid var(--assurance-border, #e5e7eb);
         font-size: 0.9375rem;
       }
       .leaderboard__entry--top3 {
-        background: var(--forge-surface, #f9fafb);
+        background: var(--assurance-surface, #f9fafb);
         font-weight: 600;
       }
       .leaderboard__rank {
         min-width: 2rem;
         font-weight: 700;
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-align: center;
       }
       .leaderboard__name {
         flex: 1;
       }
       .leaderboard__xp {
-        color: var(--forge-text-muted, #6b7280);
+        color: var(--assurance-text-muted, #6b7280);
         font-size: 0.875rem;
       }
       .leaderboard__status,
       .leaderboard__empty {
-        color: var(--forge-text-muted, #6b7280);
+        color: var(--assurance-text-muted, #6b7280);
         font-style: italic;
       }
     `,

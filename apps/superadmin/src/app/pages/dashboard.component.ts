@@ -9,7 +9,7 @@ interface PlatformSection {
 }
 
 @Component({
-  selector: 'forge-superadmin-dashboard',
+  selector: 'assurance-superadmin-dashboard',
   standalone: true,
   imports: [CardModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,

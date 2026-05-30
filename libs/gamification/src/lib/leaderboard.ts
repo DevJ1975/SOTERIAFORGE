@@ -1,5 +1,5 @@
 /**
- * Pure leaderboard ranking utilities for Soteria FORGE gamification.
+ * Pure leaderboard ranking utilities for Soteria ASSURANCE gamification.
  *
  * ## Tie-breaking / ranking strategy
  * Ties **share** rank and **skip** subsequent ranks (standard competition ranking,

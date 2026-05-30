@@ -1,18 +1,18 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import { ForgeCardComponent } from './forge-card.component';
+import { AssuranceCardComponent } from './assurance-card.component';
 
 expect.extend(toHaveNoViolations);
 
-describe('ForgeCardComponent – accessibility', () => {
-  let fixture: ComponentFixture<ForgeCardComponent>;
+describe('AssuranceCardComponent – accessibility', () => {
+  let fixture: ComponentFixture<AssuranceCardComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ForgeCardComponent],
+      imports: [AssuranceCardComponent],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ForgeCardComponent);
+    fixture = TestBed.createComponent(AssuranceCardComponent);
     fixture.componentRef.setInput('title', 'Test Card');
     fixture.detectChanges();
   });

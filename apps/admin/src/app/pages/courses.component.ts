@@ -10,7 +10,7 @@ import { TenantService } from '@assurance/auth';
 import type { Course } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-admin-courses',
+  selector: 'assurance-admin-courses',
   standalone: true,
   imports: [RouterLink, FormsModule, ButtonModule, InputTextModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -111,7 +111,7 @@ import type { Course } from '@assurance/shared';
         padding: 0 1rem;
       }
       .courses__new-form {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

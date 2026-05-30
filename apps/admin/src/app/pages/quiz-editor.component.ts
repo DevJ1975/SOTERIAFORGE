@@ -15,7 +15,7 @@ import type { Quiz, QuizQuestion } from '@assurance/shared';
 const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_false'];
 
 @Component({
-  selector: 'forge-admin-quiz-editor',
+  selector: 'assurance-admin-quiz-editor',
   standalone: true,
   imports: [
     RouterLink,
@@ -231,7 +231,7 @@ const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_fals
       }
       .quiz-editor__settings,
       .quiz-editor__add-question {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;
@@ -257,7 +257,7 @@ const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_fals
         border-radius: 0.5rem;
         padding: 1rem;
         margin-bottom: 1rem;
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
       }
       .quiz-editor__question-header {
         display: flex;

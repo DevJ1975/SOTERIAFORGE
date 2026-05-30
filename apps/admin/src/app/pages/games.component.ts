@@ -80,7 +80,7 @@ const GAME_KIND_OPTIONS: { label: string; value: GameKind }[] = [
 ];
 
 @Component({
-  selector: 'forge-admin-games',
+  selector: 'assurance-admin-games',
   standalone: true,
   imports: [RouterLink, FormsModule, ButtonModule, InputTextModule, TableModule, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -171,7 +171,7 @@ const GAME_KIND_OPTIONS: { label: string; value: GameKind }[] = [
         padding: 0 1rem;
       }
       .games__new-form {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

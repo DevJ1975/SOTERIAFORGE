@@ -18,7 +18,7 @@ const KIND_OPTIONS: Array<{ label: string; value: KnowledgeKind }> = [
 ];
 
 @Component({
-  selector: 'forge-admin-knowledge',
+  selector: 'assurance-admin-knowledge',
   standalone: true,
   imports: [FormsModule, ButtonModule, InputTextModule, TableModule, SelectModule, TextareaModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,7 +124,7 @@ const KIND_OPTIONS: Array<{ label: string; value: KnowledgeKind }> = [
         padding: 0 1rem;
       }
       .knowledge__form-card {
-        background: var(--forge-color-surface, #fff);
+        background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
         border-radius: 0.5rem;
         padding: 1.25rem;

@@ -18,7 +18,7 @@ export class ThemeService {
   readonly tokens = signal<ThemeTokens>({ ...DEFAULT_THEME });
 
   /**
-   * Applies a full set of design tokens by writing `--forge-*` CSS custom properties
+   * Applies a full set of design tokens by writing `--assurance-*` CSS custom properties
    * onto the document root element.
    */
   applyTheme(tokens: ThemeTokens): void {
@@ -43,24 +43,24 @@ export class ThemeService {
     };
 
     // Map free-form colors record onto known token keys where the keys match
-    // --forge-* property names (e.g. { '--forge-color-primary': '#...' }).
+    // --assurance-* property names (e.g. { '--assurance-color-primary': '#...' }).
     if (branding.colors) {
-      const colorPrimary = branding.colors['--forge-color-primary'];
+      const colorPrimary = branding.colors['--assurance-color-primary'];
       if (colorPrimary) merged.colorPrimary = colorPrimary;
 
-      const colorSurface = branding.colors['--forge-color-surface'];
+      const colorSurface = branding.colors['--assurance-color-surface'];
       if (colorSurface) merged.colorSurface = colorSurface;
 
-      const colorAccent = branding.colors['--forge-color-accent'];
+      const colorAccent = branding.colors['--assurance-color-accent'];
       if (colorAccent) merged.colorAccent = colorAccent;
 
-      const colorText = branding.colors['--forge-color-text'];
+      const colorText = branding.colors['--assurance-color-text'];
       if (colorText) merged.colorText = colorText;
 
-      const colorTextMuted = branding.colors['--forge-color-text-muted'];
+      const colorTextMuted = branding.colors['--assurance-color-text-muted'];
       if (colorTextMuted) merged.colorTextMuted = colorTextMuted;
 
-      const radius = branding.colors['--forge-radius'];
+      const radius = branding.colors['--assurance-radius'];
       if (radius) merged.radius = radius;
     }
 

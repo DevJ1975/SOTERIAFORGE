@@ -4,7 +4,7 @@ import { AuthService, TenantService } from '@assurance/auth';
 import { TutorChatComponent } from '@assurance/ai-tutor';
 
 @Component({
-  selector: 'forge-learner-tutor',
+  selector: 'assurance-learner-tutor',
   standalone: true,
   imports: [RouterLink, TutorChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,7 +18,7 @@ import { TutorChatComponent } from '@assurance/ai-tutor';
 
       @if (tenantId() && uid()) {
         <div class="tutor-page__chat">
-          <forge-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
+          <assurance-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
         </div>
       } @else {
         <p class="tutor-page__unavailable">Tutor unavailable — session not fully resolved.</p>
@@ -39,7 +39,7 @@ import { TutorChatComponent } from '@assurance/ai-tutor';
         margin-bottom: 1rem;
       }
       .tutor-page__nav a {
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
       }
       .tutor-page__title {
@@ -53,7 +53,7 @@ import { TutorChatComponent } from '@assurance/ai-tutor';
         min-height: 0;
       }
       .tutor-page__unavailable {
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
     `,
   ],

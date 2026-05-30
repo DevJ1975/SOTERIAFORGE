@@ -6,7 +6,7 @@ import { auditable, count, storageRef, tenantId, uid } from './primitives';
 export const branding = z.object({
   logoUrl: z.string().url().optional(),
   faviconUrl: z.string().url().optional(),
-  /** Design tokens mapped to CSS custom properties (e.g. "--forge-primary"). */
+  /** Design tokens mapped to CSS custom properties (e.g. "--assurance-primary"). */
   colors: z.record(z.string(), z.string()).default({}),
   fontFamily: z.string().optional(),
   emailFromName: z.string().optional(),

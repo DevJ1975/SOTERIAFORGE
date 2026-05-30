@@ -8,12 +8,12 @@ import { ThemeService } from '../../theme.service';
  * and a main content area into which child routes / content are projected.
  *
  * @example
- * <forge-page-shell>
+ * <assurance-page-shell>
  *   <router-outlet />
- * </forge-page-shell>
+ * </assurance-page-shell>
  */
 @Component({
-  selector: 'forge-page-shell',
+  selector: 'assurance-page-shell',
   standalone: true,
   imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,8 +25,8 @@ import { ThemeService } from '../../theme.service';
         min-height: 100vh;
       }
 
-      .forge-shell-header {
-        background: var(--forge-color-primary, #1d4ed8);
+      .assurance-shell-header {
+        background: var(--assurance-color-primary, #1d4ed8);
         color: #fff;
         padding: 0 1.5rem;
         height: 3.5rem;
@@ -35,36 +35,36 @@ import { ThemeService } from '../../theme.service';
         gap: 0.75rem;
       }
 
-      .forge-shell-logo {
+      .assurance-shell-logo {
         height: 2rem;
         width: auto;
         object-fit: contain;
       }
 
-      .forge-shell-wordmark {
-        font-family: var(--forge-font-family, sans-serif);
+      .assurance-shell-wordmark {
+        font-family: var(--assurance-font-family, sans-serif);
         font-weight: 700;
         font-size: 1.125rem;
         letter-spacing: -0.01em;
       }
 
-      .forge-shell-body {
+      .assurance-shell-body {
         flex: 1;
-        background: var(--forge-color-surface, #ffffff);
-        color: var(--forge-color-text, #111827);
-        font-family: var(--forge-font-family, sans-serif);
+        background: var(--assurance-color-surface, #ffffff);
+        color: var(--assurance-color-text, #111827);
+        font-family: var(--assurance-font-family, sans-serif);
       }
     `,
   ],
   template: `
-    <header class="forge-shell-header" role="banner" aria-label="Application header">
+    <header class="assurance-shell-header" role="banner" aria-label="Application header">
       @if (tokens().logoUrl) {
-        <img [src]="tokens().logoUrl" alt="Tenant logo" class="forge-shell-logo" />
+        <img [src]="tokens().logoUrl" alt="Tenant logo" class="assurance-shell-logo" />
       } @else {
-        <span class="forge-shell-wordmark" aria-label="FORGE">FORGE</span>
+        <span class="assurance-shell-wordmark" aria-label="ASSURANCE">ASSURANCE</span>
       }
     </header>
-    <main class="forge-shell-body" id="main-content" tabindex="-1">
+    <main class="assurance-shell-body" id="main-content" tabindex="-1">
       <ng-content />
     </main>
   `,

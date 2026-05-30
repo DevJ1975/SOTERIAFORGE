@@ -1,11 +1,16 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import {
+  ASSURANCE_ENV,
+  type AssuranceEnvironment,
+  AuthService,
+  TenantService,
+} from '@assurance/auth';
 import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
 import { CoursesComponent } from './courses.component';
 import type { Course } from '@assurance/shared';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -66,7 +71,7 @@ describe('CoursesComponent', () => {
       imports: [CoursesComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: CourseRepository, useValue: mockCourseRepository },
         { provide: EnrollmentRepository, useValue: mockEnrollmentRepository },
         { provide: AuthService, useValue: mockAuthService },

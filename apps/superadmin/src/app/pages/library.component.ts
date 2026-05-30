@@ -12,7 +12,7 @@ import { LibraryService } from '../services/library.service';
 import type { Course, Tenant } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-superadmin-library',
+  selector: 'assurance-superadmin-library',
   standalone: true,
   imports: [
     FormsModule,

@@ -9,7 +9,7 @@ interface AdminSection {
 }
 
 @Component({
-  selector: 'forge-admin-dashboard',
+  selector: 'assurance-admin-dashboard',
   standalone: true,
   imports: [CardModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,

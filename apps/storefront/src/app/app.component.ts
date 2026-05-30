@@ -5,7 +5,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { AuthService } from '@assurance/auth';
 
 @Component({
-  selector: 'forge-storefront-root',
+  selector: 'assurance-storefront-root',
   standalone: true,
   imports: [RouterOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,7 +35,7 @@ import { AuthService } from '@assurance/auth';
         align-items: center;
         justify-content: space-between;
         padding: 1rem 1.5rem;
-        background: var(--forge-primary, #0b5fff);
+        background: var(--assurance-primary, #0b5fff);
         color: #fff;
       }
       .store-header__brand {

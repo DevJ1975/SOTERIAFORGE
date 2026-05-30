@@ -1,11 +1,16 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import {
+  ASSURANCE_ENV,
+  type AssuranceEnvironment,
+  AuthService,
+  TenantService,
+} from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
 import { DashboardComponent } from './dashboard.component';
 import type { Member } from '@assurance/shared';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -59,7 +64,7 @@ describe('DashboardComponent', () => {
       imports: [DashboardComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },
@@ -92,7 +97,7 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('forge-xp-badge')).not.toBeNull();
+    expect(el.querySelector('assurance-xp-badge')).not.toBeNull();
   });
 
   it('loads member from MemberRepository on init', async () => {

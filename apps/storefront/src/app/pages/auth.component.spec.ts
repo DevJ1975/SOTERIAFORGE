@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, AuthService } from '@assurance/auth';
 import { StorefrontAuthComponent } from './auth.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -33,7 +33,7 @@ describe('StorefrontAuthComponent', () => {
       imports: [StorefrontAuthComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: authStub },
       ],
     }).compileComponents();

@@ -6,7 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { AuthService } from '@assurance/auth';
 
 @Component({
-  selector: 'forge-login',
+  selector: 'assurance-login',
   standalone: true,
   imports: [FormsModule, ButtonModule, InputTextModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

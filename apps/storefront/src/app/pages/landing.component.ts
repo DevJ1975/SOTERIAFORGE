@@ -4,7 +4,7 @@ import { Title, Meta } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
-  selector: 'forge-landing',
+  selector: 'assurance-landing',
   standalone: true,
   imports: [RouterLink, ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +40,7 @@ export class LandingComponent {
     meta.updateTag({
       name: 'description',
       content:
-        'FORGE delivers safety training with video, interactive games, and an AI tutor. Buy a course or go all-access.',
+        'ASSURANCE delivers safety training with video, interactive games, and an AI tutor. Buy a course or go all-access.',
     });
   }
 }

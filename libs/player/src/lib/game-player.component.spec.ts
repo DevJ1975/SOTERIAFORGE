@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { GameRepository } from '@assurance/data-access';
 import { EnrollmentService } from '@assurance/lms-core';
 import { XapiClient } from '@assurance/standards';
@@ -8,7 +8,7 @@ import { GamePlayerComponent } from './game-player.component';
 import { PlayerProgressService } from './player-progress.service';
 import type { Game } from '@assurance/shared';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -63,7 +63,7 @@ describe('GamePlayerComponent', () => {
       imports: [GamePlayerComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: GameRepository, useValue: mockGameRepository },
         { provide: PlayerProgressService, useValue: mockPlayerProgressService },
         { provide: EnrollmentService, useValue: mockEnrollmentService },
@@ -89,15 +89,15 @@ describe('GamePlayerComponent', () => {
     expect(el.textContent).toBeTruthy();
   });
 
-  it('renders forge-phaser-host after a phaser game loads', async () => {
+  it('renders assurance-phaser-host after a phaser game loads', async () => {
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r, 0));
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
-    // forge-phaser-host is rendered; PhaserHostComponent is @defer-safe in tests
+    // assurance-phaser-host is rendered; PhaserHostComponent is @defer-safe in tests
     // because isPlatformBrowser returns false in jsdom — no actual Phaser loaded.
-    expect(el.querySelector('forge-phaser-host')).not.toBeNull();
+    expect(el.querySelector('assurance-phaser-host')).not.toBeNull();
   });
 
   it('shows error when game is not found', async () => {
@@ -111,7 +111,7 @@ describe('GamePlayerComponent', () => {
     expect(el.textContent).toContain('Game not found');
   });
 
-  it('renders forge-rive-character for rive engine game', async () => {
+  it('renders assurance-rive-character for rive engine game', async () => {
     const riveGame: Game = {
       ...mockGame,
       engine: 'rive',
@@ -124,6 +124,6 @@ describe('GamePlayerComponent', () => {
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('forge-rive-character')).not.toBeNull();
+    expect(el.querySelector('assurance-rive-character')).not.toBeNull();
   });
 });

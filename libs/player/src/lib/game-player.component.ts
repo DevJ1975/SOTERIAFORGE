@@ -16,7 +16,7 @@ import { RiveCharacterComponent } from '@assurance/games';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 
 @Component({
-  selector: 'forge-game-player',
+  selector: 'assurance-game-player',
   standalone: true,
   imports: [PhaserHostComponent, RiveCharacterComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,9 +27,12 @@ import { PlayerProgressService, type PlayerContext } from './player-progress.ser
       <div class="game-player__error">{{ error() }}</div>
     } @else if (game()) {
       @if (game()!.engine === 'rive' && game()!.riveAssetRef) {
-        <forge-rive-character [src]="game()!.riveAssetRef!" [stateMachine]="'MainStateMachine'" />
+        <assurance-rive-character
+          [src]="game()!.riveAssetRef!"
+          [stateMachine]="'MainStateMachine'"
+        />
       } @else {
-        <forge-phaser-host [config]="gameConfig(game()!)" (completed)="onCompleted()" />
+        <assurance-phaser-host [config]="gameConfig(game()!)" (completed)="onCompleted()" />
       }
     }
   `,
@@ -41,13 +44,13 @@ import { PlayerProgressService, type PlayerContext } from './player-progress.ser
       .game-player__status,
       .game-player__error {
         padding: 2rem;
-        border: 2px dashed var(--forge-border, #ccc);
+        border: 2px dashed var(--assurance-border, #ccc);
         border-radius: 0.5rem;
         text-align: center;
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
       .game-player__error {
-        color: var(--forge-error, #ef4444);
+        color: var(--assurance-error, #ef4444);
       }
     `,
   ],

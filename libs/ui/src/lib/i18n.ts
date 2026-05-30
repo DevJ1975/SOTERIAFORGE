@@ -8,13 +8,13 @@ import { HttpClient } from '@angular/common/http';
 import { type Translation, type TranslocoLoader, provideTransloco } from '@jsverse/transloco';
 import type { Observable } from 'rxjs';
 
-/** Languages FORGE ships translations for. Add a locale + an asset file to grow. */
-export const FORGE_LANGS = ['en', 'es'] as const;
-export type ForgeLang = (typeof FORGE_LANGS)[number];
+/** Languages ASSURANCE ships translations for. Add a locale + an asset file to grow. */
+export const ASSURANCE_LANGS = ['en', 'es'] as const;
+export type AssuranceLang = (typeof ASSURANCE_LANGS)[number];
 
 /** Loads `/assets/i18n/{lang}.json` at runtime. */
 @Injectable({ providedIn: 'root' })
-export class ForgeTranslocoLoader implements TranslocoLoader {
+export class AssuranceTranslocoLoader implements TranslocoLoader {
   private readonly http = inject(HttpClient);
   getTranslation(lang: string): Observable<Translation> {
     return this.http.get<Translation>(`/assets/i18n/${lang}.json`);
@@ -30,13 +30,13 @@ export function provideForgeTransloco(): EnvironmentProviders {
   return makeEnvironmentProviders([
     ...provideTransloco({
       config: {
-        availableLangs: [...FORGE_LANGS],
+        availableLangs: [...ASSURANCE_LANGS],
         defaultLang: 'en',
         fallbackLang: 'en',
         reRenderOnLangChange: true,
         missingHandler: { useFallbackTranslation: true },
       },
-      loader: ForgeTranslocoLoader,
+      loader: AssuranceTranslocoLoader,
     }),
   ]);
 }

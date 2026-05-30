@@ -1,5 +1,5 @@
 /**
- * White-label design tokens for the Soteria FORGE design system.
+ * White-label design tokens for the Soteria ASSURANCE design system.
  * Applied at runtime as CSS custom properties on the document root.
  */
 export interface ThemeTokens {
@@ -35,12 +35,12 @@ export const DEFAULT_THEME: ThemeTokens = {
 };
 
 /**
- * Converts a `ThemeTokens` object into a flat map of `--forge-*` CSS custom property names
+ * Converts a `ThemeTokens` object into a flat map of `--assurance-*` CSS custom property names
  * to their values.
  *
  * @example
  * tokensToCssVars(DEFAULT_THEME)
- * // => { '--forge-color-primary': '#1d4ed8', '--forge-color-surface': '#ffffff', ... }
+ * // => { '--assurance-color-primary': '#1d4ed8', '--assurance-color-surface': '#ffffff', ... }
  */
 export function tokensToCssVars(tokens: ThemeTokens): Record<string, string> {
   const result: Record<string, string> = {};
@@ -50,7 +50,7 @@ export function tokensToCssVars(tokens: ThemeTokens): Record<string, string> {
 
   for (const [key, value] of Object.entries(tokens)) {
     if (value === undefined || value === null) continue;
-    const cssVarName = `--forge-${camelToKebab(key)}`;
+    const cssVarName = `--assurance-${camelToKebab(key)}`;
     result[cssVarName] = String(value);
   }
 

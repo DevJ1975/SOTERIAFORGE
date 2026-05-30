@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { type TenantResolution, resolveTenantFromHost } from '@assurance/shared';
-import { FORGE_ENV } from './forge-environment';
+import { ASSURANCE_ENV } from './assurance-environment';
 
 /**
  * Resolves the active tenant from the request host (subdomain strategy) and
@@ -10,7 +10,7 @@ import { FORGE_ENV } from './forge-environment';
  */
 @Injectable({ providedIn: 'root' })
 export class TenantService {
-  private readonly env = inject(FORGE_ENV);
+  private readonly env = inject(ASSURANCE_ENV);
   private readonly doc = inject(DOCUMENT);
 
   private readonly _resolution = signal<TenantResolution>(this.resolve());

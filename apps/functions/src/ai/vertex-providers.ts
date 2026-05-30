@@ -6,7 +6,7 @@ import type { EmbeddingProvider, LlmProvider, RetrievedChunk } from './providers
  * Production AI providers backed by Vertex AI (Gemini + text-embedding-004) via
  * Genkit. Implements the same EmbeddingProvider/LlmProvider interfaces as the
  * local defaults, so the RAG orchestration is unchanged. Selected by
- * `getProviders()` when `FORGE_AI_PROVIDER=vertex` (requires a GCP project +
+ * `getProviders()` when `ASSURANCE_AI_PROVIDER=vertex` (requires a GCP project +
  * Vertex AI enabled). Loaded lazily so Genkit isn't pulled into functions that
  * don't use AI.
  */

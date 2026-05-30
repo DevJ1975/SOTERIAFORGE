@@ -15,7 +15,7 @@ interface ContentTypeOption {
 }
 
 @Component({
-  selector: 'forge-superadmin-library-editor',
+  selector: 'assurance-superadmin-library-editor',
   standalone: true,
   imports: [FormsModule, ButtonModule, CardModule, InputTextModule, SelectModule, TableModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

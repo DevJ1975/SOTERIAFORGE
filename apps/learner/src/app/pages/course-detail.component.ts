@@ -17,7 +17,7 @@ import { TutorChatComponent } from '@assurance/ai-tutor';
 import type { Module, Enrollment } from '@assurance/shared';
 
 @Component({
-  selector: 'forge-learner-course-detail',
+  selector: 'assurance-learner-course-detail',
   standalone: true,
   imports: [RouterLink, CardModule, ModulePlayerComponent, TutorChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,7 +67,7 @@ import type { Module, Enrollment } from '@assurance/shared';
           <div role="region" aria-label="Module player" class="course-detail__player">
             @if (selectedModule(); as mod) {
               @if (uid() && tenantId()) {
-                <forge-module-player
+                <assurance-module-player
                   [module]="mod"
                   [courseId]="id()"
                   [tenantId]="tenantId()!"
@@ -92,7 +92,7 @@ import type { Module, Enrollment } from '@assurance/shared';
                 Ask the AI Tutor
               </summary>
               <div class="course-detail__tutor-chat" role="region" aria-label="AI Tutor chat">
-                <forge-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
+                <assurance-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
               </div>
             </details>
           </div>
@@ -111,11 +111,11 @@ import type { Module, Enrollment } from '@assurance/shared';
         margin-bottom: 1rem;
       }
       .course-detail__nav a {
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
       }
       .course-detail__status {
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
       .course-detail__layout {
         display: grid;
@@ -128,7 +128,7 @@ import type { Module, Enrollment } from '@assurance/shared';
         margin: 0;
       }
       .course-detail__module-item {
-        border-bottom: 1px solid var(--forge-border, #e5e7eb);
+        border-bottom: 1px solid var(--assurance-border, #e5e7eb);
       }
       .course-detail__module-btn {
         display: flex;
@@ -143,11 +143,11 @@ import type { Module, Enrollment } from '@assurance/shared';
         font-size: 0.875rem;
       }
       .course-detail__module-item--active .course-detail__module-btn {
-        color: var(--forge-primary, #0b5fff);
+        color: var(--assurance-primary, #0b5fff);
         font-weight: 600;
       }
       .course-detail__module-item--done .course-detail__module-btn {
-        color: var(--forge-success, #22c55e);
+        color: var(--assurance-success, #22c55e);
       }
       .course-detail__badge {
         margin-left: 0.5rem;
@@ -156,7 +156,7 @@ import type { Module, Enrollment } from '@assurance/shared';
       .course-detail__progress {
         margin-top: 1rem;
         font-size: 0.875rem;
-        color: var(--forge-text-muted, #666);
+        color: var(--assurance-text-muted, #666);
       }
       .course-detail__player {
         min-height: 20rem;
@@ -165,7 +165,7 @@ import type { Module, Enrollment } from '@assurance/shared';
         margin-top: 1.5rem;
       }
       .course-detail__tutor-panel {
-        border: 1px solid var(--forge-border, #e5e7eb);
+        border: 1px solid var(--assurance-border, #e5e7eb);
         border-radius: 0.5rem;
         overflow: hidden;
       }

@@ -1,5 +1,5 @@
 /**
- * Pure streak calculation for Soteria FORGE gamification.
+ * Pure streak calculation for Soteria ASSURANCE gamification.
  *
  * All comparisons are done on the **UTC calendar date** portion of ISO strings
  * (YYYY-MM-DD), so timezone skew between client and server cannot inflate streaks.

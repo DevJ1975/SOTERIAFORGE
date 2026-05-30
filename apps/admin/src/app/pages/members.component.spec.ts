@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
 import { MemberAdminService } from '@assurance/tenant';
 import { MembersComponent } from './members.component';
 
-const testEnv: ForgeEnvironment = {
+const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   firebase: {
@@ -24,7 +24,7 @@ describe('MembersComponent', () => {
       imports: [MembersComponent],
       providers: [
         provideRouter([]),
-        { provide: FORGE_ENV, useValue: testEnv },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: MemberRepository, useValue: { listActive: async () => [] } },
         {
           provide: MemberAdminService,
