@@ -50,6 +50,12 @@ export const enrollment = auditable.extend({
   completed: z.boolean().default(false),
   score: z.number().min(0).max(100).optional(),
   lastActivityAt: z.string().datetime({ offset: true }).optional(),
+  /** True when an admin/instructor assigned this course (vs. self-enrolled). */
+  assigned: z.boolean().optional(),
+  assignedBy: uid.optional(),
+  assignedAt: z.string().datetime({ offset: true }).optional(),
+  /** Optional due date for assigned training. */
+  dueAt: z.string().datetime({ offset: true }).optional(),
   /** SCORM/cmi5 runtime state, persisted per enrollment. */
   cmi: z.record(z.string(), z.unknown()).optional(),
 });
