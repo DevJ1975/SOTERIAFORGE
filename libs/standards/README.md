@@ -8,6 +8,30 @@ and the platform's enrolment, completion, and gamification systems.
 
 ## Modules
 
+### `OfflineXapiQueue` (`offline-xapi-queue.service.ts`)
+
+An Angular injectable service (provided in root) that buffers xAPI statements
+when the learner is offline and flushes them automatically on reconnect.
+
+- **`enqueue(stmt)`** — Serialises a statement to `localStorage` under
+  `forge.xapi.queue`. SSR/server-safe: no-ops when `localStorage` is unavailable.
+- **`peekAll()`** — Returns all queued statements without removing them.
+- **`size()`** — Returns the current queue length.
+- **`flush(sender)`** — Iterates the queue, calling `sender(stmt)` for each
+  entry. Statements whose send succeeds are removed; those that reject are
+  kept for the next flush.
+- **`registerSender(fn)`** — Registers the async send function used during
+  automatic `window` `online`-event flushes. Called once by `XapiClient`.
+
+SSR-safe and AOT strict. Fully unit-testable in jsdom because jsdom provides
+`localStorage`. The `window` `online` listener is registered only on the
+browser platform.
+
+> **Future scale note:** `localStorage` (~5 MB) is sufficient for typical
+> offline lesson sessions. For higher-volume or background-sync scenarios,
+> migrate the persistence layer to IndexedDB — the public API surface is
+> unchanged.
+
 ### `XapiClient` (`xapi-client.ts`)
 
 An Angular injectable service (provided in root) that:
@@ -20,7 +44,10 @@ An Angular injectable service (provided in root) that:
   tenant isolation.
 
 - **`send(statement)`** — Forwards a statement to the `ingestStatement` Firebase
-  callable function via `@angular/fire/functions`. Gracefully no-ops (with a
+  callable function via `@angular/fire/functions`. Offline-first: if
+  `navigator.onLine === false` or the callable rejects, the statement is
+  transparently enqueued in `OfflineXapiQueue` and re-sent when the device
+  reconnects. `send` never throws to callers. Gracefully no-ops (with a
   console warning) if `Functions` is not available in the current DI context,
   e.g. during unit tests.
 

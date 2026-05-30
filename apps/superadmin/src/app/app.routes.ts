@@ -31,5 +31,16 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, superadminGuard],
     loadComponent: () => import('./pages/analytics.component').then((m) => m.AnalyticsComponent),
   },
+  {
+    path: 'library',
+    canActivate: [authGuard, superadminGuard],
+    loadComponent: () => import('./pages/library.component').then((m) => m.LibraryComponent),
+  },
+  {
+    path: 'library/:id',
+    canActivate: [authGuard, superadminGuard],
+    loadComponent: () =>
+      import('./pages/library-editor.component').then((m) => m.LibraryEditorComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

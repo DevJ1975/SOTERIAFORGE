@@ -17,5 +17,28 @@
         "files": ["/assets/**", "/*.(svg|png|jpg|jpeg|woff2)"]
       }
     }
+  ],
+  "dataGroups": [
+    {
+      "name": "content-media",
+      "urls": [
+        "/**/*.mp4",
+        "/**/*.webm",
+        "/**/*.png",
+        "/**/*.jpg",
+        "/**/*.jpeg",
+        "/**/*.gif",
+        "/**/*.svg",
+        "/**/*.woff2",
+        "/**/*.woff",
+        "/**/*.ttf"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 50,
+        "maxAge": "7d",
+        "timeout": "10s"
+      }
+    }
   ]
 }

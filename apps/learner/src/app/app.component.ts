@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { TenantService } from '@forge/auth';
+import { OfflineXapiQueue } from '@forge/standards';
 
 @Component({
   selector: 'forge-learner-root',
@@ -68,4 +70,13 @@ import { TenantService } from '@forge/auth';
 export class AppComponent {
   protected readonly tenant = inject(TenantService);
   protected readonly year = new Date().getFullYear();
+
+  constructor() {
+    // Eagerly inject OfflineXapiQueue (browser only) so its window `online`
+    // listener is registered for the lifetime of the app, enabling automatic
+    // xAPI statement flush on reconnect.
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      inject(OfflineXapiQueue);
+    }
+  }
 }

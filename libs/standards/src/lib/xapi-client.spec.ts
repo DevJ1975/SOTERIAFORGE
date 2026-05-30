@@ -9,6 +9,7 @@ jest.mock('@angular/fire/functions', () => ({
 
 import { TestBed } from '@angular/core/testing';
 import { XapiClient } from './xapi-client';
+import { OfflineXapiQueue } from './offline-xapi-queue.service';
 import { XAPI_VERBS, XAPI_TENANT_EXTENSION } from '@forge/shared';
 
 /**
@@ -261,5 +262,101 @@ describe('XapiClient', () => {
       await expect(client.send(stmt)).resolves.toBeUndefined();
       warnSpy.mockRestore();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// XapiClient offline queuing behaviour
+// ---------------------------------------------------------------------------
+describe('XapiClient — offline queuing', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  function buildBaseStmt() {
+    // We need a client instance; build one without real Functions so the
+    // no-Functions guard fires before we can test offline logic. To test the
+    // offline path we provide a mock Functions token so the guard is bypassed.
+    return {
+      actor: {
+        objectType: 'Agent' as const,
+        account: { homePage: 'https://example.com', name: 'uid-x' },
+      },
+      verb: { id: 'https://adlnet.gov/expapi/verbs/launched', display: { 'en-US': 'launched' } },
+      object: { objectType: 'Activity' as const, id: 'https://example.com/activities/c1' },
+      timestamp: new Date().toISOString(),
+      tenantId: 'tenant-abc',
+      actorUid: 'uid-x',
+    };
+  }
+
+  it('enqueues statement when navigator.onLine is false', async () => {
+    // Provide a mock Functions token so the "no Functions" guard is bypassed.
+    const { Functions } = jest.requireMock('@angular/fire/functions') as {
+      Functions: new () => object;
+    };
+    const { httpsCallable } = jest.requireMock('@angular/fire/functions') as {
+      httpsCallable: jest.Mock;
+    };
+    // Make the callable never actually called (we go offline before that)
+    httpsCallable.mockReturnValue(jest.fn().mockResolvedValue({}));
+
+    TestBed.configureTestingModule({
+      providers: [XapiClient, OfflineXapiQueue, { provide: Functions, useValue: new Functions() }],
+    });
+
+    const xapiClient = TestBed.inject(XapiClient);
+    const offlineQueue = TestBed.inject(OfflineXapiQueue);
+
+    // Simulate offline
+    Object.defineProperty(navigator, 'onLine', {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
+
+    const stmt = buildBaseStmt();
+    await xapiClient.send(stmt as never);
+
+    expect(offlineQueue.size()).toBe(1);
+
+    // Restore
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+  });
+
+  it('enqueues statement when the callable rejects', async () => {
+    const { Functions } = jest.requireMock('@angular/fire/functions') as {
+      Functions: new () => object;
+    };
+    const { httpsCallable } = jest.requireMock('@angular/fire/functions') as {
+      httpsCallable: jest.Mock;
+    };
+    // Make the callable reject to simulate a network error
+    httpsCallable.mockReturnValue(jest.fn().mockRejectedValue(new Error('Network error')));
+
+    TestBed.configureTestingModule({
+      providers: [XapiClient, OfflineXapiQueue, { provide: Functions, useValue: new Functions() }],
+    });
+
+    const xapiClient = TestBed.inject(XapiClient);
+    const offlineQueue = TestBed.inject(OfflineXapiQueue);
+
+    // Ensure we appear online so the network attempt is made
+    Object.defineProperty(navigator, 'onLine', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const stmt = buildBaseStmt();
+    await xapiClient.send(stmt as never);
+
+    expect(offlineQueue.size()).toBe(1);
   });
 });

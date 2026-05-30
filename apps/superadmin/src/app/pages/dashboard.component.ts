@@ -67,6 +67,7 @@ export class SuperadminDashboardComponent {
     {
       title: 'Global Course Library',
       description: 'Curate and publish courses available across all tenants. (Phase 1+)',
+      link: '/library',
     },
     {
       title: 'Cross-tenant Analytics',
