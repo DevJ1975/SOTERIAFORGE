@@ -2,6 +2,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { ROLES } from '@forge/shared';
 import { adminAuth, db } from '../lib/admin';
+import { queueEmail } from '../lib/notify';
 
 const inviteInput = z.object({
   tenantId: z.string(),
@@ -78,6 +79,15 @@ export const inviteMember = onCall(async (request) => {
   );
 
   const inviteLink = await authClient.generatePasswordResetLink(input.email);
+
+  // Email the invitation (queued for the Trigger Email extension).
+  await queueEmail(
+    input.email,
+    `You're invited to ${tenantSnap.get('name') ?? 'Soteria FORGE'}`,
+    `<p>You've been invited as a ${input.role.replace('_', ' ')}.</p>` +
+      `<p><a href="${inviteLink}">Set your password and sign in</a> to get started.</p>`,
+  );
+
   return { ok: true, uid, inviteLink };
 });
 

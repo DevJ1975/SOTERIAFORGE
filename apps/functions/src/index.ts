@@ -8,6 +8,7 @@ export { provisionTenant } from './tenants/provision-tenant';
 export { setTenantStatus } from './tenants/lifecycle';
 export { updateBranding } from './tenants/update-branding';
 export { inviteMember, deactivateMember } from './members/invite-member';
+export { registerFcmToken } from './members/fcm-token';
 export { submitQuiz } from './quizzes/submit-quiz';
 export { completeModule } from './lms/complete-module';
 export { assignCourse } from './lms/assign-course';

@@ -2,6 +2,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { db } from '../lib/admin';
 import { auditLog } from '../lib/audit';
+import { notifyMember } from '../lib/notify';
 
 const input = z.object({
   tenantId: z.string(),
@@ -74,6 +75,18 @@ export const assignCourse = onCall(async (request) => {
     targetId: courseId,
     details: { assigned, skipped, count: uids.length },
   });
+
+  // Notify newly-assigned learners (best-effort push).
+  const courseTitle = (course.get('title') as string) ?? 'a course';
+  await Promise.all(
+    uids.map((uid) =>
+      notifyMember(tenantId, uid, {
+        title: 'New training assigned',
+        body: `You've been assigned "${courseTitle}".`,
+        data: { courseId, type: 'assignment' },
+      }),
+    ),
+  );
 
   return { ok: true, assigned, skipped };
 });

@@ -43,6 +43,8 @@ export const member = auditable.extend({
   lastActiveAt: z.string().datetime({ offset: true }).optional(),
   /** Open Badges earned (badgeIds); awarded server-side on completion. */
   earnedBadgeIds: z.array(z.string()).default([]),
+  /** Registered FCM device tokens for push notifications. */
+  fcmTokens: z.array(z.string()).optional(),
 });
 export type Member = z.infer<typeof member>;
 
