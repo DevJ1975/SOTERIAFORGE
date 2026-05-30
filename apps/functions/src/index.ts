@@ -14,3 +14,6 @@ export { createCheckoutSession, createBillingPortalSession } from './stripe/chec
 export { ingestStatement } from './lrs/ingest';
 export { askTutor } from './ai/tutor-flow';
 export { ingestKnowledge } from './ai/ingest-knowledge';
+export { launchCmi5 } from './cmi5/launch';
+export { cmi5Fetch } from './cmi5/fetch';
+export { xapi } from './cmi5/xapi';

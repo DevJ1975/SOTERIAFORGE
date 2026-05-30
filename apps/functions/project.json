@@ -20,6 +20,11 @@
       }
     },
     "lint": { "executor": "@nx/eslint:lint" },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": { "jestConfig": "apps/functions/jest.config.ts" }
+    },
     "serve": {
       "executor": "nx:run-commands",
       "options": { "command": "firebase emulators:start --only functions,firestore,auth" }
