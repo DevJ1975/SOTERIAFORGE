@@ -11,8 +11,8 @@ import type { Course } from '@forge/shared';
   imports: [RouterLink, CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="courses">
-      <h1>Courses</h1>
+    <section class="courses" aria-labelledby="courses-heading">
+      <h1 id="courses-heading">Courses</h1>
       @if (loading()) {
         <p class="courses__status">Loading courses…</p>
       } @else if (courses().length === 0) {
@@ -25,7 +25,12 @@ import type { Course } from '@forge/shared';
                 @if (course.description) {
                   <p>{{ course.description }}</p>
                 }
-                <a [routerLink]="['/courses', course.id]" class="courses__link">Start →</a>
+                <a
+                  [routerLink]="['/courses', course.id]"
+                  class="courses__link"
+                  [attr.aria-label]="'Start ' + course.title"
+                  >Start →</a
+                >
               </p-card>
             </li>
           }

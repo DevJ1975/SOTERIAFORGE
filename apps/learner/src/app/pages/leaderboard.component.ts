@@ -9,8 +9,9 @@ import { LeaderboardComponent } from '@forge/gamification';
   imports: [RouterLink, LeaderboardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="leaderboard-page">
-      <nav class="leaderboard-page__nav">
+    <section class="leaderboard-page" aria-labelledby="leaderboard-heading">
+      <h1 id="leaderboard-heading" class="sr-only">Leaderboard</h1>
+      <nav class="leaderboard-page__nav" aria-label="Page navigation">
         <a routerLink="/">← Back to Dashboard</a>
       </nav>
 

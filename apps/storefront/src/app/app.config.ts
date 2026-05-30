@@ -10,6 +10,7 @@ import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { FORGE_ENV } from '@forge/auth';
 import { provideForgeFirebase } from '@forge/data-access';
+import { provideObservability } from '@forge/ui';
 import { provideTenantTheme } from '@forge/tenant';
 import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
@@ -18,6 +19,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
+    provideObservability(),
     // SSR + incremental hydration for the public/marketing surfaces.
     provideClientHydration(withIncrementalHydration(), withEventReplay()),
     provideAnimationsAsync(),

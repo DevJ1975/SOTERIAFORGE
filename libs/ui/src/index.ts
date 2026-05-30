@@ -4,6 +4,9 @@ export * from './lib/theme.tokens';
 // Theme service
 export * from './lib/theme.service';
 
+// Observability (ErrorHandler + pluggable telemetry sink)
+export * from './lib/observability';
+
 // Components
 export * from './lib/components/forge-button/forge-button.component';
 export * from './lib/components/forge-card/forge-card.component';

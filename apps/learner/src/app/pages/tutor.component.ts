@@ -9,12 +9,12 @@ import { TutorChatComponent } from '@forge/ai-tutor';
   imports: [RouterLink, TutorChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="tutor-page">
-      <nav class="tutor-page__nav">
+    <section class="tutor-page" aria-labelledby="tutor-heading">
+      <nav class="tutor-page__nav" aria-label="Page navigation">
         <a routerLink="/">← Back to Dashboard</a>
       </nav>
 
-      <h1 class="tutor-page__title">AI Tutor</h1>
+      <h1 id="tutor-heading" class="tutor-page__title">AI Tutor</h1>
 
       @if (tenantId() && uid()) {
         <div class="tutor-page__chat">

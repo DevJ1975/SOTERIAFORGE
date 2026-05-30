@@ -8,15 +8,23 @@ import { TenantService } from '@forge/auth';
   imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="forge-shell">
-      <header class="forge-shell__header">
+    <!-- Skip link: visually hidden until focused; jumps keyboard users past nav -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <div class="forge-shell">
+      <header class="forge-shell__header" role="banner">
         <span class="forge-shell__brand">Soteria FORGE</span>
         @if (tenant.tenantId(); as tid) {
-          <span class="forge-shell__tenant">{{ tid }}</span>
+          <span class="forge-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
+            tid
+          }}</span>
         }
       </header>
-      <router-outlet />
-    </main>
+
+      <main id="main-content" class="forge-shell__main" tabindex="-1">
+        <router-outlet />
+      </main>
+    </div>
   `,
   styles: [
     `
@@ -34,6 +42,9 @@ import { TenantService } from '@forge/auth';
       .forge-shell__tenant {
         opacity: 0.85;
         text-transform: capitalize;
+      }
+      .forge-shell__main {
+        outline: none;
       }
     `,
   ],

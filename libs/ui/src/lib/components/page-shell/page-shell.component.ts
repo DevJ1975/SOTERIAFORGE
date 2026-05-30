@@ -57,14 +57,14 @@ import { ThemeService } from '../../theme.service';
     `,
   ],
   template: `
-    <header class="forge-shell-header">
+    <header class="forge-shell-header" role="banner" aria-label="Application header">
       @if (tokens().logoUrl) {
         <img [src]="tokens().logoUrl" alt="Tenant logo" class="forge-shell-logo" />
       } @else {
-        <span class="forge-shell-wordmark">FORGE</span>
+        <span class="forge-shell-wordmark" aria-label="FORGE">FORGE</span>
       }
     </header>
-    <main class="forge-shell-body">
+    <main class="forge-shell-body" id="main-content" tabindex="-1">
       <ng-content />
     </main>
   `,

@@ -22,20 +22,20 @@ import type { Module, Enrollment } from '@forge/shared';
   imports: [RouterLink, CardModule, ModulePlayerComponent, TutorChatComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="course-detail">
-      <nav class="course-detail__nav">
+    <section class="course-detail" aria-labelledby="course-detail-heading">
+      <nav class="course-detail__nav" aria-label="Course navigation">
         <a routerLink="/courses">← Back to Courses</a>
       </nav>
 
-      <h1 class="course-detail__title">Course: {{ id() }}</h1>
+      <h1 id="course-detail-heading" class="course-detail__title">Course: {{ id() }}</h1>
 
       @if (loading()) {
         <p class="course-detail__status">Loading…</p>
       } @else {
         <div class="course-detail__layout">
           <!-- Module list sidebar -->
-          <aside class="course-detail__sidebar">
-            <h2>Modules</h2>
+          <aside class="course-detail__sidebar" aria-labelledby="modules-heading">
+            <h2 id="modules-heading">Modules</h2>
             @if (modules().length === 0) {
               <p>No modules available.</p>
             } @else {
@@ -53,7 +53,7 @@ import type { Module, Enrollment } from '@forge/shared';
                     >
                       {{ mod.title }}
                       @if (isComplete(mod.id)) {
-                        <span class="course-detail__badge">✓</span>
+                        <span class="course-detail__badge" aria-label="Completed">✓</span>
                       }
                     </button>
                   </li>
@@ -64,7 +64,7 @@ import type { Module, Enrollment } from '@forge/shared';
           </aside>
 
           <!-- Player area -->
-          <main class="course-detail__player">
+          <div role="region" aria-label="Module player" class="course-detail__player">
             @if (selectedModule(); as mod) {
               @if (uid() && tenantId()) {
                 <forge-module-player
@@ -79,14 +79,19 @@ import type { Module, Enrollment } from '@forge/shared';
                 <p>Choose a module from the list to begin.</p>
               </p-card>
             }
-          </main>
+          </div>
         </div>
 
         @if (tenantId() && uid()) {
           <div class="course-detail__tutor">
             <details class="course-detail__tutor-panel">
-              <summary class="course-detail__tutor-summary">Ask the AI Tutor</summary>
-              <div class="course-detail__tutor-chat">
+              <summary
+                class="course-detail__tutor-summary"
+                aria-label="Ask the AI Tutor – toggle panel"
+              >
+                Ask the AI Tutor
+              </summary>
+              <div class="course-detail__tutor-chat" role="region" aria-label="AI Tutor chat">
                 <forge-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
               </div>
             </details>

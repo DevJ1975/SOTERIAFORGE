@@ -20,3 +20,37 @@ body {
   color: var(--forge-text);
   background: var(--forge-surface);
 }
+
+/* Visually-hidden utility – keeps content in the accessibility tree while
+   hiding it from sighted users. Use for skip links (shown on focus) and
+   sr-only labels. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The skip link is sr-only until focused so keyboard users can jump straight
+   to main content without tabbing through navigation. */
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 0;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: var(--forge-primary, #0b5fff);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 0 0 0.25rem 0.25rem;
+  text-decoration: none;
+
+  &:focus {
+    top: 0;
+  }
+}

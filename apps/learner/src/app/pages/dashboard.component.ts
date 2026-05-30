@@ -19,8 +19,8 @@ import type { Member } from '@forge/shared';
   imports: [CardModule, RouterLink, XpBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="dash">
-      <h1>Welcome{{ name() ? ', ' + name() : '' }}</h1>
+    <section class="dash" aria-labelledby="dash-heading">
+      <h1 id="dash-heading">Welcome{{ name() ? ', ' + name() : '' }}</h1>
 
       @if (member(); as m) {
         <div class="dash__xp-row">
@@ -30,11 +30,11 @@ import type { Member } from '@forge/shared';
 
       <p-card header="Your learning">
         <p>Assigned courses, progress, streak and XP will appear here (Phase 2+).</p>
-        <div class="dash__links">
+        <nav aria-label="Dashboard quick links" class="dash__links">
           <a routerLink="/courses" class="dash__link">Browse Courses →</a>
           <a routerLink="/leaderboard" class="dash__link">View Leaderboard →</a>
           <a routerLink="/tutor" class="dash__link">Ask the AI Tutor →</a>
-        </div>
+        </nav>
       </p-card>
     </section>
   `,
@@ -53,6 +53,9 @@ import type { Member } from '@forge/shared';
         flex-direction: column;
         gap: 0.5rem;
         margin-top: 0.75rem;
+        list-style: none;
+        padding: 0;
+        margin-block-start: 0.75rem;
       }
       .dash__link {
         display: inline-block;
