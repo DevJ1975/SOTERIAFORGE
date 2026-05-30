@@ -1,0 +1,19 @@
+{
+  "common": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "nav": {
+    "courses": "Courses",
+    "leaderboard": "Leaderboard",
+    "tutor": "AI Tutor",
+    "catalog": "Catalog",
+    "account": "My learning",
+    "reports": "Reports"
+  },
+  "dashboard": { "welcome": "Welcome" },
+  "footer": { "poweredBy": "Powered by Trainovation Technologies, LLC" }
+}

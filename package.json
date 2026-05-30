@@ -42,6 +42,7 @@
     "@genkit-ai/firebase": "~1.0.0",
     "@genkit-ai/googleai": "~1.0.0",
     "@genkit-ai/vertexai": "~1.0.0",
+    "@jsverse/transloco": "^7.6.1",
     "@ngrx/signals": "~19.0.0",
     "@primeng/themes": "~19.0.0",
     "@rive-app/canvas": "~2.26.0",

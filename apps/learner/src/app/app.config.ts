@@ -7,6 +7,8 @@ import Aura from '@primeng/themes/aura';
 import { FORGE_ENV } from '@forge/auth';
 import { provideForgeFirebase } from '@forge/data-access';
 import { provideObservability } from '@forge/ui';
+import { provideForgeTransloco } from '@forge/ui';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideTenantTheme } from '@forge/tenant';
 import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
@@ -16,6 +18,8 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideObservability(),
+    provideHttpClient(withFetch()),
+    provideForgeTransloco(),
     provideAnimationsAsync(),
     providePrimeNG({ theme: { preset: Aura } }),
     { provide: FORGE_ENV, useValue: environment },

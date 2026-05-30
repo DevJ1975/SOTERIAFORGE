@@ -1,0 +1,19 @@
+{
+  "common": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar"
+  },
+  "nav": {
+    "courses": "Cursos",
+    "leaderboard": "Clasificación",
+    "tutor": "Tutor IA",
+    "catalog": "Catálogo",
+    "account": "Mi aprendizaje",
+    "reports": "Informes"
+  },
+  "dashboard": { "welcome": "Bienvenido" },
+  "footer": { "poweredBy": "Desarrollado por Trainovation Technologies, LLC" }
+}
