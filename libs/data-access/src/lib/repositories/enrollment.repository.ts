@@ -1,6 +1,6 @@
-import { Firestore } from '@angular/fire/firestore';
+import { Firestore, collectionGroup, getDocs, query, where } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
-import { type Enrollment, enrollment } from '@forge/shared';
+import { type Enrollment, enrollment, parseOrThrow } from '@forge/shared';
 import { BaseRepository } from '../base-repository';
 import { FsPaths } from '../paths';
 
@@ -31,5 +31,15 @@ export class EnrollmentRepository {
 
   updateProgress(tenantId: string, courseId: string, uid: string, partial: Partial<Enrollment>) {
     return this.repo(tenantId, courseId).update(uid, partial);
+  }
+
+  /**
+   * All enrollments across a tenant's courses (collection-group query, scoped by
+   * tenantId — backed by the composite index). For tenant reports/exports.
+   */
+  async listForTenant(tenantId: string): Promise<Enrollment[]> {
+    const q = query(collectionGroup(this.fs, 'enrollments'), where('tenantId', '==', tenantId));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => parseOrThrow(enrollment, { ...d.data(), uid: d.id }, 'enrollment'));
   }
 }
