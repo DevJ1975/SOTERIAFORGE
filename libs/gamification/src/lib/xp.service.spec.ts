@@ -18,6 +18,7 @@ function makeMember(overrides: Partial<Member> = {}): Member {
     xp: 0,
     level: 1,
     streakDays: 0,
+    earnedBadgeIds: [],
     createdAt: '2024-01-01T00:00:00.000Z',
     ...overrides,
   };

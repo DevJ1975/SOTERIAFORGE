@@ -31,6 +31,7 @@ const mockMember: Member = {
   xp: 350,
   level: 2,
   streakDays: 7,
+  earnedBadgeIds: [],
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 

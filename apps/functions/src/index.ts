@@ -9,6 +9,7 @@ export { setTenantStatus } from './tenants/lifecycle';
 export { updateBranding } from './tenants/update-branding';
 export { inviteMember, deactivateMember } from './members/invite-member';
 export { submitQuiz } from './quizzes/submit-quiz';
+export { completeModule } from './lms/complete-module';
 export { stripeWebhook } from './stripe/webhook';
 export { createCheckoutSession, createBillingPortalSession } from './stripe/checkout';
 export { ingestStatement } from './lrs/ingest';

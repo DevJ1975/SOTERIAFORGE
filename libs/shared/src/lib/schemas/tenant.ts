@@ -41,6 +41,8 @@ export const member = auditable.extend({
   level: count.default(1),
   streakDays: count.default(0),
   lastActiveAt: z.string().datetime({ offset: true }).optional(),
+  /** Open Badges earned (badgeIds); awarded server-side on completion. */
+  earnedBadgeIds: z.array(z.string()).default([]),
 });
 export type Member = z.infer<typeof member>;
 

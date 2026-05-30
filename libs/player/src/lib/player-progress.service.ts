@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type { Module } from '@forge/shared';
 import { XAPI_TENANT_EXTENSION } from '@forge/shared';
-import { EnrollmentService } from '@forge/lms-core';
+import { ModuleCompletionService } from '@forge/lms-core';
 import { XapiClient } from '@forge/standards';
 
 export interface PlayerContext {
@@ -22,7 +22,7 @@ const HOME_PAGE = 'https://soteriaforge.com';
  */
 @Injectable({ providedIn: 'root' })
 export class PlayerProgressService {
-  private readonly enrollmentService = inject(EnrollmentService);
+  private readonly completion = inject(ModuleCompletionService);
   private readonly xapi = inject(XapiClient);
 
   /**
@@ -47,24 +47,20 @@ export class PlayerProgressService {
 
   /**
    * Records module completion:
-   *  1. Marks the module complete in the enrollment (LMS side).
+   *  1. Reports completion to the server-authoritative `completeModule` function,
+   *     which recomputes progress and grants XP/badges/streak (anti-cheat).
    *  2. Emits an xAPI 'completed' statement with optional score.
    */
   async recordCompletion(ctx: PlayerContext, score?: number): Promise<void> {
     try {
-      // We don't know totalModules here — use 1 as minimum safe fallback.
-      // CourseDetailComponent should pass a real count; this service is
-      // intentionally thin and leaves orchestration to the caller.
-      await this.enrollmentService.markModuleComplete(
-        ctx.tenantId,
-        ctx.courseId,
-        ctx.uid,
-        ctx.module.id,
-        1, // caller should update totalModules via CourseStore if needed
+      await this.completion.complete({
+        tenantId: ctx.tenantId,
+        courseId: ctx.courseId,
+        moduleId: ctx.module.id,
         score,
-      );
+      });
     } catch (err) {
-      console.warn('[PlayerProgressService] markModuleComplete failed', err);
+      console.warn('[PlayerProgressService] completeModule failed', err);
     }
 
     try {
