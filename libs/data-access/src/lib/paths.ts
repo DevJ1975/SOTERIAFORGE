@@ -46,6 +46,11 @@ export const FsPaths = {
   conversationMessages: (tenantId: string, uid: string) =>
     `tenants/${tenantId}/conversations/${uid}/messages`,
 
+  // Global course library (platform-level; superadmin authors, shares to tenants).
+  library: () => 'library',
+  libraryCourse: (courseId: string) => `library/${courseId}`,
+  libraryModules: (courseId: string) => `library/${courseId}/modules`,
+
   catalog: () => 'catalog',
   catalogProduct: (productId: string) => `catalog/${productId}`,
   b2cCustomerCollection: () => 'customers',

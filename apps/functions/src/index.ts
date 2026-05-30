@@ -14,6 +14,7 @@ export { completeModule } from './lms/complete-module';
 export { assignCourse } from './lms/assign-course';
 export { onScormUpload } from './scorm/on-upload';
 export { platformAnalytics } from './analytics/platform-analytics';
+export { shareLibraryCourse } from './library/share-course';
 export { stripeWebhook } from './stripe/webhook';
 export { createCheckoutSession, createBillingPortalSession } from './stripe/checkout';
 export { ingestStatement } from './lrs/ingest';

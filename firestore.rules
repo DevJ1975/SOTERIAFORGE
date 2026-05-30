@@ -135,6 +135,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Global course library (platform) -----------------------------------
+    // Any signed-in user may browse the shared library; superadmin authors it.
+    // Distribution into tenants happens server-side (shareLibraryCourse).
+    match /library/{courseId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperadmin();
+      match /modules/{moduleId} {
+        allow read: if isSignedIn();
+        allow write: if isSuperadmin();
+      }
+    }
+
     // ---- B2C storefront -----------------------------------------------------
     // catalog/{productId} and customers/{uid} are top-level collections so the
     // path segment count stays even (previously b2c/catalog/{x} was 3 segments —
