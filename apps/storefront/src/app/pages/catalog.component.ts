@@ -123,7 +123,7 @@ export class CatalogComponent {
 
   constructor() {
     // SEO tags are SSR-safe — Title/Meta write to the document server-side too.
-    this.title.setTitle('Course Catalog — Soteria FORGE');
+    this.title.setTitle('Course Catalog — Soteria Assurance');
     this.meta.updateTag({
       name: 'description',
       content:

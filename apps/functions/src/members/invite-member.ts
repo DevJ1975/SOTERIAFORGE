@@ -83,7 +83,7 @@ export const inviteMember = onCall(async (request) => {
   // Email the invitation (queued for the Trigger Email extension).
   await queueEmail(
     input.email,
-    `You're invited to ${tenantSnap.get('name') ?? 'Soteria FORGE'}`,
+    `You're invited to ${tenantSnap.get('name') ?? 'Soteria Assurance'}`,
     `<p>You've been invited as a ${input.role.replace('_', ' ')}.</p>` +
       `<p><a href="${inviteLink}">Set your password and sign in</a> to get started.</p>`,
   );

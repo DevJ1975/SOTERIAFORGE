@@ -28,6 +28,6 @@ describe('Admin AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     expect(fixture.componentInstance).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Soteria FORGE');
+    expect(fixture.nativeElement.textContent).toContain('Soteria Assurance');
   });
 });

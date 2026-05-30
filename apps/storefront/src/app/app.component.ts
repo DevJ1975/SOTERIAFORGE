@@ -11,7 +11,7 @@ import { AuthService } from '@forge/auth';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="store-header">
-      <a routerLink="/" class="store-header__brand">Soteria FORGE</a>
+      <a routerLink="/" class="store-header__brand">Soteria Assurance</a>
       <nav class="store-header__nav">
         <a routerLink="/catalog">Catalog</a>
         @if (authenticated()) {
@@ -24,7 +24,8 @@ import { AuthService } from '@forge/auth';
     </header>
     <router-outlet />
     <footer class="store-footer">
-      <span>© Soteria FORGE — verifiable, AI-grounded training.</span>
+      <span>© {{ year }} Soteria Assurance</span>
+      <span>Powered by Trainovation Technologies, LLC</span>
     </footer>
   `,
   styles: [
@@ -66,6 +67,8 @@ import { AuthService } from '@forge/auth';
   ],
 })
 export class AppComponent {
+  protected readonly year = new Date().getFullYear();
+
   /** Always false on the server; updated reactively from Firebase auth in the browser. */
   protected readonly authenticated = signal(false);
 

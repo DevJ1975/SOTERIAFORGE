@@ -36,7 +36,7 @@ export class LandingComponent {
   constructor() {
     const title = inject(Title);
     const meta = inject(Meta);
-    title.setTitle('Soteria FORGE — Verifiable AI-Grounded Safety Training');
+    title.setTitle('Soteria Assurance — Verifiable AI-Grounded Safety Training');
     meta.updateTag({
       name: 'description',
       content:

@@ -13,7 +13,7 @@ import { TenantService } from '@forge/auth';
 
     <div class="forge-shell">
       <header class="forge-shell__header" role="banner">
-        <span class="forge-shell__brand">Soteria FORGE</span>
+        <span class="forge-shell__brand">Soteria Assurance</span>
         @if (tenant.tenantId(); as tid) {
           <span class="forge-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
             tid
@@ -24,6 +24,11 @@ import { TenantService } from '@forge/auth';
       <main id="main-content" class="forge-shell__main" tabindex="-1">
         <router-outlet />
       </main>
+
+      <footer class="forge-shell__footer">
+        <span>© {{ year }} Soteria Assurance</span>
+        <span>Powered by Trainovation Technologies, LLC</span>
+      </footer>
     </div>
   `,
   styles: [
@@ -46,9 +51,21 @@ import { TenantService } from '@forge/auth';
       .forge-shell__main {
         outline: none;
       }
+      .forge-shell__footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        margin-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 0.8125rem;
+      }
     `,
   ],
 })
 export class AppComponent {
   protected readonly tenant = inject(TenantService);
+  protected readonly year = new Date().getFullYear();
 }

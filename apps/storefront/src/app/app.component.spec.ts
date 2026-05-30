@@ -40,7 +40,7 @@ describe('Storefront AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Soteria FORGE');
+    expect(text).toContain('Soteria Assurance');
     expect(text).toContain('Catalog');
   });
 

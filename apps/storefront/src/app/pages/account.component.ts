@@ -136,7 +136,7 @@ export class AccountComponent {
 
   constructor() {
     // SEO tags are SSR-safe.
-    this.title.setTitle('My Learning — Soteria FORGE');
+    this.title.setTitle('My Learning — Soteria Assurance');
     this.meta.updateTag({
       name: 'description',
       content: 'View your purchased courses, entitlements, and manage your FORGE subscription.',
