@@ -2,6 +2,7 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { ROLES } from '@forge/shared';
 import { adminAuth, db } from '../lib/admin';
+import { auditLog } from '../lib/audit';
 
 const setRoleInput = z.object({
   tenantId: z.string(),
@@ -58,6 +59,14 @@ export const setMemberRole = onCall(async (request) => {
     },
     { merge: true },
   );
+
+  await auditLog({
+    action: 'member.role.set',
+    actorUid: caller.uid,
+    tenantId: input.tenantId,
+    targetId: input.uid,
+    details: { role: input.role },
+  });
 
   return { ok: true };
 });

@@ -1,6 +1,7 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { adminAuth, db } from '../lib/admin';
+import { auditLog } from '../lib/audit';
 
 const setStatusInput = z.object({
   tenantId: z.string(),
@@ -35,5 +36,11 @@ export const setTenantStatus = onCall(async (request) => {
     { merge: true },
   );
 
+  await auditLog({
+    action: 'tenant.status.set',
+    actorUid: request.auth.uid,
+    tenantId,
+    details: { status },
+  });
   return { ok: true, tenantId, status };
 });

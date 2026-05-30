@@ -98,6 +98,12 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // audit log: admins read; append-only, written server-side only.
+      match /audit/{entryId} {
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if false;
+      }
+
       // AI knowledge base + vectors: admin-managed; never client-writable vectors.
       // Paths are flat under the tenant document to keep Firestore segment counts
       // even (odd-segment paths are unreachable via the client SDK).
