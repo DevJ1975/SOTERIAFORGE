@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
 import { GameRepository, QuizRepository } from '@forge/data-access';
 import { EnrollmentService, QuizSubmissionService } from '@forge/lms-core';
-import { ScormRuntimeService } from '@forge/standards';
+import { Cmi5LaunchService, ScormRuntimeService } from '@forge/standards';
 import { ModulePlayerComponent } from './module-player.component';
 import { PlayerProgressService } from './player-progress.service';
 import type { Module } from '@forge/shared';
@@ -50,6 +50,17 @@ const mockQuizSubmissionService: Partial<QuizSubmissionService> = {
   submit: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockCmi5LaunchService: Partial<Cmi5LaunchService> = {
+  launch: jest.fn().mockResolvedValue({
+    auUrl: 'https://x/au',
+    endpoint: 'https://x/xapi',
+    fetch: 'https://x/fetch?token=t',
+    actor: {},
+    registration: 'r',
+    activityId: 'a',
+  }),
+};
+
 const videoModule: Module = {
   id: 'mod-1',
   courseId: 'course-1',
@@ -80,6 +91,7 @@ describe('ModulePlayerComponent', () => {
         { provide: QuizRepository, useValue: mockQuizRepository },
         { provide: QuizSubmissionService, useValue: mockQuizSubmissionService },
         { provide: GameRepository, useValue: mockGameRepository },
+        { provide: Cmi5LaunchService, useValue: mockCmi5LaunchService },
       ],
     }).compileComponents();
 
@@ -123,7 +135,7 @@ describe('ModulePlayerComponent', () => {
     expect(hasScormContent).toBe(true);
   });
 
-  it('renders forge-cmi5-launcher (or its defer placeholder) for cmi5 module', () => {
+  it('renders forge-cmi5-launcher (or its defer placeholder) for cmi5 module', async () => {
     const cmi5Module: Module = {
       ...videoModule,
       contentType: 'cmi5',
@@ -131,6 +143,9 @@ describe('ModulePlayerComponent', () => {
       externalUrl: 'https://cdn.example.com/au/index.html',
     };
     fixture.componentRef.setInput('module', cmi5Module);
+    fixture.detectChanges();
+    // Allow the async launch call to resolve
+    await new Promise((r) => setTimeout(r, 0));
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     const text = el.textContent ?? '';
@@ -141,7 +156,7 @@ describe('ModulePlayerComponent', () => {
     expect(hasCmi5Content).toBe(true);
   });
 
-  it('renders forge-cmi5-launcher (or its defer placeholder) for unity module', () => {
+  it('renders forge-cmi5-launcher (or its defer placeholder) for unity module', async () => {
     const unityModule: Module = {
       ...videoModule,
       contentType: 'unity',
@@ -149,6 +164,9 @@ describe('ModulePlayerComponent', () => {
       externalUrl: 'https://cdn.example.com/unity/index.html',
     };
     fixture.componentRef.setInput('module', unityModule);
+    fixture.detectChanges();
+    // Allow the async launch call to resolve
+    await new Promise((r) => setTimeout(r, 0));
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     const text = el.textContent ?? '';

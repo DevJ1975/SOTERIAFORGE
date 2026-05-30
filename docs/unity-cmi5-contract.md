@@ -54,7 +54,40 @@ For UI niceties (e.g. "request fullscreen"), the iframe may `postMessage` to the
 host; `forge-unity-embed` forwards these via its `signal` output. **This path is
 never used for completion/score** — only cmi5/xAPI is authoritative.
 
-## 5. Developer checklist
+## 5. Launch flow (implemented)
+
+The `ModulePlayerComponent` orchestrates the launch sequence for both `cmi5`
+and `unity` content types:
+
+1. **`launchCmi5` (callable)** — on first browser render, the player calls
+   `Cmi5LaunchService.launch(activityId, auUrl)`, which invokes the
+   `launchCmi5` Firebase callable function. The server validates the caller's
+   tenant claim, mints a short-lived fetch token, and returns a
+   `Cmi5LaunchResult` with `{ auUrl, endpoint, fetch, actor, registration, activityId }`.
+2. **`cmi5Fetch` (fetch URL → auth token)** — the AU calls the `fetch` URL once
+   to exchange it for a short-lived auth token. The token is scoped to the
+   caller's tenant; the server's auth claim is authoritative and an AU cannot
+   post statements to another tenant's LRS endpoint.
+3. **`xapi` (Bearer auth-token → tenant-stamped statements)** — the AU posts
+   xAPI statements to `endpoint` using `Authorization: Bearer <token>`. The LRS
+   pipeline stamps each statement with the tenant ID from the auth token,
+   regardless of any client-supplied value.
+
+The `actor` field in the launch result is the server-canonical xAPI Agent for
+the learner. `ModulePlayerComponent` JSON-serialises it via the `actorJson`
+computed signal before passing it to `forge-cmi5-launcher`'s `actor` input.
+
+The component is SSR-safe: the `launchCmi5` call is wrapped in
+`afterNextRender`, so it never runs during server-side pre-render.
+
+## 6. Versioning
+
+The active AU version is determined by the module's `externalUrl` (preferred)
+or `assetRef` field — this becomes the `auUrl` passed to the server. To roll
+back to a previous build, repoint `externalUrl`/`assetRef` to the previous
+version's URL; no backend migration is required.
+
+## 7. Developer checklist
 
 - [ ] WebGL build loads inside a sandboxed iframe (`allow-scripts allow-same-origin`).
 - [ ] Reads cmi5 launch params from the query string.
