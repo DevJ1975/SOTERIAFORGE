@@ -1,7 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 
 /**
- * Node-side SCORM imsmanifest.xml parser (the @forge/standards `parseImsManifest`
+ * Node-side SCORM imsmanifest.xml parser (the @assurance/standards `parseImsManifest`
  * uses the browser DOMParser, unavailable in Cloud Functions). Extracts the
  * launch href, SCORM version, and title using fast-xml-parser.
  */

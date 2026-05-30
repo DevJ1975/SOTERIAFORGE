@@ -1,8 +1,8 @@
-# @forge/gamification
+# @assurance/gamification
 
 Client-side gamification helpers for XP, levels, streaks, and leaderboard ranking.
 
-Import from the `@forge/gamification` alias (see `tsconfig.base.json`).
+Import from the `@assurance/gamification` alias (see `tsconfig.base.json`).
 
 ---
 
@@ -24,7 +24,7 @@ Pure functions; no state.
 | 10    | 3162                    |
 
 ```ts
-import { xpForLevel, levelForXp } from '@forge/gamification';
+import { xpForLevel, levelForXp } from '@assurance/gamification';
 
 // Cumulative XP threshold to reach level 5
 xpForLevel(5); // → 1118
@@ -49,7 +49,7 @@ Pure functions; no state.
 - No prior activity → streak starts at 1.
 
 ```ts
-import { updateStreak } from '@forge/gamification';
+import { updateStreak } from '@assurance/gamification';
 
 updateStreak('2024-03-14T22:00:00Z', '2024-03-15T08:00:00Z', 3);
 // → { streakDays: 4, incremented: true }
@@ -66,7 +66,7 @@ subsequent ranks. Two members with equal XP both receive rank 1; the next distin
 member receives rank 3.
 
 ```ts
-import { rankEntries } from '@forge/gamification';
+import { rankEntries } from '@assurance/gamification';
 
 rankEntries([
   { uid: 'a', xp: 500, displayName: 'Alice' },
@@ -93,7 +93,7 @@ rankEntries([
 Angular injectable (`providedIn: 'root'`). Optimistic local helper only.
 
 ```ts
-import { XpService } from '@forge/gamification';
+import { XpService } from '@assurance/gamification';
 
 @Component({ ... })
 export class MyComponent {

@@ -1,10 +1,10 @@
-# @forge/ui — Soteria FORGE Design System
+# @assurance/ui — Soteria Assurance Design System
 
 A shared Angular component library providing PrimeNG-based UI components with per-tenant white-label theming via CSS custom properties.
 
 ## Overview
 
-`libs/ui` is the design-system library for the Soteria FORGE monorepo. It delivers:
+`libs/ui` is the design-system library for the Soteria Assurance monorepo. It delivers:
 
 - **Design tokens** — a typed `ThemeTokens` interface with a `DEFAULT_THEME` and a `tokensToCssVars` utility.
 - **ThemeService** — an Angular service (provided in root) that holds the active theme as a reactive signal and writes `--forge-*` CSS custom properties onto `document.documentElement.style` at runtime.
@@ -33,7 +33,7 @@ All design tokens are surfaced as CSS custom properties prefixed with `--forge-`
 
 ```typescript
 // In your root component or app initializer:
-import { ThemeService } from '@forge/ui';
+import { ThemeService } from '@assurance/ui';
 
 @Component({ ... })
 export class AppComponent {
@@ -46,7 +46,7 @@ export class AppComponent {
 }
 ```
 
-`applyBranding` accepts the `Branding` type from `@forge/shared`, merging its `colors` record (keyed by `--forge-*` property names), `fontFamily`, and `logoUrl` onto the current token set.
+`applyBranding` accepts the `Branding` type from `@assurance/shared`, merging its `colors` record (keyed by `--forge-*` property names), `fontFamily`, and `logoUrl` onto the current token set.
 
 ### SSR Support
 

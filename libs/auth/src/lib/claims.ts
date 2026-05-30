@@ -5,7 +5,7 @@ import {
   type Role,
   customClaims,
   tryParse,
-} from '@forge/shared';
+} from '@assurance/shared';
 
 /** Parse raw Firebase ID-token claims into a validated CustomClaims, or null. */
 export function parseClaims(raw: unknown): CustomClaims | null {

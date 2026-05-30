@@ -1,6 +1,6 @@
 import { Injectable, InjectionToken, inject, signal } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import type { ChatMessage } from '@forge/shared';
+import type { ChatMessage } from '@assurance/shared';
 
 /** UUID generator compatible with both browser (Web Crypto) and Node ≥ 19+/Jest. */
 function newUUID(): string {

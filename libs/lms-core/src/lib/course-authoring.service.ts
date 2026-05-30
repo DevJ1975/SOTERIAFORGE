@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { CourseRepository, ModuleRepository } from '@forge/data-access';
-import type { ContentType, Course, Module } from '@forge/shared';
+import { CourseRepository, ModuleRepository } from '@assurance/data-access';
+import type { ContentType, Course, Module } from '@assurance/shared';
 
 export interface NewCourseInput {
   tenantId: string;

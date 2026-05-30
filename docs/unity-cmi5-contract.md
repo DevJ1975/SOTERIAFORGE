@@ -1,4 +1,4 @@
-# Unity (WebGL) ↔ Soteria FORGE — cmi5 integration contract
+# Unity (WebGL) ↔ Soteria Assurance — cmi5 integration contract
 
 Unity games integrate as **cmi5 Assignable Units (AUs)** with no bespoke
 per-game backend work. The contract is: **launch parameters in, xAPI out.**
@@ -14,7 +14,7 @@ per-game backend work. The contract is: **launch parameters in, xAPI out.**
 
 ## 2. Launch
 
-FORGE launches the AU (rendered in `forge-unity-embed`, a sandboxed, responsive,
+Assurance launches the AU (rendered in `forge-unity-embed`, a sandboxed, responsive,
 `@defer`-loaded iframe) with the cmi5 launch query parameters:
 
 | Param          | Meaning                                                       |
@@ -25,7 +25,7 @@ FORGE launches the AU (rendered in `forge-unity-embed`, a sandboxed, responsive,
 | `registration` | UUID grouping all statements for this attempt                 |
 | `activityId`   | The AU's activity IRI                                         |
 
-`@forge/standards` `buildLaunchUrl()` / `parseLaunchParams()` implement this.
+`@assurance/standards` `buildLaunchUrl()` / `parseLaunchParams()` implement this.
 The `fetch` flow returns a short-lived auth token scoped to the caller's tenant
 (the caller's auth claim is authoritative — a game cannot post to another tenant).
 
@@ -44,7 +44,7 @@ with the fetched token:
 Every statement is tenant-tagged server-side via
 `context.extensions["https://soteriaforge.com/xapi/extensions/tenantId"]`.
 
-FORGE reflects `completed` + score into the learner's **enrollment** and triggers
+Assurance reflects `completed` + score into the learner's **enrollment** and triggers
 **gamification** (XP/badges) through server-side validation — the game's reported
 score is verified, never blindly trusted.
 
@@ -94,4 +94,4 @@ version's URL; no backend migration is required.
 - [ ] Performs the `fetch` token exchange before sending statements.
 - [ ] Emits `initialized` → … → `completed` (+ `passed`/`failed` with score).
 - [ ] Handles pause/resume and reports a final statement on unload.
-- [ ] Verified end-to-end against the FORGE LRS in staging.
+- [ ] Verified end-to-end against the Assurance LRS in staging.

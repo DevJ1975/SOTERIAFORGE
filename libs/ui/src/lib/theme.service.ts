@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { Branding } from '@forge/shared';
+import { Branding } from '@assurance/shared';
 import { DEFAULT_THEME, ThemeTokens, tokensToCssVars } from './theme.tokens';
 
 /**
@@ -31,7 +31,7 @@ export class ThemeService {
   }
 
   /**
-   * Maps a `Branding` object (from `@forge/shared`) onto `ThemeTokens` and applies them.
+   * Maps a `Branding` object (from `@assurance/shared`) onto `ThemeTokens` and applies them.
    * Fields that are absent in the branding fall back to the current token values.
    */
   applyBranding(branding: Branding): void {

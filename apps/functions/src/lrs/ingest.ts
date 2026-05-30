@@ -1,5 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { XAPI_TENANT_EXTENSION, xapiStatement } from '@forge/shared';
+import { XAPI_TENANT_EXTENSION, xapiStatement } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 

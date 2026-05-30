@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { CatalogRepository } from '@forge/data-access';
-import type { CatalogProduct } from '@forge/shared';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { CatalogRepository } from '@assurance/data-access';
+import type { CatalogProduct } from '@assurance/shared';
 import { CatalogComponent } from './catalog.component';
 
 // Polyfill crypto.randomUUID for jsdom

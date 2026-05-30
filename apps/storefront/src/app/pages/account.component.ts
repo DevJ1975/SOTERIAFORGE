@@ -11,10 +11,10 @@ import { RouterLink } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { AuthService } from '@forge/auth';
-import { CheckoutService } from '@forge/payments';
-import { B2cCustomerRepository } from '@forge/data-access';
-import type { B2cCustomer } from '@forge/shared';
+import { AuthService } from '@assurance/auth';
+import { CheckoutService } from '@assurance/payments';
+import { B2cCustomerRepository } from '@assurance/data-access';
+import type { B2cCustomer } from '@assurance/shared';
 
 // NOTE: All data fetching is browser-only. The server renders the page shell
 // and SEO meta tags; the browser fetches the customer record after bootstrap.

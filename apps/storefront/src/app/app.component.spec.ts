@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@forge/auth';
+import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@assurance/auth';
 import { AppComponent } from './app.component';
 
 const testEnv: ForgeEnvironment = {

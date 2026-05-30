@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, signal } from 
 import { isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { AuthService } from '@forge/auth';
+import { AuthService } from '@assurance/auth';
 
 @Component({
   selector: 'forge-storefront-root',

@@ -14,23 +14,23 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { MultiSelectModule } from 'primeng/multiselect';
-import { CourseAuthoringService, AssignmentService } from '@forge/lms-core';
+import { CourseAuthoringService, AssignmentService } from '@assurance/lms-core';
 import {
   CourseRepository,
   GameRepository,
   MemberRepository,
   ModuleRepository,
   QuizRepository,
-} from '@forge/data-access';
-import { TenantService } from '@forge/auth';
+} from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
 import {
   CONTENT_TYPES,
   type ContentType,
   type Course,
   type Member,
   type Module,
-} from '@forge/shared';
-import type { Game, Quiz } from '@forge/shared';
+} from '@assurance/shared';
+import type { Game, Quiz } from '@assurance/shared';
 
 interface QuizOption {
   label: string;

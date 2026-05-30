@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import type { XapiStatement } from '@forge/shared';
+import type { XapiStatement } from '@assurance/shared';
 
 /**
  * Key used in localStorage for the pending xAPI statement queue.

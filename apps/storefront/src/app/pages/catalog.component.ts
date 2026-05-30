@@ -11,9 +11,9 @@ import { ActivatedRoute } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { CheckoutService } from '@forge/payments';
-import { CatalogRepository } from '@forge/data-access';
-import type { CatalogProduct } from '@forge/shared';
+import { CheckoutService } from '@assurance/payments';
+import { CatalogRepository } from '@assurance/data-access';
+import type { CatalogProduct } from '@assurance/shared';
 
 // NOTE: True SSR-for-SEO with live product data requires a real Firebase config
 // at build/render time (deploy-time enhancement). In the current setup the

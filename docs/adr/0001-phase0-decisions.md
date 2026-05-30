@@ -6,7 +6,7 @@
 
 ## Context
 
-Soteria FORGE is a dual B2B/B2C multi-tenant LMS. Section 16 of the build spec
+Soteria Assurance is a dual B2B/B2C multi-tenant LMS. Section 16 of the build spec
 lists eight open decision points. Four of them gate Phase 0 (monorepo layout,
 design system, auth shell, tenant resolution) and were resolved before
 scaffolding. The remaining four are deferred to the phases that depend on them.
@@ -24,7 +24,7 @@ sign-in; superadmin authenticates against the project-level pool.
 ### 2. UI library → PrimeNG
 
 Richer out-of-box widgets accelerate the admin/authoring consoles. Wrapped by a
-thin `@forge/ui` design system so per-tenant white-labeling (CSS custom
+thin `@assurance/ui` design system so per-tenant white-labeling (CSS custom
 properties) is centralized regardless of the underlying toolkit.
 
 ### 3. App layout → four separate apps
@@ -39,7 +39,7 @@ scaffolding/CI surface.
 `acme.soteriaforge.com` resolves to tenant `acme`; the apex (and `www`) resolves
 to the B2C storefront. Custom domains are a Phase 1+ addition (mapping table in
 `ForgeEnvironment.customDomains`). Resolution is a pure function in
-`@forge/shared` so it runs identically in browser, SSR, and Cloud Functions.
+`@assurance/shared` so it runs identically in browser, SSR, and Cloud Functions.
 
 ## Deferred decisions (carry spec defaults; revisit in-phase)
 

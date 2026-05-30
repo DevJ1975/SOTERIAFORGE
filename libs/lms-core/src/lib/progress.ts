@@ -1,4 +1,4 @@
-import type { Module } from '@forge/shared';
+import type { Module } from '@assurance/shared';
 
 /**
  * Pure progress-computation helpers.

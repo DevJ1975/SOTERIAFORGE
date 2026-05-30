@@ -1,4 +1,4 @@
-# @forge/payments
+# @assurance/payments
 
 Stripe client integration + entitlement model for the B2C storefront.
 
@@ -22,7 +22,7 @@ Entitlements flow exclusively through the server:
 **Gating must be enforced at two layers:**
 
 - **Route guard** — use `EntitlementStore.canAccess(productId)` or
-  `hasEntitlement(claims, productId)` from `@forge/auth`.
+  `hasEntitlement(claims, productId)` from `@assurance/auth`.
 - **Content delivery** — Firestore security rules and/or Cloud Function auth
   checks must independently verify the custom claim; the client-side check is
   UI-only convenience.

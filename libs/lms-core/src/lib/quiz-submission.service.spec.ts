@@ -11,7 +11,7 @@ jest.mock('@angular/fire/functions', () => ({
 import { TestBed } from '@angular/core/testing';
 import { Functions } from '@angular/fire/functions';
 import { QuizSubmissionService } from './quiz-submission.service';
-import type { QuizGrade, QuizResponse } from '@forge/shared';
+import type { QuizGrade, QuizResponse } from '@assurance/shared';
 
 const mockGrade: QuizGrade = {
   earnedPoints: 8,

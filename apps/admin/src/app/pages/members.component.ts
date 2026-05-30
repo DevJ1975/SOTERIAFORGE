@@ -4,10 +4,10 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
-import { MemberAdminService } from '@forge/tenant';
-import { MemberRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import { type Member, type Role, ROLES } from '@forge/shared';
+import { MemberAdminService } from '@assurance/tenant';
+import { MemberRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import { type Member, type Role, ROLES } from '@assurance/shared';
 
 const INVITE_ROLES: readonly Role[] = ROLES.filter(
   (r) => r !== 'superadmin' && r !== 'b2c_customer',

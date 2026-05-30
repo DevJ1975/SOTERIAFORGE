@@ -1,6 +1,6 @@
 import { Firestore, orderBy, where } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
-import { type Course, type Member, type Tenant, course, member, tenant } from '@forge/shared';
+import { type Course, type Member, type Tenant, course, member, tenant } from '@assurance/shared';
 import { BaseRepository } from '../base-repository';
 import { FsPaths } from '../paths';
 

@@ -1,4 +1,4 @@
-# @forge/standards — SCORM / xAPI / cmi5 Standards Engine
+# @assurance/standards — SCORM / xAPI / cmi5 Standards Engine
 
 This library is the client-side standards engine for SOTERIAFORGE. It owns all
 SCORM, xAPI, and cmi5 concerns and provides the glue between e-learning content
@@ -53,7 +53,7 @@ An Angular injectable service (provided in root) that:
 
 ### `VERB_MAP` / `getVerb` (`verbs.ts`)
 
-Re-exports and maps the eight platform xAPI verbs defined in `@forge/shared`
+Re-exports and maps the eight platform xAPI verbs defined in `@assurance/shared`
 (`XAPI_VERBS`) to friendly descriptor objects that carry both the canonical IRI
 and an `en-US` display label.
 

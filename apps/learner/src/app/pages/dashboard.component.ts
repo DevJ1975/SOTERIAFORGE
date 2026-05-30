@@ -8,10 +8,10 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
-import { AuthService, TenantService } from '@forge/auth';
-import { MemberRepository } from '@forge/data-access';
-import { XpBadgeComponent } from '@forge/gamification';
-import type { Member } from '@forge/shared';
+import { AuthService, TenantService } from '@assurance/auth';
+import { MemberRepository } from '@assurance/data-access';
+import { XpBadgeComponent } from '@assurance/gamification';
+import type { Member } from '@assurance/shared';
 
 @Component({
   selector: 'forge-dashboard',

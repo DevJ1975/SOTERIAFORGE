@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import type { QuizGrade, QuizResponse } from '@forge/shared';
+import type { QuizGrade, QuizResponse } from '@assurance/shared';
 
 export interface QuizSubmitInput {
   tenantId: string;

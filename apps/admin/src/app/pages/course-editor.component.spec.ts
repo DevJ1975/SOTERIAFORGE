@@ -1,14 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
 import {
   CourseRepository,
   GameRepository,
   MemberRepository,
   ModuleRepository,
   QuizRepository,
-} from '@forge/data-access';
-import { AssignmentService, CourseAuthoringService } from '@forge/lms-core';
+} from '@assurance/data-access';
+import { AssignmentService, CourseAuthoringService } from '@assurance/lms-core';
 import { CourseEditorComponent } from './course-editor.component';
 
 const testEnv: ForgeEnvironment = {

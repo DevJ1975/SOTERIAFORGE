@@ -5,9 +5,9 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
-import { LibraryRepository } from '@forge/data-access';
-import { CONTENT_TYPES } from '@forge/shared';
-import type { Course, Module } from '@forge/shared';
+import { LibraryRepository } from '@assurance/data-access';
+import { CONTENT_TYPES } from '@assurance/shared';
+import type { Course, Module } from '@assurance/shared';
 
 interface ContentTypeOption {
   label: string;

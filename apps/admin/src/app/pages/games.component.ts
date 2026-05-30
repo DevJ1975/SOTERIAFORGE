@@ -5,10 +5,10 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
-import { GameRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import type { Game } from '@forge/shared';
-import type { CardGameConfig } from '@forge/games/model';
+import { GameRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import type { Game } from '@assurance/shared';
+import type { CardGameConfig } from '@assurance/games/model';
 
 /** Minimal valid configs for each CardGameConfig kind. */
 function makeDefaultConfig(kind: CardGameConfig['kind'], title: string): CardGameConfig {

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { QuizRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { QuizRepository } from '@assurance/data-access';
 import { QuizEditorComponent } from './quiz-editor.component';
 
 const testEnv: ForgeEnvironment = {

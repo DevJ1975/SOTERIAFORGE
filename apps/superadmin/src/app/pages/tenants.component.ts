@@ -4,9 +4,9 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { TenantRepository } from '@forge/data-access';
-import { TenantAdminService } from '@forge/tenant';
-import type { Tenant } from '@forge/shared';
+import { TenantRepository } from '@assurance/data-access';
+import { TenantAdminService } from '@assurance/tenant';
+import type { Tenant } from '@assurance/shared';
 
 @Component({
   selector: 'forge-superadmin-tenants',

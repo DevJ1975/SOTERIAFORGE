@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { GameRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { GameRepository } from '@assurance/data-access';
 import { GameEditorComponent } from './game-editor.component';
 
 const testEnv: ForgeEnvironment = {

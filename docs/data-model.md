@@ -77,4 +77,4 @@ AI `text-embedding` default; adjust to the chosen model). Used by Firestore
 ## Timestamps
 
 Cross the application boundary as ISO-8601 strings; stored as Firestore
-Timestamps at rest. Converters in `@forge/data-access` handle the mapping.
+Timestamps at rest. Converters in `@assurance/data-access` handle the mapping.

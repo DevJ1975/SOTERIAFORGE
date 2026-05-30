@@ -1,5 +1,5 @@
-// Mock @forge/data-access to avoid pulling in Firebase in unit tests.
-jest.mock('@forge/data-access', () => ({
+// Mock @assurance/data-access to avoid pulling in Firebase in unit tests.
+jest.mock('@assurance/data-access', () => ({
   LeaderboardRepository: class LeaderboardRepository {
     get = jest.fn();
     watch = jest.fn();
@@ -7,9 +7,9 @@ jest.mock('@forge/data-access', () => ({
 }));
 
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { LeaderboardRepository } from '@forge/data-access';
+import { LeaderboardRepository } from '@assurance/data-access';
 import { LeaderboardComponent } from './leaderboard.component';
-import type { Leaderboard } from '@forge/shared';
+import type { Leaderboard } from '@assurance/shared';
 
 const mockLeaderboard: Leaderboard = {
   tenantId: 'acme',

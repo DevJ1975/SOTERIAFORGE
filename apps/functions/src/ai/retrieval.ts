@@ -1,4 +1,4 @@
-import { topKBySimilarity } from '@forge/shared';
+import { topKBySimilarity } from '@assurance/shared';
 import { db } from '../lib/admin';
 import type { RetrievedChunk } from './providers';
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Member } from '@forge/shared';
+import { Member } from '@assurance/shared';
 import { levelForXp } from './leveling';
 import { updateStreak } from './streaks';
 

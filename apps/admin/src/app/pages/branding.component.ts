@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { BrandingService } from '@forge/tenant';
-import { TenantRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import { ThemeService } from '@forge/ui';
-import type { Branding } from '@forge/shared';
+import { BrandingService } from '@assurance/tenant';
+import { TenantRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import { ThemeService } from '@assurance/ui';
+import type { Branding } from '@assurance/shared';
 
 interface BrandingForm {
   logoUrl: string;

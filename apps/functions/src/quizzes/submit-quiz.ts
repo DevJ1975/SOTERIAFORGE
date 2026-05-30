@@ -1,6 +1,6 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
-import { type QuizResponse, XAPI_TENANT_EXTENSION, XAPI_VERBS, gradeQuiz } from '@forge/shared';
+import { type QuizResponse, XAPI_TENANT_EXTENSION, XAPI_VERBS, gradeQuiz } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { recordModuleCompletion } from '../lib/completion';

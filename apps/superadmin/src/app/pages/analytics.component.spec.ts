@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
 import { AnalyticsService, type PlatformAnalytics } from '../services/analytics.service';
 import { AnalyticsComponent } from './analytics.component';
 

@@ -1,12 +1,12 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { GameRepository, QuizRepository } from '@forge/data-access';
-import { EnrollmentService, QuizSubmissionService } from '@forge/lms-core';
-import { Cmi5LaunchService, ScormRuntimeService } from '@forge/standards';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { GameRepository, QuizRepository } from '@assurance/data-access';
+import { EnrollmentService, QuizSubmissionService } from '@assurance/lms-core';
+import { Cmi5LaunchService, ScormRuntimeService } from '@assurance/standards';
 import { ModulePlayerComponent } from './module-player.component';
 import { PlayerProgressService } from './player-progress.service';
-import type { Module } from '@forge/shared';
+import type { Module } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

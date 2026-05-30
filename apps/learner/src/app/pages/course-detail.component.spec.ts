@@ -1,13 +1,13 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@forge/auth';
-import { ModuleRepository, EnrollmentRepository } from '@forge/data-access';
-import { EnrollmentService } from '@forge/lms-core';
-import { PlayerProgressService } from '@forge/player';
-import { TutorService, TUTOR_FUNCTIONS } from '@forge/ai-tutor';
+import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import { ModuleRepository, EnrollmentRepository } from '@assurance/data-access';
+import { EnrollmentService } from '@assurance/lms-core';
+import { PlayerProgressService } from '@assurance/player';
+import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
 import { CourseDetailComponent } from './course-detail.component';
-import type { Enrollment, Module, ChatMessage } from '@forge/shared';
+import type { Enrollment, Module, ChatMessage } from '@assurance/shared';
 import { of } from 'rxjs';
 
 const testEnv: ForgeEnvironment = {

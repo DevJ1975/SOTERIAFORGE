@@ -4,10 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { CourseRepository } from '@forge/data-access';
-import { CourseAuthoringService } from '@forge/lms-core';
-import { TenantService } from '@forge/auth';
-import type { Course } from '@forge/shared';
+import { CourseRepository } from '@assurance/data-access';
+import { CourseAuthoringService } from '@assurance/lms-core';
+import { TenantService } from '@assurance/auth';
+import type { Course } from '@assurance/shared';
 
 @Component({
   selector: 'forge-admin-courses',

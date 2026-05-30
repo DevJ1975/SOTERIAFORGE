@@ -3,7 +3,7 @@
 Phase 3 wires standards-based content into the unified player. This documents
 how a package goes from upload to launch to reporting.
 
-## Components (`@forge/standards`)
+## Components (`@assurance/standards`)
 
 - `parseImsManifest(xml)` — parses `imsmanifest.xml` → `{ title, scormVersion,
 launchHref }`.
@@ -17,7 +17,7 @@ launchHref }`.
 - `XapiClient` — builds tenant-stamped statements, `send()` → `ingestStatement`
   callable (Firestore LRS v1).
 
-## Player wiring (`@forge/player` → `ModulePlayerComponent`)
+## Player wiring (`@assurance/player` → `ModulePlayerComponent`)
 
 `@switch (module.contentType)`:
 
@@ -58,7 +58,7 @@ authors can point a `scorm` module directly at a pre-extracted launch URL.
 - SCORM `cmi.*` runtime persists per module in `enrollment.cmi.runtime`.
 - Completion/score mirror to xAPI (`completed`/`passed`/`failed`) and update
   `enrollment` (progress, score, completion).
-- cmi5/Unity AUs report xAPI directly to the LRS endpoint; FORGE reflects the
+- cmi5/Unity AUs report xAPI directly to the LRS endpoint; Assurance reflects the
   result into enrollment + gamification (Phase 4).
 - Every statement is tenant-stamped (`context.extensions[...tenantId]`),
   server-authoritative via `ingestStatement`.

@@ -1,4 +1,4 @@
-import type { CustomClaims } from '@forge/shared';
+import type { CustomClaims } from '@assurance/shared';
 import { canAccessTenant, canAuthor, hasRole, isSuperadmin, parseClaims } from './claims';
 
 const admin: CustomClaims = { role: 'tenant_admin', tenantId: 'acme', entitlements: [] };

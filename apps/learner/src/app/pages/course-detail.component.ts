@@ -9,12 +9,12 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
-import { ModulePlayerComponent } from '@forge/player';
-import { ModuleRepository, EnrollmentRepository } from '@forge/data-access';
-import { EnrollmentService } from '@forge/lms-core';
-import { AuthService, TenantService } from '@forge/auth';
-import { TutorChatComponent } from '@forge/ai-tutor';
-import type { Module, Enrollment } from '@forge/shared';
+import { ModulePlayerComponent } from '@assurance/player';
+import { ModuleRepository, EnrollmentRepository } from '@assurance/data-access';
+import { EnrollmentService } from '@assurance/lms-core';
+import { AuthService, TenantService } from '@assurance/auth';
+import { TutorChatComponent } from '@assurance/ai-tutor';
+import type { Module, Enrollment } from '@assurance/shared';
 
 @Component({
   selector: 'forge-learner-course-detail',

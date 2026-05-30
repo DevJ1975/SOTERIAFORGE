@@ -8,11 +8,11 @@ import {
   signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { GameRepository } from '@forge/data-access';
-import type { CardGameConfig } from '@forge/games';
-import type { Game } from '@forge/shared';
-import { PhaserHostComponent } from '@forge/games';
-import { RiveCharacterComponent } from '@forge/games';
+import { GameRepository } from '@assurance/data-access';
+import type { CardGameConfig } from '@assurance/games';
+import type { Game } from '@assurance/shared';
+import { PhaserHostComponent } from '@assurance/games';
+import { RiveCharacterComponent } from '@assurance/games';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 
 @Component({

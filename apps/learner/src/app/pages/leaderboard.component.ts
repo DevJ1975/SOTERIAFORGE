@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TenantService } from '@forge/auth';
-import { LeaderboardComponent } from '@forge/gamification';
+import { TenantService } from '@assurance/auth';
+import { LeaderboardComponent } from '@assurance/gamification';
 
 @Component({
   selector: 'forge-leaderboard-page',

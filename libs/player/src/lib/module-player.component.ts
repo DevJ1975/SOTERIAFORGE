@@ -9,14 +9,14 @@ import {
   signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import type { Module } from '@forge/shared';
-import { EnrollmentService } from '@forge/lms-core';
+import type { Module } from '@assurance/shared';
+import { EnrollmentService } from '@assurance/lms-core';
 import {
   Cmi5LaunchService,
   Cmi5LaunchResult,
   ScormPlayerComponent,
   Cmi5LauncherComponent,
-} from '@forge/standards';
+} from '@assurance/standards';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 import { VideoPlayerComponent } from './video-player.component';
 import { QuizPlayerComponent } from './quiz-player.component';

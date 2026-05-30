@@ -16,7 +16,7 @@
  * No state; all functions are pure.
  */
 
-import { LeaderboardEntry } from '@forge/shared';
+import { LeaderboardEntry } from '@assurance/shared';
 
 /** Minimal input shape accepted by {@link rankEntries}. */
 export interface RankInput {

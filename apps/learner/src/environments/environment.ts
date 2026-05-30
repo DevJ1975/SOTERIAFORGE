@@ -1,4 +1,4 @@
-import type { ForgeEnvironment } from '@forge/auth';
+import type { ForgeEnvironment } from '@assurance/auth';
 
 export const environment: ForgeEnvironment = {
   production: true,

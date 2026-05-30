@@ -1,6 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { XAPI_TENANT_EXTENSION } from '@forge/shared';
+import { XAPI_TENANT_EXTENSION } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { verifyToken } from './token';

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { KnowledgeRepository } from '@forge/data-access';
-import { IngestService } from '@forge/ai-tutor';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { KnowledgeRepository } from '@assurance/data-access';
+import { IngestService } from '@assurance/ai-tutor';
 import { KnowledgeComponent } from './knowledge.component';
-import type { KnowledgeSource } from '@forge/shared';
+import type { KnowledgeSource } from '@assurance/shared';
 
 // Polyfill crypto.randomUUID for jsdom
 Object.defineProperty(globalThis, 'crypto', {

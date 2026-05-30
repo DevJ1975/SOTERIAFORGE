@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import type { Course, Enrollment, Module } from '@forge/shared';
-import { CourseRepository, EnrollmentRepository } from '@forge/data-access';
+import type { Course, Enrollment, Module } from '@assurance/shared';
+import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
 import { computeCourseProgress, nextIncompleteModule } from './progress';
 
 export interface CourseStoreState {
@@ -30,7 +30,7 @@ const initialState: CourseStoreState = {
  *
  * Provide per-component (not root) so each course view gets its own isolated
  * store instance. Modules can be externally patched after load if a
- * ModuleRepository is added to @forge/data-access in the future.
+ * ModuleRepository is added to @assurance/data-access in the future.
  */
 export const CourseStore = signalStore(
   withState<CourseStoreState>(initialState),

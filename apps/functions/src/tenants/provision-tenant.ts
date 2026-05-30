@@ -1,7 +1,7 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { LEADERBOARD_PERIODS } from '@forge/shared';
+import { LEADERBOARD_PERIODS } from '@assurance/shared';
 import { adminAuth, db } from '../lib/admin';
 
 const provisionInput = z.object({

@@ -1,9 +1,9 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@forge/auth';
-import { CourseRepository, EnrollmentRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
 import { CoursesComponent } from './courses.component';
-import type { Course } from '@forge/shared';
+import type { Course } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

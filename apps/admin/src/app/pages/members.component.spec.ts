@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { MemberRepository } from '@forge/data-access';
-import { MemberAdminService } from '@forge/tenant';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { MemberRepository } from '@assurance/data-access';
+import { MemberAdminService } from '@assurance/tenant';
 import { MembersComponent } from './members.component';
 
 const testEnv: ForgeEnvironment = {

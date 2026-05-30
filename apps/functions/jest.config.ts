@@ -7,7 +7,7 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js'],
   moduleNameMapper: {
-    '^@forge/shared$': '<rootDir>/../../libs/shared/src/index.ts',
+    '^@assurance/shared$': '<rootDir>/../../libs/shared/src/index.ts',
   },
   coverageDirectory: '../../coverage/apps/functions',
 };

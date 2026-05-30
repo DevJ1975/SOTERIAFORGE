@@ -10,10 +10,10 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { MemberRepository, EnrollmentRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import { toCsv } from '@forge/shared';
-import type { Member, Enrollment } from '@forge/shared';
+import { MemberRepository, EnrollmentRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import { toCsv } from '@assurance/shared';
+import type { Member, Enrollment } from '@assurance/shared';
 
 interface LearnerRow {
   uid: string;

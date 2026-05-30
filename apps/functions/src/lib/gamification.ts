@@ -1,4 +1,4 @@
-import { levelFromXp, nextStreak } from '@forge/shared';
+import { levelFromXp, nextStreak } from '@assurance/shared';
 import { db } from './admin';
 
 export interface AwardResult {

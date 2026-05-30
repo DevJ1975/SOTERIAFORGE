@@ -7,8 +7,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
 import { TableModule } from 'primeng/table';
-import { CatalogRepository } from '@forge/data-access';
-import type { CatalogProduct } from '@forge/shared';
+import { CatalogRepository } from '@assurance/data-access';
+import type { CatalogProduct } from '@assurance/shared';
 
 interface SelectOption<T extends string> {
   label: string;

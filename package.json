@@ -1,9 +1,9 @@
 {
-  "name": "soteria-forge",
+  "name": "soteria-assurance",
   "version": "0.1.0",
   "license": "UNLICENSED",
   "private": true,
-  "description": "Soteria FORGE — production-grade, multi-tenant LMS (B2B + B2C). Phase 0 foundation.",
+  "description": "Soteria Assurance — production-grade, multi-tenant LMS (B2B + B2C). Phase 0 foundation.",
   "scripts": {
     "start:learner": "nx serve learner",
     "start:admin": "nx serve admin",

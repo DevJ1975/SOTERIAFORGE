@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Member } from '@forge/shared';
+import { Member } from '@assurance/shared';
 import { XpService } from './xp.service';
 
 /**

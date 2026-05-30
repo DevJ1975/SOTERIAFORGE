@@ -1,6 +1,6 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
-import { ROLES } from '@forge/shared';
+import { ROLES } from '@assurance/shared';
 import { adminAuth, db } from '../lib/admin';
 import { queueEmail } from '../lib/notify';
 

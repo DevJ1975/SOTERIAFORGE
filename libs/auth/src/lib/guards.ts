@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, Router } from '@angular/router';
-import type { Role } from '@forge/shared';
+import type { Role } from '@assurance/shared';
 import { AuthService } from './auth.service';
 import { canAccessTenant, hasRole, isSuperadmin } from './claims';
 import { TenantService } from './tenant.service';

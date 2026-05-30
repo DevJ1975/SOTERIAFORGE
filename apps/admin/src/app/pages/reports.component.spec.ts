@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { MemberRepository, EnrollmentRepository } from '@forge/data-access';
-import type { Member, Enrollment } from '@forge/shared';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { MemberRepository, EnrollmentRepository } from '@assurance/data-access';
+import type { Member, Enrollment } from '@assurance/shared';
 import { ReportsComponent } from './reports.component';
 
 // Polyfill URL.createObjectURL / revokeObjectURL for jsdom

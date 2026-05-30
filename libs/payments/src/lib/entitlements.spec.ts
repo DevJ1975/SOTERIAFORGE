@@ -1,4 +1,4 @@
-import type { CatalogProduct } from '@forge/shared';
+import type { CatalogProduct } from '@assurance/shared';
 import { isEntitled, resolveAccess } from './entitlements';
 
 // ---------------------------------------------------------------------------

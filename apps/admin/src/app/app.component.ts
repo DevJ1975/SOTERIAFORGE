@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { TenantService } from '@forge/auth';
+import { TenantService } from '@assurance/auth';
 
 @Component({
   selector: 'forge-admin-root',

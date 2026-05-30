@@ -1,6 +1,6 @@
-# @forge/data-access
+# @assurance/data-access
 
-Typed, tenant-scoped Firestore access for Soteria FORGE.
+Typed, tenant-scoped Firestore access for Soteria Assurance.
 
 - `zodConverter` — schema-backed `FirestoreDataConverter`; validates on read
   (drift defense) and write, injects/strips the synthetic `id`.

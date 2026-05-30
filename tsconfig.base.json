@@ -23,19 +23,19 @@
     "esModuleInterop": true,
     "useDefineForClassFields": false,
     "paths": {
-      "@forge/ai-tutor": ["libs/ai-tutor/src/index.ts"],
-      "@forge/auth": ["libs/auth/src/index.ts"],
-      "@forge/data-access": ["libs/data-access/src/index.ts"],
-      "@forge/games": ["libs/games/src/index.ts"],
-      "@forge/games/model": ["libs/games/src/lib/card-game.model.ts"],
-      "@forge/gamification": ["libs/gamification/src/index.ts"],
-      "@forge/lms-core": ["libs/lms-core/src/index.ts"],
-      "@forge/payments": ["libs/payments/src/index.ts"],
-      "@forge/player": ["libs/player/src/index.ts"],
-      "@forge/shared": ["libs/shared/src/index.ts"],
-      "@forge/standards": ["libs/standards/src/index.ts"],
-      "@forge/tenant": ["libs/tenant/src/index.ts"],
-      "@forge/ui": ["libs/ui/src/index.ts"]
+      "@assurance/ai-tutor": ["libs/ai-tutor/src/index.ts"],
+      "@assurance/auth": ["libs/auth/src/index.ts"],
+      "@assurance/data-access": ["libs/data-access/src/index.ts"],
+      "@assurance/games": ["libs/games/src/index.ts"],
+      "@assurance/games/model": ["libs/games/src/lib/card-game.model.ts"],
+      "@assurance/gamification": ["libs/gamification/src/index.ts"],
+      "@assurance/lms-core": ["libs/lms-core/src/index.ts"],
+      "@assurance/payments": ["libs/payments/src/index.ts"],
+      "@assurance/player": ["libs/player/src/index.ts"],
+      "@assurance/shared": ["libs/shared/src/index.ts"],
+      "@assurance/standards": ["libs/standards/src/index.ts"],
+      "@assurance/tenant": ["libs/tenant/src/index.ts"],
+      "@assurance/ui": ["libs/ui/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

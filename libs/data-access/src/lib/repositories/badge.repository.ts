@@ -1,6 +1,6 @@
 import { Firestore, orderBy } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
-import { type Badge, badge } from '@forge/shared';
+import { type Badge, badge } from '@assurance/shared';
 import { BaseRepository } from '../base-repository';
 import { FsPaths } from '../paths';
 

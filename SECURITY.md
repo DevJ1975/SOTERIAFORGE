@@ -8,7 +8,7 @@ days.
 
 ## Security model (summary)
 
-Soteria FORGE is multi-tenant; **tenant isolation** is the central invariant.
+Soteria Assurance is multi-tenant; **tenant isolation** is the central invariant.
 
 ### Identity & tenancy
 

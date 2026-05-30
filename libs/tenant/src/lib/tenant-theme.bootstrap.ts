@@ -5,9 +5,9 @@ import {
   inject,
   provideAppInitializer,
 } from '@angular/core';
-import { TenantService } from '@forge/auth';
-import { TenantRepository } from '@forge/data-access';
-import { ThemeService } from '@forge/ui';
+import { TenantService } from '@assurance/auth';
+import { TenantRepository } from '@assurance/data-access';
+import { ThemeService } from '@assurance/ui';
 
 /**
  * Runtime white-labeling: on app start (browser only), resolve the active

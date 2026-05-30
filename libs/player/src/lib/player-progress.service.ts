@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import type { Module } from '@forge/shared';
-import { XAPI_TENANT_EXTENSION } from '@forge/shared';
-import { ModuleCompletionService } from '@forge/lms-core';
-import { XapiClient } from '@forge/standards';
+import type { Module } from '@assurance/shared';
+import { XAPI_TENANT_EXTENSION } from '@assurance/shared';
+import { ModuleCompletionService } from '@assurance/lms-core';
+import { XapiClient } from '@assurance/standards';
 
 export interface PlayerContext {
   tenantId: string;

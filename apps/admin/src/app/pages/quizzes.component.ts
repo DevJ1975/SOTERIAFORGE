@@ -5,9 +5,9 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
-import { QuizRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import type { Quiz } from '@forge/shared';
+import { QuizRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import type { Quiz } from '@assurance/shared';
 
 @Component({
   selector: 'forge-admin-quizzes',

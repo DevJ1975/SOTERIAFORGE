@@ -5,10 +5,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
-import { KnowledgeRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import { IngestService } from '@forge/ai-tutor';
-import type { KnowledgeSource } from '@forge/shared';
+import { KnowledgeRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import { IngestService } from '@assurance/ai-tutor';
+import type { KnowledgeSource } from '@assurance/shared';
 
 type KnowledgeKind = 'upload' | 'url';
 

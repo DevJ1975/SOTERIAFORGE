@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, superadminGuard } from '@forge/auth';
+import { authGuard, superadminGuard } from '@assurance/auth';
 
 export const appRoutes: Routes = [
   {

@@ -1,5 +1,5 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { chunkText } from '@forge/shared';
+import { chunkText } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { getProviders } from './providers';

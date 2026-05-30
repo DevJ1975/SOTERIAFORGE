@@ -1,10 +1,10 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
-import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@forge/auth';
-import { TutorService, TUTOR_FUNCTIONS } from '@forge/ai-tutor';
+import { FORGE_ENV, type ForgeEnvironment, AuthService, TenantService } from '@assurance/auth';
+import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
 import { TutorPageComponent } from './tutor.component';
-import type { ChatMessage } from '@forge/shared';
+import type { ChatMessage } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

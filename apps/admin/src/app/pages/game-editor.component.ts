@@ -5,9 +5,9 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
-import { GameRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import type { Game } from '@forge/shared';
+import { GameRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import type { Game } from '@assurance/shared';
 import {
   validateCardGameConfig,
   type CardGameConfig,
@@ -18,7 +18,7 @@ import {
   type ScenarioCardsConfig,
   type ScenarioCard,
   type BucketDef,
-} from '@forge/games/model';
+} from '@assurance/games/model';
 
 type GameKind = CardGameConfig['kind'];
 

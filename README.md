@@ -1,4 +1,4 @@
-# Soteria FORGE
+# Soteria Assurance
 
 Production-grade, multi-tenant Learning Management System (LMS) for the Soteria
 training ecosystem. Delivers compliance and skills training via video,
@@ -11,7 +11,7 @@ AI tutor. Serves **B2B multi-tenant** (white-labeled, isolated tenants) and a
 | Decision                 | Choice                                                          |
 | ------------------------ | --------------------------------------------------------------- |
 | Multi-tenancy & identity | **GCIP true multi-tenancy** (Identity Platform tenants)         |
-| UI component library     | **PrimeNG** (wrapped by `@forge/ui` design system)              |
+| UI component library     | **PrimeNG** (wrapped by `@assurance/ui` design system)          |
 | App layout               | **Four separate apps** — learner, admin, superadmin, storefront |
 | Tenant routing           | **Subdomain** (`acme.soteriaforge.com`); B2C on the apex        |
 
@@ -40,7 +40,7 @@ libs/        ui · auth · data-access · lms-core · standards · gamification
 docs/        data model, index manifest, runbooks, Unity contract, ADRs
 ```
 
-Path aliases: `@forge/<lib>` (see `tsconfig.base.json`).
+Path aliases: `@assurance/<lib>` (see `tsconfig.base.json`).
 
 ## Getting started
 

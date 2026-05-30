@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { AppComponent } from './app.component';
 

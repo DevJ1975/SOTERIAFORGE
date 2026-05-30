@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, docData, getDoc } from '@angular/fire/firestore';
 import type { Observable } from 'rxjs';
-import type { LeaderboardPeriod, Leaderboard } from '@forge/shared';
-import { leaderboard } from '@forge/shared';
+import type { LeaderboardPeriod, Leaderboard } from '@assurance/shared';
+import { leaderboard } from '@assurance/shared';
 import { zodConverter } from '../converters';
 import { FsPaths } from '../paths';
 

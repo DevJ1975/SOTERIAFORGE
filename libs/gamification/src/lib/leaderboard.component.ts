@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
-import { LeaderboardRepository } from '@forge/data-access';
-import type { Leaderboard, LeaderboardEntry, LeaderboardPeriod } from '@forge/shared';
+import { LeaderboardRepository } from '@assurance/data-access';
+import type { Leaderboard, LeaderboardEntry, LeaderboardPeriod } from '@assurance/shared';
 
 /**
  * Renders the ranked leaderboard for the given tenant and time period.

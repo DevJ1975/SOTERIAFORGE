@@ -1,9 +1,9 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@forge/auth';
-import { LeaderboardRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, TenantService } from '@assurance/auth';
+import { LeaderboardRepository } from '@assurance/data-access';
 import { LeaderboardPageComponent } from './leaderboard.component';
-import type { Leaderboard } from '@forge/shared';
+import type { Leaderboard } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

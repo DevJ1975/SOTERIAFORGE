@@ -1,5 +1,5 @@
 import { rankEntries, RankInput } from './leaderboard';
-import { LeaderboardEntry } from '@forge/shared';
+import { LeaderboardEntry } from '@assurance/shared';
 
 describe('rankEntries', () => {
   describe('empty input', () => {

@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
-import { CourseRepository, EnrollmentRepository } from '@forge/data-access';
-import { AuthService, TenantService } from '@forge/auth';
-import type { Course, Enrollment } from '@forge/shared';
+import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
+import { AuthService, TenantService } from '@assurance/auth';
+import type { Course, Enrollment } from '@assurance/shared';
 
 function isoDateToLocal(isoString: string): string {
   return isoString.slice(0, 10);

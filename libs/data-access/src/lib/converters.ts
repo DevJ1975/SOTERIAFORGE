@@ -4,7 +4,7 @@ import type {
   QueryDocumentSnapshot,
   SnapshotOptions,
 } from '@angular/fire/firestore';
-import { parseOrThrow } from '@forge/shared';
+import { parseOrThrow } from '@assurance/shared';
 import type { ZodType, ZodTypeDef } from 'zod';
 
 /** A zod schema whose output is T, with any input type (defaults/transforms ok). */

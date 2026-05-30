@@ -1,6 +1,11 @@
 import { Firestore, orderBy, where } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
-import { type B2cCustomer, type CatalogProduct, b2cCustomer, catalogProduct } from '@forge/shared';
+import {
+  type B2cCustomer,
+  type CatalogProduct,
+  b2cCustomer,
+  catalogProduct,
+} from '@assurance/shared';
 import { BaseRepository } from '../base-repository';
 import { FsPaths } from '../paths';
 

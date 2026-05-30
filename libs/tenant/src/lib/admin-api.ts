@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import type { Branding, Role, TenantStatus } from '@forge/shared';
+import type { Branding, Role, TenantStatus } from '@assurance/shared';
 
 export interface ProvisionTenantInput {
   tenantId: string;

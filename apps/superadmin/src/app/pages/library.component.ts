@@ -7,9 +7,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TextareaModule } from 'primeng/textarea';
 import { CheckboxModule } from 'primeng/checkbox';
-import { LibraryRepository, LIBRARY_TENANT, TenantRepository } from '@forge/data-access';
+import { LibraryRepository, LIBRARY_TENANT, TenantRepository } from '@assurance/data-access';
 import { LibraryService } from '../services/library.service';
-import type { Course, Tenant } from '@forge/shared';
+import type { Course, Tenant } from '@assurance/shared';
 
 @Component({
   selector: 'forge-superadmin-library',

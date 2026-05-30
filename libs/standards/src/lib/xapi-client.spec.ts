@@ -10,7 +10,7 @@ jest.mock('@angular/fire/functions', () => ({
 import { TestBed } from '@angular/core/testing';
 import { XapiClient } from './xapi-client';
 import { OfflineXapiQueue } from './offline-xapi-queue.service';
-import { XAPI_VERBS, XAPI_TENANT_EXTENSION } from '@forge/shared';
+import { XAPI_VERBS, XAPI_TENANT_EXTENSION } from '@assurance/shared';
 
 /**
  * Unit tests for XapiClient.buildStatement.

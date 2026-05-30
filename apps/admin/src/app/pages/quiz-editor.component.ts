@@ -6,10 +6,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
-import { QuizRepository } from '@forge/data-access';
-import { TenantService } from '@forge/auth';
-import { QUESTION_TYPES, type QuestionType } from '@forge/shared';
-import type { Quiz, QuizQuestion } from '@forge/shared';
+import { QuizRepository } from '@assurance/data-access';
+import { TenantService } from '@assurance/auth';
+import { QUESTION_TYPES, type QuestionType } from '@assurance/shared';
+import type { Quiz, QuizQuestion } from '@assurance/shared';
 
 /** Question types that use option-based answers (radio/checkbox style). */
 const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_false'];

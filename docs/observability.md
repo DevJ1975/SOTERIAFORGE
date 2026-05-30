@@ -12,7 +12,7 @@
 
 ## Frontend (Angular apps)
 
-- `@forge/ui` provides `provideObservability(sink?)`: a custom Angular
+- `@assurance/ui` provides `provideObservability(sink?)`: a custom Angular
   `ErrorHandler` that forwards uncaught errors + telemetry events to a pluggable
   `TelemetrySink` (default: console). Apps swap in a **Sentry** or **GCP Error
   Reporting** sink at deployment by providing a `TelemetrySink` implementation —

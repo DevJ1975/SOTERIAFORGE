@@ -1,6 +1,6 @@
 # Open Badges 3.0 — verifiable credentials
 
-FORGE issues badges as **Open Badges 3.0 / 1EdTech Verifiable Credentials** —
+Assurance issues badges as **Open Badges 3.0 / 1EdTech Verifiable Credentials** —
 portable, employer-verifiable — not vanity images.
 
 ## Data model
@@ -30,7 +30,7 @@ the private key held in **Secret Manager**. This needs live infrastructure (key,
 hosted issuer profile, optional status list for revocation), so it is designed
 here and wired at deployment rather than stubbed with a throwaway key.
 
-Until the key is provisioned, FORGE records badge **awards** (which badge, to
+Until the key is provisioned, Assurance records badge **awards** (which badge, to
 whom, for what, when) so no earned-credential data is lost; the signed,
 exportable VC is generated once the issuer key is configured.
 

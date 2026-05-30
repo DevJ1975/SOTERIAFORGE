@@ -1,6 +1,6 @@
-# @forge/player
+# @assurance/player
 
-Content player library for Soteria FORGE.
+Content player library for Soteria Assurance.
 
 ## Public API
 

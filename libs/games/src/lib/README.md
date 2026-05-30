@@ -1,4 +1,4 @@
-# @forge/games
+# @assurance/games
 
 Interactive card-game shells and game-engine integrations for the SOTERIAFORGE platform.
 

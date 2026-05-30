@@ -1,10 +1,10 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { QuizRepository } from '@forge/data-access';
-import { QuizSubmissionService } from '@forge/lms-core';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { QuizRepository } from '@assurance/data-access';
+import { QuizSubmissionService } from '@assurance/lms-core';
 import { QuizPlayerComponent } from './quiz-player.component';
-import type { Quiz, QuizGrade } from '@forge/shared';
+import type { Quiz, QuizGrade } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

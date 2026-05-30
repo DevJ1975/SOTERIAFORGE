@@ -1,5 +1,5 @@
 import { Injectable, computed, inject } from '@angular/core';
-import { AuthService } from '@forge/auth';
+import { AuthService } from '@assurance/auth';
 import { isEntitled } from './entitlements';
 
 /**

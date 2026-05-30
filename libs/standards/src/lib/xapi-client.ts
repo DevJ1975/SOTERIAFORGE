@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { XapiStatement, XAPI_TENANT_EXTENSION } from '@forge/shared';
+import { XapiStatement, XAPI_TENANT_EXTENSION } from '@assurance/shared';
 import { getVerb, FriendlyVerbName } from './verbs';
 import { OfflineXapiQueue } from './offline-xapi-queue.service';
 

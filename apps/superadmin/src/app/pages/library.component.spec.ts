@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { LibraryRepository, TenantRepository } from '@forge/data-access';
-import type { Course, Tenant } from '@forge/shared';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { LibraryRepository, TenantRepository } from '@assurance/data-access';
+import type { Course, Tenant } from '@assurance/shared';
 import { LibraryService, type ShareLibraryCourseResult } from '../services/library.service';
 import { LibraryComponent } from './library.component';
 

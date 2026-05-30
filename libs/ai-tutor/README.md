@@ -1,4 +1,4 @@
-# @forge/ai-tutor
+# @assurance/ai-tutor
 
 Angular library providing the RAG AI Tutor client service and chat UI component.
 

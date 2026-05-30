@@ -8,7 +8,7 @@ import {
   updateProfile,
   user,
 } from '@angular/fire/auth';
-import type { CustomClaims, Principal } from '@forge/shared';
+import type { CustomClaims, Principal } from '@assurance/shared';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { parseClaims } from './claims';
 import { TenantService } from './tenant.service';

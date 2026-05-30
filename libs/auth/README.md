@@ -1,4 +1,4 @@
-# @forge/auth
+# @assurance/auth
 
 Authentication, GCIP multi-tenancy, custom-claim helpers, and route guards.
 

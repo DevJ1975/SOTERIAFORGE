@@ -8,9 +8,9 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { QuizRepository } from '@forge/data-access';
-import { QuizSubmissionService } from '@forge/lms-core';
-import type { Quiz, QuizGrade, QuizQuestion, QuizResponse } from '@forge/shared';
+import { QuizRepository } from '@assurance/data-access';
+import { QuizSubmissionService } from '@assurance/lms-core';
+import type { Quiz, QuizGrade, QuizQuestion, QuizResponse } from '@assurance/shared';
 
 /** Per-question local UI state used to collect responses. */
 interface QuestionState {

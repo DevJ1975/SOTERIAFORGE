@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AuthService, TenantService } from '@forge/auth';
-import { TutorChatComponent } from '@forge/ai-tutor';
+import { AuthService, TenantService } from '@assurance/auth';
+import { TutorChatComponent } from '@assurance/ai-tutor';
 
 @Component({
   selector: 'forge-learner-tutor',

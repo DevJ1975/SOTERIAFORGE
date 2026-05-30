@@ -10,7 +10,7 @@ import { TestBed } from '@angular/core/testing';
 import { Firestore, doc, docData, getDoc } from '@angular/fire/firestore';
 import { of } from 'rxjs';
 import { LeaderboardRepository } from './leaderboard.repository';
-import type { Leaderboard } from '@forge/shared';
+import type { Leaderboard } from '@assurance/shared';
 
 const mockLeaderboard: Leaderboard = {
   tenantId: 'acme',

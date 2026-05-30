@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, tenantGuard, roleGuard } from '@forge/auth';
+import { authGuard, tenantGuard, roleGuard } from '@assurance/auth';
 
 export const appRoutes: Routes = [
   {

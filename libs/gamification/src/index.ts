@@ -1,5 +1,5 @@
 /**
- * @forge/gamification — public API barrel
+ * @assurance/gamification — public API barrel
  *
  * This library provides client-side gamification helpers for XP, levels,
  * streaks, and leaderboard ranking.

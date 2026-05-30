@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { type TenantResolution, resolveTenantFromHost } from '@forge/shared';
+import { type TenantResolution, resolveTenantFromHost } from '@assurance/shared';
 import { FORGE_ENV } from './forge-environment';
 
 /**

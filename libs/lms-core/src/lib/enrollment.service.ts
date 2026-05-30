@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import type { Enrollment } from '@forge/shared';
-import { EnrollmentRepository } from '@forge/data-access';
+import type { Enrollment } from '@assurance/shared';
+import { EnrollmentRepository } from '@assurance/data-access';
 
 /**
  * Application service for enrollment lifecycle management.

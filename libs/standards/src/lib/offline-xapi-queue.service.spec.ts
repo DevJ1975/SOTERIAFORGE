@@ -17,7 +17,7 @@ jest.mock('@angular/fire/functions', () => ({
 
 import { TestBed } from '@angular/core/testing';
 import { OfflineXapiQueue } from './offline-xapi-queue.service';
-import type { XapiStatement } from '@forge/shared';
+import type { XapiStatement } from '@assurance/shared';
 
 const QUEUE_KEY = 'forge.xapi.queue';
 

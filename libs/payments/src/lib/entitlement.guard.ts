@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '@forge/auth';
+import { AuthService } from '@assurance/auth';
 import { isEntitled } from './entitlements';
 
 /**

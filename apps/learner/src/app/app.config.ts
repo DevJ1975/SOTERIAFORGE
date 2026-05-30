@@ -4,12 +4,12 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideServiceWorker } from '@angular/service-worker';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
-import { FORGE_ENV } from '@forge/auth';
-import { provideForgeFirebase } from '@forge/data-access';
-import { provideObservability } from '@forge/ui';
-import { provideForgeTransloco } from '@forge/ui';
+import { FORGE_ENV } from '@assurance/auth';
+import { provideForgeFirebase } from '@assurance/data-access';
+import { provideObservability } from '@assurance/ui';
+import { provideForgeTransloco } from '@assurance/ui';
 import { provideHttpClient, withFetch } from '@angular/common/http';
-import { provideTenantTheme } from '@forge/tenant';
+import { provideTenantTheme } from '@assurance/tenant';
 import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
 

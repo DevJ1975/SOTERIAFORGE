@@ -8,7 +8,7 @@ pages and cheap interactivity.
   builder (`outputMode: server`, Express entry `src/server.ts`). Static routes
   are prerendered; dynamic catalog/checkout are SSR'd.
 - **Hydration:** `provideClientHydration(withIncrementalHydration(), withEventReplay())`.
-- **Payments:** `@forge/payments` `CheckoutService` → Stripe Checkout. Entitlements
+- **Payments:** `@assurance/payments` `CheckoutService` → Stripe Checkout. Entitlements
   are granted only by the verified Stripe webhook (server-side); the client never
   sets entitlement state.
 - **Deploy:** Vercel (`vercel.json`, `framework: angular`). The apex + `www`

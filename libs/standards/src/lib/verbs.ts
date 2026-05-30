@@ -1,4 +1,4 @@
-import { XAPI_VERBS } from '@forge/shared';
+import { XAPI_VERBS } from '@assurance/shared';
 
 /**
  * A single xAPI verb descriptor with id and display label.

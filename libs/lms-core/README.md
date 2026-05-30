@@ -1,6 +1,6 @@
-# @forge/lms-core
+# @assurance/lms-core
 
-Course, module, and enrollment domain logic for Soteria FORGE.
+Course, module, and enrollment domain logic for Soteria Assurance.
 
 ## What's inside
 
@@ -15,7 +15,7 @@ Course, module, and enrollment domain logic for Soteria FORGE.
 ### Progress helpers (pure, no Angular)
 
 ```ts
-import { computeCourseProgress, isModuleComplete, nextIncompleteModule } from '@forge/lms-core';
+import { computeCourseProgress, isModuleComplete, nextIncompleteModule } from '@assurance/lms-core';
 
 const pct = computeCourseProgress(modules, completedIds); // 0–100
 const done = isModuleComplete(module, { score: 85, progressPct: 90 });

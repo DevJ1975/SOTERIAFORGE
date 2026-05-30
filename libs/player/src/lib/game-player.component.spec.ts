@@ -1,12 +1,12 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { FORGE_ENV, type ForgeEnvironment } from '@forge/auth';
-import { GameRepository } from '@forge/data-access';
-import { EnrollmentService } from '@forge/lms-core';
-import { XapiClient } from '@forge/standards';
+import { FORGE_ENV, type ForgeEnvironment } from '@assurance/auth';
+import { GameRepository } from '@assurance/data-access';
+import { EnrollmentService } from '@assurance/lms-core';
+import { XapiClient } from '@assurance/standards';
 import { GamePlayerComponent } from './game-player.component';
 import { PlayerProgressService } from './player-progress.service';
-import type { Game } from '@forge/shared';
+import type { Game } from '@assurance/shared';
 
 const testEnv: ForgeEnvironment = {
   production: false,

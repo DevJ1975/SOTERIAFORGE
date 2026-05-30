@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';
-import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@forge/auth';
-import { CheckoutService } from '@forge/payments';
-import { B2cCustomerRepository } from '@forge/data-access';
+import { FORGE_ENV, type ForgeEnvironment, AuthService } from '@assurance/auth';
+import { CheckoutService } from '@assurance/payments';
+import { B2cCustomerRepository } from '@assurance/data-access';
 import { AccountComponent } from './account.component';
 
 const testEnv: ForgeEnvironment = {

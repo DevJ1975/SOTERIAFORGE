@@ -1,4 +1,4 @@
-# @forge/functions
+# @assurance/functions
 
 Firebase Cloud Functions (2nd gen) — the privileged backend. The Admin SDK
 bypasses security rules, so all claim-bearing and money-touching operations live

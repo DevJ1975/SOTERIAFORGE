@@ -1,6 +1,6 @@
 /**
  * Pure gamification math usable on both client and server (Cloud Functions).
- * The XP curve mirrors @forge/gamification's richer UI helpers; this module is
+ * The XP curve mirrors @assurance/gamification's richer UI helpers; this module is
  * the minimal, dependency-free version the backend uses for authoritative
  * awards. Keep the curve in sync if either changes.
  */
