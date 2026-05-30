@@ -71,6 +71,7 @@ export class SuperadminDashboardComponent {
     {
       title: 'Cross-tenant Analytics',
       description: 'Platform-wide usage metrics, completion rates, and learner trends. (Phase 1+)',
+      link: '/analytics',
     },
     {
       title: 'Feature Flags',

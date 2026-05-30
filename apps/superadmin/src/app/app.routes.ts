@@ -26,5 +26,10 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, superadminGuard],
     loadComponent: () => import('./pages/catalog.component').then((m) => m.CatalogComponent),
   },
+  {
+    path: 'analytics',
+    canActivate: [authGuard, superadminGuard],
+    loadComponent: () => import('./pages/analytics.component').then((m) => m.AnalyticsComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

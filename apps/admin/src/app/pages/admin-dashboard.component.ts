@@ -93,6 +93,7 @@ export class AdminDashboardComponent {
     {
       title: 'Reports',
       description: 'Export completion, compliance, and usage reports (Phase 1+).',
+      link: '/reports',
     },
   ]);
 }
