@@ -1,0 +1,28 @@
+# --- Firebase config (secrets — never commit) ---
+android/app/google-services.json
+ios/GoogleService-Info.plist
+
+# --- Android ---
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# --- iOS / Xcode ---
+ios/*.xcodeproj
+ios/*.xcworkspace
+ios/.build/
+ios/DerivedData/
+ios/Pods/
+ios/.swiftpm/
+xcuserdata/
+
+# --- Misc ---
+.DS_Store
+*.log
