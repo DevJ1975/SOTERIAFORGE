@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx nx build storefront --configuration=production",
-  "outputDirectory": "dist/apps/storefront",
+  "buildCommand": "npx nx build learner --configuration=production",
+  "outputDirectory": "dist/apps/learner/browser",
   "framework": "angular",
   "installCommand": "npm ci --legacy-peer-deps",
-  "git": { "deploymentEnabled": { "main": true } }
+  "git": { "deploymentEnabled": { "main": true } },
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
