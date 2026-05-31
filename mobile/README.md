@@ -15,7 +15,7 @@ custom claims), mirrored from `libs/shared` in the main `soteriaforge` repo.
 ## Backend contract (must stay in sync with the web platform)
 
 - **Auth:** Firebase Auth with **GCIP multi-tenancy**. The client sets the
-  Identity Platform tenant id (`gcipTenantId`) *before* sign-in. After sign-in,
+  Identity Platform tenant id (`gcipTenantId`) _before_ sign-in. After sign-in,
   read custom claims from the ID token: `role`, `tenantId`, `entitlements`.
 - **Roles:** `superadmin · tenant_admin · instructor · learner · b2c_customer`.
 - **Courses:** `/tenants/{tenantId}/courses/{courseId}` — readable by any member
