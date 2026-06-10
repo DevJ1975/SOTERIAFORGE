@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "soteria-forge-dev"
+  },
+  "targets": {
+    "soteria-forge-dev": {
+      "hosting": {
+        "learner": ["soteria-forge-dev-learner"],
+        "admin": ["soteria-forge-dev-admin"],
+        "superadmin": ["soteria-forge-dev-superadmin"],
+        "storefront": ["soteria-forge-dev-storefront"]
+      }
+    }
+  }
+}

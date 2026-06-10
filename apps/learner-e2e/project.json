@@ -1,0 +1,9 @@
+{
+  "name": "learner-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/learner-e2e/src",
+  "implicitDependencies": ["learner"],
+  "// targets": "to see all targets run: nx show project learner-e2e --web",
+  "targets": {}
+}

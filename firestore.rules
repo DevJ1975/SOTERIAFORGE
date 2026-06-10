@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Soteria FORGE Firestore rules.
+//
+// Deny-by-default: every collection must be explicitly opened up, in the same
+// PR that introduces it, together with rules unit tests (see ROADMAP.md).
+// Tenant isolation is enforced via custom claims (request.auth.token.tenantId),
+// which are set exclusively by Cloud Functions.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function isSuperadmin() {
+      return signedIn() && role() == 'superadmin';
+    }
+
+    function inTenant(tenantId) {
+      return signedIn() && request.auth.token.tenantId == tenantId;
+    }
+
+    // Tenant documents: members may read their own tenant; only superadmin
+    // (or Cloud Functions via Admin SDK, which bypasses rules) may write.
+    match /tenants/{tenantId} {
+      allow read: if isSuperadmin() || inTenant(tenantId);
+      allow write: if isSuperadmin();
+
+      // Members may read the roster of their own tenant. All writes go
+      // through Cloud Functions (invites, role changes, deactivation).
+      match /members/{memberUid} {
+        allow read: if isSuperadmin() || inTenant(tenantId);
+        allow write: if false;
+      }
+    }
+
+    // Everything not explicitly matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

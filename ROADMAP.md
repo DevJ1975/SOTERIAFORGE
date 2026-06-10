@@ -14,12 +14,12 @@ production-grade multi-tenant LMS (B2B + B2C).
 
 Target architecture (already encoded in `tsconfig.base.json` paths and `package.json` scripts):
 
-| Apps | Libs |
-| --- | --- |
-| `learner` (B2B learner portal) | `shared`, `auth`, `data-access`, `ui`, `lms-core` |
-| `admin` (tenant admin) | `standards` (SCORM/cmi5/xAPI), `games`, `gamification` |
-| `superadmin` (platform ops) | `payments`, `ai-tutor` |
-| `storefront` (public B2C) | |
+| Apps                           | Libs                                                   |
+| ------------------------------ | ------------------------------------------------------ |
+| `learner` (B2B learner portal) | `shared`, `auth`, `data-access`, `ui`, `lms-core`      |
+| `admin` (tenant admin)         | `standards` (SCORM/cmi5/xAPI), `games`, `gamification` |
+| `superadmin` (platform ops)    | `payments`, `ai-tutor`                                 |
+| `storefront` (public B2C)      |                                                        |
 
 ---
 

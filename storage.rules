@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Deny-by-default. Tenant-scoped content paths are opened up alongside the
+// upload features that use them (Phase 2+), with the same claim checks as
+// Firestore.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
