@@ -50,8 +50,10 @@ npm run emulators          # Firebase emulator suite (requires Java)
 - **Module boundaries** are enforced by `@nx/enforce-module-boundaries` using `scope:`/`type:`
   tags in each `project.json` (see `eslint.config.mjs` for the dependency matrix).
 - Formatting is Prettier via `npx nx format:write`; CI runs `format:check`.
-- **Design system**: Adobe Spectrum. Tokens live in `libs/ui/src/lib/theme/spectrum.scss`
-  (`--forge-*` aliases over `--spectrum-*` globals); PrimeNG is themed via `ForgePreset`
+- **Design system**: Adobe Spectrum materials and components, skinned with the Soteria
+  Forge brand (Ember `#E8551F` / Charcoal `#1B1E23`, Oswald display + Barlow Semi Condensed
+  UI type). Tokens live in `libs/ui/src/lib/theme/spectrum.scss` (`--forge-*` aliases over
+  `--sf-*` brand globals); PrimeNG is themed via `ForgePreset`
   (`libs/ui/src/lib/theme/forge-preset.ts`). Never hardcode colors — consume the tokens.
 
 ## Firebase

@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ForgeMark } from '../brand/forge-mark';
 
 export interface ShellLink {
   label: string;
@@ -7,18 +8,22 @@ export interface ShellLink {
 }
 
 /**
- * Spectrum-styled application shell: top app bar with brand, primary nav,
- * and a content slot. Used by all four apps so chrome stays consistent.
+ * Application shell: Soteria Forge brand header (charcoal bar, Forge Shield
+ * mark, split ember wordmark) over Spectrum-structured chrome. Used by all
+ * four apps so the brand stays consistent.
  */
 @Component({
   selector: 'forge-shell',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ForgeMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="shell-header">
       <a class="brand" routerLink="/">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">{{ appName() }}</span>
+        <forge-mark [size]="34" />
+        <span class="brand-name">
+          {{ wordmark().pre }}<span class="ember">{{ wordmark().ember }}</span
+          >{{ wordmark().post }}
+        </span>
       </a>
       <nav class="shell-nav" aria-label="Primary">
         @for (link of links(); track link.path) {
@@ -48,11 +53,10 @@ export interface ShellLink {
     .shell-header {
       display: flex;
       align-items: center;
-      gap: 32px;
-      height: 56px;
-      padding: 0 24px;
-      background: var(--forge-surface, #fff);
-      border-bottom: 2px solid var(--forge-border, #e1e1e1);
+      gap: 28px;
+      height: 60px;
+      padding: 0 22px;
+      background: var(--sf-header, #15171b);
       position: sticky;
       top: 0;
       z-index: 100;
@@ -61,7 +65,7 @@ export interface ShellLink {
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       text-decoration: none;
     }
 
@@ -69,23 +73,18 @@ export interface ShellLink {
       text-decoration: none;
     }
 
-    .brand-mark {
-      width: 22px;
-      height: 22px;
-      border-radius: 5px;
-      background: linear-gradient(
-        135deg,
-        var(--forge-accent, #1473e6),
-        var(--forge-accent-down, #095aba)
-      );
-      box-shadow: var(--forge-shadow-emphasized, 0 1px 4px rgb(0 0 0 / 0.15));
+    .brand-name {
+      font-family: var(--forge-font-display, 'Oswald', sans-serif);
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      color: #f4f2ee;
+      white-space: nowrap;
     }
 
-    .brand-name {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      color: var(--forge-text, #2c2c2c);
+    .brand-name .ember {
+      color: var(--sf-ember-hot, #ff7a3d);
     }
 
     .shell-nav {
@@ -95,11 +94,13 @@ export interface ShellLink {
     }
 
     .shell-nav a {
-      padding: 6px 12px;
+      padding: 6px 14px;
       border-radius: 16px;
+      font-family: var(--forge-font, 'Barlow Semi Condensed', sans-serif);
       font-weight: 600;
       font-size: 14px;
-      color: var(--forge-text-subtle, #6e6e6e);
+      letter-spacing: 0.02em;
+      color: #c4c9cf;
       text-decoration: none;
       transition:
         background 130ms ease-out,
@@ -107,13 +108,13 @@ export interface ShellLink {
     }
 
     .shell-nav a:hover {
-      background: var(--forge-surface-dim, #f5f5f5);
-      color: var(--forge-text, #2c2c2c);
+      background: #2a2e35;
+      color: #fff;
       text-decoration: none;
     }
 
     .shell-nav a.active {
-      background: var(--forge-accent, #1473e6);
+      background: var(--forge-accent, #e8551f);
       color: #fff;
     }
 
@@ -127,4 +128,16 @@ export interface ShellLink {
 export class ForgeShell {
   readonly appName = input.required<string>();
   readonly links = input<ShellLink[]>([]);
+
+  /** Splits the brand word "FORGE" out of the app name for ember styling. */
+  protected readonly wordmark = computed(() => {
+    const name = this.appName();
+    const match = /forge/i.exec(name);
+    if (!match) return { pre: name, ember: '', post: '' };
+    return {
+      pre: name.slice(0, match.index),
+      ember: match[0],
+      post: name.slice(match.index + match[0].length),
+    };
+  });
 }

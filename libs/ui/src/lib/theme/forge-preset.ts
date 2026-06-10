@@ -2,57 +2,57 @@ import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 
 /**
- * PrimeNG theme preset built from Adobe Spectrum design tokens.
- * Color ramps are anchored on Spectrum's blue (accent), gray (neutrals),
- * red (negative), green (positive), and orange (notice) global colors so the
- * component library renders with Spectrum's visual language end to end.
+ * PrimeNG theme preset: Adobe Spectrum component materials skinned with the
+ * Soteria Forge brand. The primary ramp is built around brand Ember
+ * (#E8551F) and the neutral ramp around the brand's warm gray/charcoal
+ * scale; Spectrum's geometry (radii, focus ring, paddings) is retained.
  */
 export const ForgePreset = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '#f5f9ff',
-      100: '#e6f0fd',
-      200: '#cce2fb',
-      300: '#8ec1f5',
-      400: '#4b9cf0',
-      500: '#2680eb',
-      600: '#1473e6',
-      700: '#0d66d0',
-      800: '#095aba',
-      900: '#084f9e',
-      950: '#063c78',
+      50: '#fdf1ec',
+      100: '#fbe1d5',
+      200: '#f7c4ab',
+      300: '#f5a87d',
+      400: '#f0814b',
+      500: '#e8551f',
+      600: '#d8451a',
+      700: '#c33d15',
+      800: '#a43412',
+      900: '#862b10',
+      950: '#5e1d0a',
     },
     colorScheme: {
       light: {
         surface: {
           0: '#ffffff',
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#eaeaea',
-          300: '#e1e1e1',
-          400: '#cacaca',
-          500: '#b3b3b3',
-          600: '#8e8e8e',
-          700: '#6e6e6e',
-          800: '#4b4b4b',
-          900: '#2c2c2c',
-          950: '#1b1b1b',
+          50: '#f6f5f6',
+          100: '#f0eff1',
+          200: '#e9e8ea',
+          300: '#dddcde',
+          400: '#c4c9cf',
+          500: '#8a929c',
+          600: '#6e747d',
+          700: '#3a4048',
+          800: '#2a2e35',
+          900: '#1b1e23',
+          950: '#15171b',
         },
       },
       dark: {
         surface: {
           0: '#ffffff',
-          50: '#f5f5f5',
-          100: '#e1e1e1',
-          200: '#cacaca',
-          300: '#b3b3b3',
-          400: '#8e8e8e',
-          500: '#6e6e6e',
-          600: '#4b4b4b',
-          700: '#3e3e3e',
-          800: '#2c2c2c',
-          900: '#1e1e1e',
-          950: '#0f0f0f',
+          50: '#f6f5f6',
+          100: '#dddcde',
+          200: '#c4c9cf',
+          300: '#8a929c',
+          400: '#6e747d',
+          500: '#565c64',
+          600: '#3a4048',
+          700: '#2a2e35',
+          800: '#1b1e23',
+          900: '#15171b',
+          950: '#0e1013',
         },
       },
     },

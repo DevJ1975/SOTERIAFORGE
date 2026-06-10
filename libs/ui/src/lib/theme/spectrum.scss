@@ -1,52 +1,51 @@
 /*
- * Adobe Spectrum design tokens for Soteria FORGE.
- * Single source of truth for colors, type, radii, and elevation across all
- * four apps and the games. Values are Spectrum global colors; components
- * consume the --forge-* aliases (with PrimeNG themed via ForgePreset).
+ * Soteria Forge brand tokens on the Adobe Spectrum design system.
+ * Spectrum supplies the materials and component structure (via ForgePreset /
+ * PrimeNG); the Soteria Forge brand supplies color (ember & charcoal) and
+ * type (Oswald display + Barlow Semi Condensed UI — both sans-serif).
+ * Components consume the --forge-* aliases only.
  */
 
 :root {
-  /* Spectrum global colors */
-  --spectrum-gray-50: #ffffff;
-  --spectrum-gray-75: #fafafa;
-  --spectrum-gray-100: #f5f5f5;
-  --spectrum-gray-200: #eaeaea;
-  --spectrum-gray-300: #e1e1e1;
-  --spectrum-gray-400: #cacaca;
-  --spectrum-gray-500: #b3b3b3;
-  --spectrum-gray-600: #8e8e8e;
-  --spectrum-gray-700: #6e6e6e;
-  --spectrum-gray-800: #4b4b4b;
-  --spectrum-gray-900: #2c2c2c;
-  --spectrum-blue-400: #2680eb;
-  --spectrum-blue-500: #1473e6;
-  --spectrum-blue-600: #0d66d0;
-  --spectrum-blue-700: #095aba;
-  --spectrum-red-500: #e34850;
+  /* Soteria Forge brand palette */
+  --sf-ember: #e8551f;
+  --sf-ember-hover: #d8451a;
+  --sf-ember-hot: #ff7a3d;
+  --sf-spark: #ffb552;
+  --sf-charcoal: #1b1e23;
+  --sf-header: #15171b;
+  --sf-ink: #1a1d22;
+  --sf-steel: #3a4048;
+  --sf-cast: #f6f1e9;
+  --sf-surface: #f6f5f6;
+  --sf-page: #e9e8ea;
+  --sf-hairline: #dddcde;
+  --sf-muted: #8a929c;
+  --sf-grad-ember: linear-gradient(150deg, #f69a3c, #d8451a);
+
+  /* Spectrum semantic colors retained for status communication */
   --spectrum-red-600: #d7373f;
-  --spectrum-red-700: #c9252d;
-  --spectrum-green-500: #2d9d78;
   --spectrum-green-600: #268e6c;
-  --spectrum-orange-500: #e68619;
   --spectrum-orange-600: #da7b11;
 
   /* Forge aliases consumed by apps, libs, and games */
-  --forge-accent: var(--spectrum-blue-500);
-  --forge-accent-hover: var(--spectrum-blue-600);
-  --forge-accent-down: var(--spectrum-blue-700);
-  --forge-surface: var(--spectrum-gray-50);
-  --forge-surface-dim: var(--spectrum-gray-100);
-  --forge-background: var(--spectrum-gray-75);
-  --forge-border: var(--spectrum-gray-300);
-  --forge-text: var(--spectrum-gray-900);
-  --forge-text-subtle: var(--spectrum-gray-700);
+  --forge-accent: var(--sf-ember);
+  --forge-accent-hover: var(--sf-ember-hover);
+  --forge-accent-down: #c33d15;
+  --forge-surface: #ffffff;
+  --forge-surface-dim: var(--sf-surface);
+  --forge-background: var(--sf-page);
+  --forge-border: var(--sf-hairline);
+  --forge-text: var(--sf-ink);
+  --forge-text-subtle: var(--sf-muted);
   --forge-negative: var(--spectrum-red-600);
   --forge-positive: var(--spectrum-green-600);
   --forge-notice: var(--spectrum-orange-600);
   --forge-radius: 8px;
   --forge-radius-small: 4px;
-  --forge-font: adobe-clean, 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  --forge-font: 'Barlow Semi Condensed', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
+  --forge-font-display: 'Oswald', system-ui, sans-serif;
   --forge-shadow-emphasized: 0 1px 4px rgb(0 0 0 / 0.15);
   --forge-shadow-elevated: 0 2px 16px rgb(0 0 0 / 0.15);
   --forge-focus-ring: 0 0 0 2px var(--forge-surface), 0 0 0 4px var(--forge-accent);
@@ -65,32 +64,38 @@ html {
 body {
   margin: 0;
   font-family: var(--forge-font);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--forge-text);
   background: var(--forge-background);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Spectrum heading scale */
+::selection {
+  background: var(--sf-ember);
+  color: #fff;
+}
+
+/* Display headings: Oswald, safety-signage feel */
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--forge-font);
+  font-family: var(--forge-font-display);
   font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--forge-text);
   margin: 0 0 0.5em;
 }
 
 h1 {
-  font-size: 28px;
-  line-height: 1.3;
+  font-size: 30px;
+  line-height: 1.2;
 }
 
 h2 {
-  font-size: 22px;
-  line-height: 1.3;
+  font-size: 23px;
+  line-height: 1.25;
 }
 
 h3 {
@@ -113,7 +118,7 @@ a:hover {
   border-radius: var(--forge-radius-small);
 }
 
-/* Layout utilities */
+/* Layout utilities (Spectrum materials, brand colors) */
 .forge-page {
   max-width: 1200px;
   margin: 0 auto;
@@ -126,4 +131,14 @@ a:hover {
   border-radius: var(--forge-radius);
   padding: 20px 24px;
   box-shadow: var(--forge-shadow-emphasized);
+}
+
+/* Brand tagline treatment */
+.forge-tagline {
+  font-family: var(--forge-font);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--sf-muted);
 }

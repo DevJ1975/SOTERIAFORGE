@@ -1,0 +1,12 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gEmber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F59A3D"/>
+      <stop offset="1" stop-color="#DE4A1B"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="26" fill="#1B1E23"/>
+  <path d="M60,20 L92,30 V57 C92,79 78,94 60,101 C42,94 28,79 28,57 V30 Z" fill="url(#gEmber)"/>
+  <path d="M60,39 C62,51 71,56 71,68 C71,79 66,87 60,87 C54,87 49,79 49,68 C49,60 54,57 56,50 C57,53 58,52 58,47 C59,44 60,42 60,39 Z" fill="#F7F2EA"/>
+  <path d="M60,64 C61,69 65,72 65,76 C65,80 63,83 60,83 C57,83 55,80 55,76 C55,72 59,69 60,64 Z" fill="#E8551F"/>
+</svg>
