@@ -1,0 +1,382 @@
+@let b = block();
+<div class="kind-chip">{{ kindLabel() }}</div>
+<div class="card-tools">
+  <button type="button" class="tool grab" cdkDragHandle title="Drag to reorder">
+    <i class="pi pi-bars"></i>
+  </button>
+  <button
+    type="button"
+    class="tool"
+    [disabled]="index() === 0"
+    (click)="$event.stopPropagation(); store.moveBlockBy(b.id, -1)"
+    title="Move up"
+  >
+    <i class="pi pi-arrow-up"></i>
+  </button>
+  <button
+    type="button"
+    class="tool"
+    [disabled]="index() === total() - 1"
+    (click)="$event.stopPropagation(); store.moveBlockBy(b.id, 1)"
+    title="Move down"
+  >
+    <i class="pi pi-arrow-down"></i>
+  </button>
+  <button
+    type="button"
+    class="tool"
+    (click)="$event.stopPropagation(); store.duplicateBlock(b.id)"
+    title="Duplicate"
+  >
+    <i class="pi pi-clone"></i>
+  </button>
+  <button
+    type="button"
+    class="tool danger"
+    (click)="$event.stopPropagation(); store.deleteBlock(b.id)"
+    title="Delete"
+  >
+    <i class="pi pi-trash"></i>
+  </button>
+</div>
+
+<div class="card-body">
+  @switch (b.kind) {
+    @case ('heading') {
+      <div
+        class="heading-edit"
+        [class]="'level-' + b.level"
+        contenteditable="true"
+        data-placeholder="Heading…"
+        [textContent]="b.text"
+        (keydown)="singleLine($event)"
+        (blur)="commitText('text', $event, 'Edit heading')"
+      ></div>
+    }
+    @case ('paragraph') {
+      <app-rich-text
+        [value]="b.html"
+        placeholder="Start writing… select text for bold, italic, links."
+        (valueChange)="patch({ html: $event }, 'Edit paragraph')"
+      />
+    }
+    @case ('image') {
+      <figure class="media-figure" [class]="'layout-' + b.layout">
+        @if (b.url) {
+          <img [src]="b.url" [alt]="b.alt" loading="lazy" />
+        } @else {
+          <div class="media-placeholder">
+            <i class="pi pi-image"></i>
+            <span>Add an image URL in the inspector →</span>
+          </div>
+        }
+        @if (b.caption) {
+          <figcaption>{{ b.caption }}</figcaption>
+        }
+      </figure>
+    }
+    @case ('video') {
+      @if (b.url) {
+        <div class="video-shell">
+          <div class="video-shield"></div>
+          @if (videoEmbedUrl(b.url); as embed) {
+            <iframe [src]="embed" title="Video preview" tabindex="-1"></iframe>
+          } @else {
+            <video [src]="b.url" preload="metadata"></video>
+          }
+        </div>
+        @if (b.caption) {
+          <p class="media-caption">{{ b.caption }}</p>
+        }
+      } @else {
+        <div class="media-placeholder">
+          <i class="pi pi-video"></i>
+          <span>Add a video URL (file, YouTube, or Vimeo) in the inspector →</span>
+        </div>
+      }
+    }
+    @case ('bulletList') {
+      <div class="list-edit">
+        @for (item of b.items; track $index; let i = $index) {
+          <div class="list-row">
+            <span class="bullet-dot"></span>
+            <input
+              class="row-input"
+              [value]="item"
+              placeholder="List item…"
+              (change)="commitListItem(b.items, i, $event)"
+            />
+            <button
+              type="button"
+              class="row-remove"
+              [disabled]="b.items.length <= 1"
+              (click)="removeListItem(b.items, i)"
+              title="Remove item"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+        <button type="button" class="add-row" (click)="addListItem(b.items)">
+          <i class="pi pi-plus"></i> Add item
+        </button>
+      </div>
+    }
+    @case ('numberedList') {
+      <div class="list-edit">
+        @for (item of b.items; track $index; let i = $index) {
+          <div class="list-row">
+            <span class="bullet-num">{{ i + 1 }}.</span>
+            <input
+              class="row-input"
+              [value]="item"
+              placeholder="Step…"
+              (change)="commitListItem(b.items, i, $event)"
+            />
+            <button
+              type="button"
+              class="row-remove"
+              [disabled]="b.items.length <= 1"
+              (click)="removeListItem(b.items, i)"
+              title="Remove step"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+        <button type="button" class="add-row" (click)="addListItem(b.items)">
+          <i class="pi pi-plus"></i> Add step
+        </button>
+      </div>
+    }
+    @case ('quote') {
+      <blockquote class="quote-edit">
+        <div
+          class="quote-text"
+          contenteditable="true"
+          data-placeholder="A memorable line…"
+          [textContent]="b.text"
+          (blur)="commitText('text', $event, 'Edit quote')"
+        ></div>
+        @if (b.attribution) {
+          <cite>— {{ b.attribution }}</cite>
+        }
+      </blockquote>
+    }
+    @case ('callout') {
+      <div class="callout-edit" [class]="'tone-' + b.tone">
+        @if (b.title) {
+          <strong class="callout-title">{{ b.title }}</strong>
+        }
+        <app-rich-text
+          [value]="b.html"
+          placeholder="Callout text… tone and title live in the inspector."
+          (valueChange)="patch({ html: $event }, 'Edit callout')"
+        />
+      </div>
+    }
+    @case ('divider') {
+      @if (b.style === 'line') {
+        <hr class="divider-line" />
+      } @else {
+        <div class="divider-space"><span>Spacer</span></div>
+      }
+    }
+    @case ('button') {
+      <div class="button-preview">
+        <span
+          class="cta"
+          [class.primary]="b.style === 'primary'"
+          [class.ghost]="b.style === 'ghost'"
+        >
+          {{ b.label || 'Button label' }}
+        </span>
+        <span class="button-url">
+          @if (b.url) {
+            <i class="pi pi-link"></i> {{ b.url }}
+          } @else {
+            Set the label and destination in the inspector →
+          }
+        </span>
+      </div>
+    }
+    @case ('embed') {
+      <div class="embed-chrome" [style.minHeight.px]="120">
+        <i class="pi pi-globe"></i>
+        @if (b.url) {
+          <span class="embed-url">{{ b.url }}</span>
+          <span class="embed-meta">{{ b.height }}px tall · sandboxed iframe · live in Preview</span>
+        } @else {
+          <span class="embed-meta">Add an https URL in the inspector →</span>
+        }
+      </div>
+    }
+    @case ('accordion') {
+      <div class="stack-edit">
+        @for (item of b.items; track item.id; let i = $index) {
+          <div class="stack-item">
+            <div class="stack-item-head">
+              <i class="pi pi-chevron-down stack-caret"></i>
+              <input
+                class="row-input title-input"
+                [value]="item.title"
+                placeholder="Section title…"
+                (change)="commitItemTitle(b.items, i, $event)"
+              />
+              <button
+                type="button"
+                class="row-remove"
+                [disabled]="b.items.length <= 1"
+                (click)="removeRichItem(b.items, i)"
+                title="Remove section"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <app-rich-text
+              [value]="item.html"
+              placeholder="Panel content…"
+              (valueChange)="commitItemHtml(b.items, i, $event)"
+            />
+          </div>
+        }
+        <button type="button" class="add-row" (click)="addRichItem(b.items, 'New section')">
+          <i class="pi pi-plus"></i> Add section
+        </button>
+      </div>
+    }
+    @case ('tabs') {
+      <div class="tabs-edit">
+        <div class="tabs-edit-bar">
+          @for (item of b.items; track item.id; let i = $index) {
+            <button
+              type="button"
+              class="tab-pick"
+              [class.active]="activeTabIndex() === i"
+              (click)="activeTabIndex.set(i)"
+            >
+              {{ item.title || 'Untitled tab' }}
+            </button>
+          }
+          <button type="button" class="tab-add" (click)="addTab(b.items)" title="Add tab">
+            <i class="pi pi-plus"></i>
+          </button>
+        </div>
+        @if (b.items[activeTabIndex()]; as activeItem) {
+          <div class="tab-edit-panel">
+            <div class="stack-item-head">
+              <input
+                class="row-input title-input"
+                [value]="activeItem.title"
+                placeholder="Tab title…"
+                (change)="commitItemTitle(b.items, activeTabIndex(), $event)"
+              />
+              <button
+                type="button"
+                class="row-remove"
+                [disabled]="b.items.length <= 1"
+                (click)="removeTab(b.items)"
+                title="Remove tab"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <app-rich-text
+              [value]="activeItem.html"
+              placeholder="Tab content…"
+              (valueChange)="commitItemHtml(b.items, activeTabIndex(), $event)"
+            />
+          </div>
+        }
+      </div>
+    }
+    @case ('flashcards') {
+      <div class="cards-edit">
+        @for (card of b.cards; track card.id; let i = $index) {
+          <div class="card-pair">
+            <div class="pair-side">
+              <span class="pair-label">Front</span>
+              <textarea
+                rows="2"
+                [value]="card.front"
+                placeholder="Term or question…"
+                (change)="commitCard(b.cards, i, 'front', $event)"
+              ></textarea>
+            </div>
+            <i class="pi pi-arrow-right-arrow-left pair-flip"></i>
+            <div class="pair-side">
+              <span class="pair-label">Back</span>
+              <textarea
+                rows="2"
+                [value]="card.back"
+                placeholder="Definition or answer…"
+                (change)="commitCard(b.cards, i, 'back', $event)"
+              ></textarea>
+            </div>
+            <button
+              type="button"
+              class="row-remove"
+              [disabled]="b.cards.length <= 1"
+              (click)="removeCard(b.cards, i)"
+              title="Remove card"
+            >
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+        <button type="button" class="add-row" (click)="addCard(b.cards)">
+          <i class="pi pi-plus"></i> Add card
+        </button>
+      </div>
+    }
+    @case ('knowledgeCheck') {
+      <div class="kc-edit">
+        <span class="kc-chip">Knowledge check · {{ kcTypeLabel(b.type) }}</span>
+        <input
+          class="row-input kc-question"
+          [value]="b.question"
+          placeholder="Ask a question…"
+          (change)="commitText('question', $event, 'Edit question')"
+        />
+        <div class="kc-option-rows">
+          @for (option of b.options; track option.id; let i = $index) {
+            <div class="kc-option-row" [class.is-correct]="option.correct">
+              <button
+                type="button"
+                class="correct-toggle"
+                [class.round]="b.type !== 'multi_select'"
+                [class.on]="option.correct"
+                (click)="toggleCorrect(b, i)"
+                [title]="option.correct ? 'Marked correct' : 'Mark as correct'"
+              >
+                @if (option.correct) {
+                  <i class="pi pi-check"></i>
+                }
+              </button>
+              <input
+                class="row-input"
+                [value]="option.text"
+                placeholder="Answer option…"
+                (change)="commitOptionText(b.options, i, $event)"
+              />
+              <button
+                type="button"
+                class="row-remove"
+                [disabled]="b.options.length <= 2"
+                (click)="removeOption(b.options, i)"
+                title="Remove option (minimum 2)"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          }
+        </div>
+        @if (b.type !== 'true_false') {
+          <button type="button" class="add-row" (click)="addOption(b.options)">
+            <i class="pi pi-plus"></i> Add option
+          </button>
+        }
+      </div>
+    }
+  }
+</div>

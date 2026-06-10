@@ -1,0 +1,656 @@
+:host {
+  position: relative;
+  display: block;
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+:host(:hover) {
+  border-color: color-mix(in srgb, var(--forge-accent) 40%, var(--forge-border));
+}
+
+:host(.selected) {
+  outline-color: var(--forge-accent);
+  border-color: var(--forge-accent);
+  box-shadow: var(--forge-shadow-emphasized);
+}
+
+:host(.cdk-drag-preview) {
+  box-shadow: var(--forge-shadow-elevated);
+  opacity: 0.95;
+}
+
+:host(.cdk-drag-placeholder) {
+  opacity: 0.25;
+  outline: 2px dashed var(--forge-accent);
+}
+
+// ---- Chrome
+
+.kind-chip,
+.card-tools {
+  position: absolute;
+  top: -12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 130ms ease-out;
+  transform: translateY(3px);
+  z-index: 10;
+}
+
+.kind-chip {
+  left: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: var(--sf-charcoal, #1b1e23);
+  color: #e9e8ea;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.card-tools {
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--sf-charcoal, #1b1e23);
+  border-radius: 12px;
+  box-shadow: var(--forge-shadow-emphasized);
+}
+
+:host(:hover) .kind-chip,
+:host(:hover) .card-tools,
+:host(.selected) .kind-chip,
+:host(.selected) .card-tools {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+// Shared icon-button base
+.tool,
+.row-remove,
+.tab-add,
+.correct-toggle {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+.tool {
+  width: 26px;
+  height: 22px;
+  border-radius: 10px;
+  color: #c4c9cf;
+
+  .pi {
+    font-size: 12px;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--forge-accent);
+    color: #fff;
+  }
+
+  &.danger:hover:not(:disabled) {
+    background: var(--forge-negative);
+  }
+
+  &.grab {
+    cursor: grab;
+  }
+}
+
+// ---- Shared editor bits
+
+.row-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--forge-radius-small);
+  background: transparent;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--forge-text);
+  transition: all 130ms ease-out;
+
+  &:hover {
+    border-color: var(--forge-border);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--forge-accent);
+    background: var(--forge-surface);
+    box-shadow: none;
+  }
+
+  &::placeholder {
+    color: var(--forge-text-subtle);
+  }
+}
+
+.row-remove {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--forge-text-subtle);
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--forge-negative) 12%, transparent);
+    color: var(--forge-negative);
+  }
+}
+
+.add-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 5px 12px;
+  border: 1px dashed var(--forge-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--forge-text-subtle);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    color: var(--forge-accent);
+    border-color: var(--forge-accent);
+  }
+}
+
+// Editable areas (contenteditable focus tint + placeholder)
+.heading-edit,
+.quote-text {
+  outline: none;
+  border-radius: var(--forge-radius-small);
+
+  &:focus {
+    box-shadow: none;
+    background: color-mix(in srgb, var(--forge-accent) 4%, transparent);
+  }
+
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: var(--forge-text-subtle);
+  }
+}
+
+// ---- Heading & quote
+
+.heading-edit {
+  font-family: var(--forge-font-display);
+  font-weight: 700;
+
+  &.level-1 {
+    font-size: 30px;
+    line-height: 1.2;
+  }
+
+  &.level-2 {
+    font-size: 23px;
+    line-height: 1.25;
+  }
+
+  &.level-3 {
+    font-size: 18px;
+    line-height: 1.3;
+  }
+}
+
+.quote-edit {
+  margin: 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid var(--forge-accent);
+
+  .quote-text {
+    font-size: 19px;
+    font-weight: 500;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  cite {
+    display: block;
+    margin-top: 6px;
+    font-style: normal;
+    font-size: 14px;
+    color: var(--forge-text-subtle);
+  }
+}
+
+// ---- Media
+
+.media-figure {
+  margin: 0;
+
+  img {
+    display: block;
+    width: 100%;
+    border-radius: var(--forge-radius);
+  }
+
+  &.layout-centered {
+    max-width: 72%;
+    margin-inline: auto;
+  }
+
+  &.layout-side {
+    max-width: 48%;
+    margin-left: auto;
+  }
+}
+
+.media-figure figcaption,
+.media-caption {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--forge-text-subtle);
+  text-align: center;
+}
+
+.media-placeholder,
+.embed-chrome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface-dim);
+  color: var(--forge-text-subtle);
+  font-size: 14px;
+  padding: 18px;
+  text-align: center;
+
+  > .pi {
+    font-size: 22px;
+    color: var(--forge-accent);
+  }
+}
+
+.embed-url {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--forge-text);
+  word-break: break-all;
+}
+
+.embed-meta {
+  font-size: 12.5px;
+}
+
+.video-shell {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--forge-radius);
+  overflow: hidden;
+  background: var(--sf-charcoal, #1b1e23);
+
+  iframe,
+  video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .video-shield {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+  }
+}
+
+// ---- Lists
+
+.list-edit,
+.stack-edit,
+.tabs-edit,
+.cards-edit,
+.kc-edit,
+.tab-edit-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-edit {
+  gap: 2px;
+}
+
+.stack-edit,
+.tabs-edit,
+.cards-edit,
+.kc-edit {
+  gap: 10px;
+}
+
+.list-row,
+.stack-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bullet-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--forge-accent);
+  margin-left: 6px;
+}
+
+.bullet-num {
+  flex: 0 0 auto;
+  min-width: 20px;
+  text-align: right;
+  font-weight: 600;
+  color: var(--forge-accent);
+  font-size: 14px;
+}
+
+// ---- Callout / divider / button
+
+.callout-edit {
+  --tone: var(--sf-steel, #3a4048);
+  border: 1px solid var(--forge-border);
+  border-left: 4px solid var(--tone);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface-dim);
+  padding: 12px 16px;
+
+  .callout-title {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--forge-font-display);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--tone);
+  }
+
+  &.tone-success {
+    --tone: var(--forge-positive);
+  }
+  &.tone-warning {
+    --tone: var(--forge-notice);
+  }
+  &.tone-danger {
+    --tone: var(--forge-negative);
+  }
+}
+
+.divider-line {
+  border: 0;
+  border-top: 1px solid var(--forge-border);
+  margin: 8px 0;
+}
+
+.divider-space {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius-small);
+
+  span {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--forge-text-subtle);
+  }
+}
+
+.button-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+
+  .cta {
+    display: inline-flex;
+    padding: 9px 22px;
+    border-radius: 18px;
+    font-weight: 600;
+
+    &.primary {
+      background: var(--forge-accent);
+      color: #fff;
+    }
+
+    &.ghost {
+      border: 1.5px solid var(--forge-accent);
+      color: var(--forge-accent);
+    }
+  }
+
+  .button-url {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--forge-text-subtle);
+    word-break: break-all;
+
+    .pi {
+      font-size: 12px;
+    }
+  }
+}
+
+// ---- Accordion / tabs editors
+
+.stack-item {
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stack-caret {
+  color: var(--forge-text-subtle);
+  font-size: 12px;
+}
+
+.title-input {
+  font-weight: 600;
+}
+
+.tabs-edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--forge-border);
+  padding-bottom: 6px;
+}
+
+.tab-pick {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  &:hover {
+    color: var(--forge-text);
+  }
+
+  &.active {
+    background: var(--forge-accent);
+    color: #fff;
+  }
+}
+
+.tab-add {
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--forge-border);
+  border-radius: 50%;
+  color: var(--forge-text-subtle);
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    color: var(--forge-accent);
+    border-color: var(--forge-accent);
+  }
+}
+
+.tab-edit-panel {
+  gap: 6px;
+}
+
+// ---- Flashcards editor
+
+.card-pair {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+
+  .row-remove,
+  .pair-flip {
+    align-self: center;
+  }
+}
+
+.pair-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  textarea {
+    resize: vertical;
+    border: 1px solid var(--forge-border);
+    border-radius: var(--forge-radius-small);
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 14px;
+    background: var(--forge-surface);
+    color: var(--forge-text);
+
+    &:focus {
+      outline: none;
+      border-color: var(--forge-accent);
+      box-shadow: none;
+    }
+  }
+}
+
+.pair-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--forge-text-subtle);
+}
+
+.pair-flip {
+  color: var(--forge-text-subtle);
+  font-size: 13px;
+}
+
+// ---- Knowledge check editor
+
+.kc-chip {
+  align-self: flex-start;
+  font-family: var(--forge-font-display);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--forge-accent);
+}
+
+.kc-question {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.kc-option-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kc-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: var(--forge-radius-small);
+
+  &.is-correct {
+    background: color-mix(in srgb, var(--forge-positive) 7%, transparent);
+  }
+}
+
+.correct-toggle {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--forge-border);
+  border-radius: 5px;
+  background: var(--forge-surface);
+  color: #fff;
+
+  &.round {
+    border-radius: 50%;
+  }
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    border-color: var(--forge-positive);
+  }
+
+  &.on {
+    background: var(--forge-positive);
+    border-color: var(--forge-positive);
+  }
+}

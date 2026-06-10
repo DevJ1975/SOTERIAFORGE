@@ -1,0 +1,540 @@
+:host {
+  display: block;
+  font-family: var(--forge-font);
+  color: var(--forge-text);
+}
+
+.lesson {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.lesson-empty {
+  color: var(--forge-text-subtle);
+  text-align: center;
+  padding: 40px 0;
+}
+
+.media-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 140px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface-dim);
+  color: var(--forge-text-subtle);
+  font-size: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+// ---- Text
+
+.block-heading {
+  margin: 6px 0 0;
+}
+
+.block-paragraph {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.block-list {
+  margin: 0;
+  padding-left: 26px;
+  font-size: 16px;
+  line-height: 1.65;
+
+  li + li {
+    margin-top: 6px;
+  }
+
+  li::marker {
+    color: var(--forge-accent);
+    font-weight: 600;
+  }
+}
+
+.block-quote {
+  margin: 6px 0;
+  padding: 4px 0 4px 20px;
+  border-left: 3px solid var(--forge-accent);
+
+  p {
+    margin: 0;
+    font-size: 19px;
+    line-height: 1.5;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  cite {
+    display: block;
+    margin-top: 8px;
+    font-style: normal;
+    font-size: 14px;
+    color: var(--forge-text-subtle);
+  }
+}
+
+// ---- Media
+
+.block-image,
+.block-video {
+  margin: 0;
+
+  figcaption {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--forge-text-subtle);
+    text-align: center;
+  }
+}
+
+.block-image {
+  img {
+    display: block;
+    width: 100%;
+    border-radius: var(--forge-radius);
+    box-shadow: var(--forge-shadow-emphasized);
+  }
+
+  &.layout-centered {
+    max-width: 72%;
+    margin-inline: auto;
+  }
+
+  &.layout-side {
+    max-width: 48%;
+    margin-left: auto;
+  }
+}
+
+.block-video {
+  .video-frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--forge-radius);
+    overflow: hidden;
+    box-shadow: var(--forge-shadow-emphasized);
+    background: var(--sf-charcoal, #1b1e23);
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  }
+
+  video {
+    display: block;
+    width: 100%;
+    border-radius: var(--forge-radius);
+    background: var(--sf-charcoal, #1b1e23);
+  }
+}
+
+.block-embed iframe {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+}
+
+// ---- Layout
+
+.block-divider {
+  border: 0;
+  border-top: 1px solid var(--forge-border);
+  margin: 10px 0;
+}
+
+.block-spacer {
+  height: 40px;
+}
+
+.block-callout {
+  --tone: var(--sf-steel, #3a4048);
+  border-radius: var(--forge-radius);
+  border: 1px solid var(--forge-border);
+  border-left: 4px solid var(--tone);
+  padding: 14px 18px;
+  background: var(--forge-surface-dim);
+  font-size: 15px;
+  line-height: 1.6;
+
+  .callout-title {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--forge-font-display);
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--tone);
+  }
+
+  &.tone-success {
+    --tone: var(--forge-positive);
+  }
+
+  &.tone-warning {
+    --tone: var(--forge-notice);
+  }
+
+  &.tone-danger {
+    --tone: var(--forge-negative);
+  }
+}
+
+.block-button-wrap {
+  display: flex;
+}
+
+.block-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 22px;
+  border-radius: 18px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: all 130ms ease-out;
+
+  &.primary {
+    background: var(--forge-accent);
+    color: #fff;
+  }
+
+  &.ghost {
+    background: transparent;
+    color: var(--forge-accent);
+    border: 1.5px solid var(--forge-accent);
+  }
+
+  &.primary:hover,
+  &.ghost:hover {
+    background: var(--forge-accent-hover);
+    border-color: var(--forge-accent-hover);
+    color: #fff;
+    text-decoration: none;
+  }
+}
+
+// ---- Accordion
+
+.block-accordion {
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+  overflow: hidden;
+}
+
+.acc-item + .acc-item {
+  border-top: 1px solid var(--forge-border);
+}
+
+.acc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--forge-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 130ms ease-out;
+
+  &:hover {
+    background: var(--forge-surface-dim);
+  }
+}
+
+.acc-chevron {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--forge-text-subtle);
+  border-bottom: 2px solid var(--forge-text-subtle);
+  transform: rotate(45deg);
+  transition: transform 200ms ease-out;
+}
+
+.acc-item.open .acc-chevron {
+  transform: rotate(225deg);
+}
+
+.acc-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease-out;
+}
+
+.acc-body-inner {
+  overflow: hidden;
+  padding: 0 18px;
+  line-height: 1.6;
+}
+
+.acc-item.open .acc-body {
+  grid-template-rows: 1fr;
+}
+
+.acc-item.open .acc-body-inner {
+  padding-bottom: 16px;
+}
+
+// ---- Tabs
+
+.block-tabs {
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+  overflow: hidden;
+}
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--forge-border);
+  background: var(--forge-surface-dim);
+  overflow-x: auto;
+}
+
+.tab-button {
+  padding: 12px 18px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 130ms ease-out;
+
+  &:hover {
+    color: var(--forge-text);
+  }
+
+  &.active {
+    color: var(--forge-accent);
+    border-bottom-color: var(--forge-accent);
+  }
+}
+
+.tab-panel {
+  padding: 18px;
+  line-height: 1.6;
+}
+
+// ---- Flashcards
+
+.block-flashcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.flashcard {
+  perspective: 900px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 150px;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+}
+
+.flashcard-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  transform-style: preserve-3d;
+  transition: transform 380ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.flashcard.flipped .flashcard-inner {
+  transform: rotateY(180deg);
+}
+
+.flashcard-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: var(--forge-radius);
+  backface-visibility: hidden;
+  line-height: 1.45;
+
+  &.front {
+    background: var(--sf-charcoal, #1b1e23);
+    color: #f4f2ee;
+    font-weight: 600;
+    box-shadow: var(--forge-shadow-emphasized);
+  }
+
+  &.back {
+    background: var(--forge-surface);
+    border: 1.5px solid var(--forge-accent);
+    transform: rotateY(180deg);
+  }
+}
+
+// ---- Knowledge check
+
+.block-kc {
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+  box-shadow: var(--forge-shadow-emphasized);
+  padding: 22px 24px;
+}
+
+.kc-label {
+  display: inline-block;
+  font-family: var(--forge-font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--forge-accent);
+  margin-bottom: 6px;
+}
+
+.kc-question {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.kc-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kc-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+  font: inherit;
+  color: var(--forge-text);
+  text-align: left;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  &:hover:not(:disabled) {
+    border-color: var(--forge-accent);
+  }
+
+  &.selected {
+    border-color: var(--forge-accent);
+    background: color-mix(in srgb, var(--forge-accent) 7%, var(--forge-surface));
+
+    .kc-marker {
+      border-color: var(--forge-accent);
+      background: var(--forge-accent);
+      box-shadow: inset 0 0 0 3px var(--forge-surface);
+    }
+  }
+
+  &.correct {
+    border-color: var(--forge-positive);
+    background: color-mix(in srgb, var(--forge-positive) 9%, var(--forge-surface));
+  }
+
+  &.incorrect {
+    border-color: var(--forge-negative);
+    background: color-mix(in srgb, var(--forge-negative) 9%, var(--forge-surface));
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.kc-marker {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--forge-border);
+  border-radius: 4px;
+  background: var(--forge-surface);
+  transition: all 130ms ease-out;
+
+  &.round {
+    border-radius: 50%;
+  }
+}
+
+.kc-check,
+.kc-retry {
+  margin-top: 14px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--forge-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  &:hover:not(:disabled) {
+    background: var(--forge-accent-hover);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.kc-retry {
+  background: transparent;
+  color: var(--forge-accent);
+  border: 1.5px solid var(--forge-accent);
+
+  &:hover {
+    background: var(--forge-accent);
+    color: #fff;
+  }
+}
+
+.kc-feedback {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--forge-radius);
+  font-size: 14.5px;
+  font-weight: 500;
+
+  &.ok {
+    background: color-mix(in srgb, var(--forge-positive) 11%, var(--forge-surface));
+    color: var(--forge-positive);
+  }
+
+  &.nope {
+    background: color-mix(in srgb, var(--forge-negative) 9%, var(--forge-surface));
+    color: var(--forge-negative);
+  }
+}

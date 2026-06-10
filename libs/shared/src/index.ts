@@ -5,3 +5,4 @@ export * from './lib/schemas/tenant';
 export * from './lib/schemas/course';
 export * from './lib/schemas/commerce';
 export * from './lib/schemas/gamification';
+export * from './lib/schemas/authoring';

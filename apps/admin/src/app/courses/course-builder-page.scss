@@ -1,0 +1,550 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+// ---- Top bar
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  background: var(--forge-surface);
+  border-bottom: 1px solid var(--forge-border);
+  position: sticky;
+  top: 60px;
+  z-index: 50;
+}
+
+.topbar-left,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.back-link {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--forge-text);
+  transition: background 130ms ease-out;
+
+  &:hover {
+    background: var(--forge-surface-dim);
+    text-decoration: none;
+  }
+}
+
+.topbar-brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.studio-tag {
+  font-family: var(--forge-font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--forge-accent);
+}
+
+.course-title-edit {
+  font-family: var(--forge-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  outline: none;
+  border-radius: var(--forge-radius-small);
+  padding: 0 4px;
+  margin-left: -4px;
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+  transition: background 130ms ease-out;
+
+  &:hover,
+  &:focus {
+    background: var(--forge-surface-dim);
+    box-shadow: none;
+  }
+}
+
+.pub-chip,
+.draft-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pub-chip {
+  background: var(--forge-accent);
+  color: #fff;
+
+  .pi {
+    font-size: 7px;
+  }
+}
+
+.draft-chip {
+  background: var(--forge-surface-dim);
+  border: 1px solid var(--forge-border);
+  color: var(--forge-text-subtle);
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--forge-text-subtle);
+  white-space: nowrap;
+
+  .pi {
+    font-size: 12px;
+  }
+
+  .pi-check {
+    color: var(--forge-positive);
+  }
+
+  &.saving {
+    color: var(--forge-text);
+  }
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--forge-border);
+}
+
+.bar-tool {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--forge-text);
+  cursor: pointer;
+  transition: background 130ms ease-out;
+
+  .pi {
+    font-size: 14px;
+  }
+
+  &.flip .pi {
+    transform: scaleX(-1);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--forge-surface-dim);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+// ---- Three-pane layout
+
+.studio {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.rail-left {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 14px;
+  background: var(--forge-surface);
+  border-right: 1px solid var(--forge-border);
+  position: sticky;
+  top: 117px;
+  align-self: flex-start;
+  max-height: calc(100vh - 117px);
+  overflow-y: auto;
+}
+
+.rail-right {
+  flex: 0 0 300px;
+  padding: 18px 16px;
+  background: var(--forge-surface);
+  border-left: 1px solid var(--forge-border);
+  position: sticky;
+  top: 117px;
+  align-self: flex-start;
+  max-height: calc(100vh - 117px);
+  overflow-y: auto;
+}
+
+.rail-label {
+  font-family: var(--forge-font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--forge-text-subtle);
+}
+
+.lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lesson-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--forge-radius-small);
+  background: var(--forge-surface);
+  cursor: pointer;
+  transition: background 130ms ease-out;
+
+  &:hover {
+    background: var(--forge-surface-dim);
+  }
+
+  &.active {
+    background: color-mix(in srgb, var(--forge-accent) 10%, var(--forge-surface));
+    box-shadow: inset 3px 0 0 var(--forge-accent);
+  }
+
+  &.cdk-drag-preview {
+    box-shadow: var(--forge-shadow-elevated);
+  }
+
+  &.cdk-drag-placeholder {
+    opacity: 0.3;
+  }
+}
+
+.lesson-grip {
+  font-size: 12px;
+  color: var(--forge-text-subtle);
+  cursor: grab;
+}
+
+.lesson-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lesson-count {
+  flex: 0 0 auto;
+  min-width: 20px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--forge-surface-dim);
+  border: 1px solid var(--forge-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--forge-text-subtle);
+}
+
+.lesson-actions {
+  display: none;
+  gap: 2px;
+}
+
+.lesson-row:hover .lesson-actions {
+  display: inline-flex;
+}
+
+.lesson-row:hover .lesson-count {
+  display: none;
+}
+
+.lesson-act {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+  transition:
+    background 130ms ease-out,
+    color 130ms ease-out;
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    background: var(--forge-surface);
+    color: var(--forge-accent);
+  }
+
+  &.danger:hover {
+    color: var(--forge-negative);
+  }
+}
+
+.lesson-rename {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--forge-accent);
+  border-radius: var(--forge-radius-small);
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+.add-lesson {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: transparent;
+  color: var(--forge-text-subtle);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 130ms ease-out,
+    border-color 130ms ease-out;
+
+  .pi {
+    font-size: 12px;
+  }
+
+  &:hover {
+    color: var(--forge-accent);
+    border-color: var(--forge-accent);
+  }
+}
+
+// ---- Canvas
+
+.center {
+  flex: 1;
+  min-width: 0;
+  padding: 26px 32px 120px;
+}
+
+.canvas {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.insert-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  opacity: 0;
+  transition: opacity 130ms ease-out;
+
+  &:hover,
+  &.open {
+    opacity: 1;
+  }
+
+  &.end {
+    margin-top: 4px;
+    height: 38px;
+    opacity: 0.7;
+
+    &:hover,
+    &.open {
+      opacity: 1;
+    }
+  }
+}
+
+.insert-rule {
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--forge-accent) 45%, transparent);
+}
+
+.insert-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--forge-accent);
+  border-radius: 50%;
+  background: var(--forge-surface);
+  color: var(--forge-accent);
+  cursor: pointer;
+  transition:
+    background 130ms ease-out,
+    color 130ms ease-out,
+    transform 130ms ease-out;
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    background: var(--forge-accent);
+    color: #fff;
+    transform: scale(1.1);
+  }
+}
+
+// ---- Empty & page states
+
+.empty-state,
+.page-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 56px 24px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius);
+  background: var(--forge-surface);
+  color: var(--forge-text-subtle);
+
+  > .pi {
+    font-size: 30px;
+    color: var(--forge-accent);
+    margin-bottom: 6px;
+  }
+
+  h2,
+  h3 {
+    margin: 0;
+    color: var(--forge-text);
+  }
+
+  p {
+    margin: 0 0 12px;
+    max-width: 44ch;
+  }
+}
+
+.page-state {
+  margin: 48px auto;
+  max-width: 480px;
+  border-style: solid;
+}
+
+// ---- Preview
+
+.preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 980px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.device-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  border-radius: 18px;
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 28px;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--forge-text-subtle);
+    cursor: pointer;
+    transition:
+      background 130ms ease-out,
+      color 130ms ease-out;
+
+    .pi {
+      font-size: 14px;
+    }
+
+    &:hover {
+      color: var(--forge-text);
+    }
+
+    &.on {
+      background: var(--forge-accent);
+      color: #fff;
+    }
+  }
+}
+
+.lesson-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lesson-nav-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--forge-text);
+}
+
+.device-frame {
+  width: 100%;
+  margin: 0 auto;
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  border-radius: 14px;
+  box-shadow: var(--forge-shadow-elevated);
+  padding: 34px clamp(18px, 5%, 48px) 56px;
+  transition: max-width 200ms ease-out;
+}

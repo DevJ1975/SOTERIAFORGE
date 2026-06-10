@@ -1,0 +1,283 @@
+@if (store.selectedBlock(); as sel) {
+  <div class="insp-head">
+    <span class="insp-kind">{{ kindLabel(sel.kind) }}</span>
+    <button
+      type="button"
+      class="insp-close"
+      (click)="store.selectBlock(null)"
+      title="Deselect block"
+    >
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+  @switch (sel.kind) {
+    @case ('heading') {
+      <div class="field">
+        <span class="field-label">Size</span>
+        <div class="seg">
+          @for (level of headingLevels; track level) {
+            <button
+              type="button"
+              [class.on]="sel.level === level"
+              (click)="patch(sel.id, { level }, 'Change heading size')"
+            >
+              H{{ level }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+    @case ('image') {
+      <div class="field">
+        <label for="insp-img-url">Image URL</label>
+        <input
+          pInputText
+          id="insp-img-url"
+          [value]="sel.url"
+          placeholder="https://…"
+          (change)="patchInput(sel.id, 'url', $event, 'Set image URL')"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-img-alt">Alt text</label>
+        <input
+          pInputText
+          id="insp-img-alt"
+          [value]="sel.alt"
+          placeholder="Describe the image for screen readers"
+          (change)="patchInput(sel.id, 'alt', $event, 'Edit alt text')"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-img-cap">Caption</label>
+        <input
+          pInputText
+          id="insp-img-cap"
+          [value]="sel.caption ?? ''"
+          placeholder="Optional caption"
+          (change)="patchInput(sel.id, 'caption', $event, 'Edit caption')"
+        />
+      </div>
+      <div class="field">
+        <span class="field-label">Layout</span>
+        <div class="seg">
+          @for (layout of imageLayouts; track layout) {
+            <button
+              type="button"
+              [class.on]="sel.layout === layout"
+              (click)="patch(sel.id, { layout }, 'Change image layout')"
+            >
+              {{ layout }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+    @case ('video') {
+      <div class="field">
+        <label for="insp-vid-url">Video URL</label>
+        <input
+          pInputText
+          id="insp-vid-url"
+          [value]="sel.url"
+          placeholder="YouTube, Vimeo, or direct file URL"
+          (change)="patchInput(sel.id, 'url', $event, 'Set video URL')"
+        />
+        <small>YouTube and Vimeo links become players automatically.</small>
+      </div>
+      <div class="field">
+        <label for="insp-vid-cap">Caption</label>
+        <input
+          pInputText
+          id="insp-vid-cap"
+          [value]="sel.caption ?? ''"
+          placeholder="Optional caption"
+          (change)="patchInput(sel.id, 'caption', $event, 'Edit caption')"
+        />
+      </div>
+    }
+    @case ('quote') {
+      <div class="field">
+        <label for="insp-quote-attr">Attribution</label>
+        <input
+          pInputText
+          id="insp-quote-attr"
+          [value]="sel.attribution ?? ''"
+          placeholder="Who said it?"
+          (change)="patchInput(sel.id, 'attribution', $event, 'Edit attribution')"
+        />
+      </div>
+      <p class="insp-hint">Edit the quote text directly on the canvas.</p>
+    }
+    @case ('callout') {
+      <div class="field">
+        <span class="field-label">Tone</span>
+        <div class="seg tones">
+          @for (tone of calloutTones; track tone) {
+            <button
+              type="button"
+              [class]="'tone-' + tone"
+              [class.on]="sel.tone === tone"
+              (click)="patch(sel.id, { tone }, 'Change callout tone')"
+            >
+              {{ tone }}
+            </button>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label for="insp-co-title">Title</label>
+        <input
+          pInputText
+          id="insp-co-title"
+          [value]="sel.title ?? ''"
+          placeholder="Optional title"
+          (change)="patchInput(sel.id, 'title', $event, 'Edit callout title')"
+        />
+      </div>
+    }
+    @case ('divider') {
+      <div class="field">
+        <span class="field-label">Style</span>
+        <div class="seg">
+          @for (style of dividerStyles; track style) {
+            <button
+              type="button"
+              [class.on]="sel.style === style"
+              (click)="patch(sel.id, { style }, 'Change divider style')"
+            >
+              {{ style }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+    @case ('button') {
+      <div class="field">
+        <label for="insp-btn-label">Label</label>
+        <input
+          pInputText
+          id="insp-btn-label"
+          [value]="sel.label"
+          placeholder="Button label"
+          (change)="patchInput(sel.id, 'label', $event, 'Edit button label')"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-btn-url">Destination URL</label>
+        <input
+          pInputText
+          id="insp-btn-url"
+          [value]="sel.url"
+          placeholder="https://…"
+          (change)="patchInput(sel.id, 'url', $event, 'Set button URL')"
+        />
+      </div>
+      <div class="field">
+        <span class="field-label">Style</span>
+        <div class="seg">
+          @for (style of buttonStyles; track style) {
+            <button
+              type="button"
+              [class.on]="sel.style === style"
+              (click)="patch(sel.id, { style }, 'Change button style')"
+            >
+              {{ style }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+    @case ('embed') {
+      <div class="field">
+        <label for="insp-embed-url">Embed URL</label>
+        <input
+          pInputText
+          id="insp-embed-url"
+          [value]="sel.url"
+          placeholder="https://…"
+          (change)="patchInput(sel.id, 'url', $event, 'Set embed URL')"
+        />
+        <small>Rendered in a sandboxed iframe. https only.</small>
+      </div>
+      <div class="field">
+        <label for="insp-embed-h">Height (px)</label>
+        <input
+          pInputText
+          id="insp-embed-h"
+          type="number"
+          min="80"
+          max="2000"
+          [value]="sel.height"
+          (change)="patchNumber(sel.id, 'height', $event, 'Set embed height')"
+        />
+      </div>
+    }
+    @case ('knowledgeCheck') {
+      <div class="field">
+        <label for="insp-kc-type">Question type</label>
+        <p-select
+          inputId="insp-kc-type"
+          [options]="kcTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="sel.type"
+          (ngModelChange)="changeKcType(sel, $event)"
+          styleClass="insp-select"
+          appendTo="body"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-kc-ok">Feedback when correct</label>
+        <textarea
+          id="insp-kc-ok"
+          rows="3"
+          [value]="sel.feedbackCorrect"
+          (change)="patchInput(sel.id, 'feedbackCorrect', $event, 'Edit feedback')"
+        ></textarea>
+      </div>
+      <div class="field">
+        <label for="insp-kc-no">Feedback when incorrect</label>
+        <textarea
+          id="insp-kc-no"
+          rows="3"
+          [value]="sel.feedbackIncorrect"
+          (change)="patchInput(sel.id, 'feedbackIncorrect', $event, 'Edit feedback')"
+        ></textarea>
+      </div>
+      <p class="insp-hint">Edit the question, options, and correct answers on the canvas.</p>
+    }
+    @default {
+      <p class="insp-hint">This block is edited directly on the canvas — click into the text.</p>
+    }
+  }
+} @else {
+  <div class="insp-head">
+    <span class="insp-kind">Lesson settings</span>
+  </div>
+  @if (store.activeLesson(); as lesson) {
+    <div class="field">
+      <label for="insp-lesson-title">Lesson title</label>
+      <input
+        pInputText
+        id="insp-lesson-title"
+        [value]="lesson.title"
+        (change)="renameLesson(lesson.id, $event)"
+      />
+    </div>
+  }
+  @if (store.course(); as course) {
+    <div class="field">
+      <label for="insp-course-desc">Course description</label>
+      <textarea
+        id="insp-course-desc"
+        rows="5"
+        [value]="course.description"
+        placeholder="What will learners be able to do after this course?"
+        (change)="setDescription($event)"
+      ></textarea>
+      <small>Shown on the course card in Forge Studio.</small>
+    </div>
+  }
+  <p class="insp-hint">Select a block on the canvas to edit its settings here.</p>
+}

@@ -1,0 +1,275 @@
+@if (store.course(); as course) {
+  <div class="topbar">
+    <div class="topbar-left">
+      <a routerLink="/courses" class="back-link" pTooltip="Back to Forge Studio">
+        <i class="pi pi-arrow-left"></i>
+      </a>
+      <div class="topbar-brand">
+        <span class="studio-tag">Forge Studio</span>
+        <div
+          class="course-title-edit"
+          contenteditable="true"
+          spellcheck="false"
+          [textContent]="course.title"
+          (keydown)="singleLine($event)"
+          (blur)="commitCourseTitle($event)"
+        ></div>
+      </div>
+      @if (course.status === 'published') {
+        <span class="pub-chip"><i class="pi pi-circle-fill"></i> Published</span>
+      } @else {
+        <span class="draft-chip">Draft</span>
+      }
+    </div>
+
+    <div class="topbar-right">
+      <span class="save-status" [class.saving]="store.saveState() === 'saving'">
+        @if (store.saveState() === 'saving') {
+          <i class="pi pi-spin pi-spinner"></i> Saving…
+        } @else if (store.lastSavedAt() !== null) {
+          <i class="pi pi-check"></i> Saved · {{ store.lastSavedAt() | date: 'HH:mm' }}
+        } @else {
+          All changes saved
+        }
+      </span>
+
+      <span class="topbar-sep"></span>
+
+      <button
+        type="button"
+        class="bar-tool"
+        [disabled]="!store.canUndo()"
+        (click)="store.undo()"
+        [pTooltip]="store.undoLabel() ? 'Undo ' + store.undoLabel() + ' (Ctrl+Z)' : 'Undo (Ctrl+Z)'"
+        tooltipPosition="bottom"
+      >
+        <i class="pi pi-undo"></i>
+      </button>
+      <button
+        type="button"
+        class="bar-tool flip"
+        [disabled]="!store.canRedo()"
+        (click)="store.redo()"
+        [pTooltip]="
+          store.redoLabel()
+            ? 'Redo ' + store.redoLabel() + ' (Ctrl+Shift+Z)'
+            : 'Redo (Ctrl+Shift+Z)'
+        "
+        tooltipPosition="bottom"
+      >
+        <i class="pi pi-undo"></i>
+      </button>
+
+      <span class="topbar-sep"></span>
+
+      <p-button
+        [label]="preview() ? 'Edit' : 'Preview'"
+        [icon]="preview() ? 'pi pi-pencil' : 'pi pi-eye'"
+        [outlined]="true"
+        size="small"
+        (onClick)="togglePreview()"
+      />
+      <p-button
+        [label]="course.status === 'published' ? 'Unpublish' : 'Publish'"
+        [icon]="course.status === 'published' ? 'pi pi-cloud-download' : 'pi pi-cloud-upload'"
+        size="small"
+        [severity]="course.status === 'published' ? 'secondary' : undefined"
+        (onClick)="confirmPublish()"
+      />
+    </div>
+  </div>
+
+  <div class="studio">
+    <!-- LEFT: outline rail -->
+    <aside class="rail-left">
+      <span class="rail-label">Lessons</span>
+      <div class="lesson-list" cdkDropList (cdkDropListDropped)="onLessonDrop($event)">
+        @for (lesson of course.lessons; track lesson.id; let i = $index) {
+          <div
+            class="lesson-row"
+            cdkDrag
+            role="button"
+            tabindex="0"
+            [class.active]="store.activeLesson()?.id === lesson.id"
+            (click)="store.selectLesson(lesson.id)"
+            (keydown.enter)="store.selectLesson(lesson.id)"
+          >
+            <i class="pi pi-bars lesson-grip" cdkDragHandle></i>
+            @if (editingLessonId() === lesson.id) {
+              <input
+                class="lesson-rename"
+                [id]="'lesson-rename-' + lesson.id"
+                [value]="lesson.title"
+                (click)="$event.stopPropagation()"
+                (keydown.enter)="commitLessonRename(lesson.id, $event)"
+                (blur)="commitLessonRename(lesson.id, $event)"
+              />
+            } @else {
+              <span class="lesson-name">{{ lesson.title }}</span>
+              <span class="lesson-count" pTooltip="Blocks in this lesson" tooltipPosition="right">{{
+                lesson.blocks.length
+              }}</span>
+              <span class="lesson-actions">
+                <button
+                  type="button"
+                  class="lesson-act"
+                  (click)="startRename(lesson.id, $event)"
+                  title="Rename lesson"
+                >
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button
+                  type="button"
+                  class="lesson-act danger"
+                  (click)="confirmDeleteLesson(lesson, $event)"
+                  title="Delete lesson"
+                >
+                  <i class="pi pi-trash"></i>
+                </button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+      <button type="button" class="add-lesson" (click)="store.addLesson()">
+        <i class="pi pi-plus"></i> Add lesson
+      </button>
+    </aside>
+
+    <!-- CENTER: canvas or preview -->
+    <main class="center" tabindex="-1" (click)="onCanvasClick()" (keydown.escape)="onCanvasClick()">
+      @if (!preview()) {
+        @if (store.activeLesson(); as lesson) {
+          <div class="canvas" cdkDropList (cdkDropListDropped)="onBlockDrop($event)">
+            @for (b of lesson.blocks; track b.id; let i = $index) {
+              <div class="insert-zone" [class.open]="paletteIndex() === i">
+                <span class="insert-rule"></span>
+                <button
+                  type="button"
+                  class="insert-btn"
+                  (click)="togglePalette(i, $event)"
+                  title="Insert block here"
+                >
+                  <i class="pi pi-plus"></i>
+                </button>
+                <span class="insert-rule"></span>
+                @if (paletteIndex() === i) {
+                  <app-block-palette (picked)="insertAt(i, $event)" (dismissed)="closePalette()" />
+                }
+              </div>
+              <app-block-card cdkDrag [block]="b" [index]="i" [total]="lesson.blocks.length" />
+            }
+            <div class="insert-zone end" [class.open]="paletteIndex() === lesson.blocks.length">
+              <span class="insert-rule"></span>
+              <button
+                type="button"
+                class="insert-btn"
+                (click)="togglePalette(lesson.blocks.length, $event)"
+                title="Add a block"
+              >
+                <i class="pi pi-plus"></i>
+              </button>
+              <span class="insert-rule"></span>
+              @if (paletteIndex() === lesson.blocks.length) {
+                <app-block-palette
+                  (picked)="insertAt(lesson.blocks.length, $event)"
+                  (dismissed)="closePalette()"
+                />
+              }
+            </div>
+            @if (lesson.blocks.length === 0) {
+              <div class="empty-state">
+                <i class="pi pi-sparkles"></i>
+                <h3>A blank canvas</h3>
+                <p>
+                  Build “{{ lesson.title }}” block by block — start with a heading, or jump straight
+                  to a knowledge check.
+                </p>
+                <p-button
+                  label="Add your first block"
+                  icon="pi pi-plus"
+                  (onClick)="togglePalette(0, $event)"
+                />
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <i class="pi pi-book"></i>
+            <h3>No lessons yet</h3>
+            <p>Every course starts with one lesson. Add yours and start building.</p>
+            <p-button label="Add a lesson" icon="pi pi-plus" (onClick)="store.addLesson()" />
+          </div>
+        }
+      } @else {
+        <div class="preview-wrap">
+          <div class="preview-bar">
+            <div class="device-seg">
+              @for (d of devices; track d.id) {
+                <button
+                  type="button"
+                  [class.on]="device() === d.id"
+                  (click)="device.set(d.id)"
+                  [pTooltip]="d.label"
+                  tooltipPosition="bottom"
+                >
+                  <i [class]="d.icon"></i>
+                </button>
+              }
+            </div>
+            <div class="lesson-nav">
+              <button
+                type="button"
+                class="bar-tool"
+                [disabled]="lessonIndex() <= 0"
+                (click)="gotoLesson(-1)"
+                title="Previous lesson"
+              >
+                <i class="pi pi-chevron-left"></i>
+              </button>
+              <span class="lesson-nav-label">
+                {{ store.activeLesson()?.title }} · {{ lessonIndex() + 1 }} /
+                {{ course.lessons.length }}
+              </span>
+              <button
+                type="button"
+                class="bar-tool"
+                [disabled]="lessonIndex() >= course.lessons.length - 1"
+                (click)="gotoLesson(1)"
+                title="Next lesson"
+              >
+                <i class="pi pi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+          <div class="device-frame" [style.maxWidth]="deviceWidth()">
+            @if (store.activeLesson(); as lesson) {
+              <forge-lesson-renderer [lesson]="lesson" />
+            }
+          </div>
+        </div>
+      }
+    </main>
+
+    <!-- RIGHT: inspector -->
+    @if (!preview()) {
+      <aside class="rail-right">
+        <app-block-inspector />
+      </aside>
+    }
+  </div>
+} @else if (notFound()) {
+  <div class="page-state">
+    <i class="pi pi-compass"></i>
+    <h2>Course not found</h2>
+    <p>It may have been deleted on another tab.</p>
+    <p-button label="Back to Forge Studio" icon="pi pi-arrow-left" (onClick)="backToList()" />
+  </div>
+} @else {
+  <div class="page-state">
+    <i class="pi pi-spin pi-spinner"></i>
+    <p>Opening course…</p>
+  </div>
+}
+
+<p-confirmdialog [style]="{ maxWidth: '420px' }" />

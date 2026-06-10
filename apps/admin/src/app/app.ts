@@ -10,5 +10,8 @@ import { ForgeShell, ShellLink } from '@forge/ui';
 })
 export class App {
   protected readonly appName = 'FORGE Admin';
-  protected readonly navLinks: ShellLink[] = [{ label: 'Home', path: '/' }];
+  protected readonly navLinks: ShellLink[] = [
+    { label: 'Home', path: '/' },
+    { label: 'Courses', path: '/courses' },
+  ];
 }
