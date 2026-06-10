@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'lib-gamification',
+  selector: 'forge-gamification',
   imports: [CommonModule],
   templateUrl: './gamification.html',
   styleUrl: './gamification.css',

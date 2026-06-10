@@ -1,6 +1,7 @@
 # Soteria FORGE
 
-Production-grade, multi-tenant LMS (B2B + B2C) built on Angular 20, Nx, Firebase, and PrimeNG.
+Production-grade, multi-tenant LMS (B2B + B2C) built on Angular 20, Nx, Firebase, and PrimeNG,
+styled end to end with the Adobe Spectrum design system.
 See [ROADMAP.md](./ROADMAP.md) for the phased delivery plan.
 
 ## Workspace layout
@@ -17,7 +18,7 @@ See [ROADMAP.md](./ROADMAP.md) for the phased delivery plan.
 | `@forge/ui`           | `libs/ui`           | PrimeNG theme + shared shell/layout components                            |
 | `@forge/lms-core`     | `libs/lms-core`     | Course/enrollment/progress domain services                                |
 | `@forge/standards`    | `libs/standards`    | SCORM, cmi5, xAPI runtimes (framework-agnostic)                           |
-| `@forge/games`        | `libs/games`        | Phaser/Pixi/Rive/Unity embed wrappers                                     |
+| `@forge/games`        | `libs/games`        | Safety Arcade: Hazard Hunter (Three.js + Phaser) and PERIL! (Phaser)      |
 | `@forge/gamification` | `libs/gamification` | XP, badges (Open Badges 3.0), leaderboards                                |
 | `@forge/payments`     | `libs/payments`     | Stripe checkout + entitlements (client side)                              |
 | `@forge/ai-tutor`     | `libs/ai-tutor`     | AI tutor UI + client                                                      |
@@ -49,6 +50,9 @@ npm run emulators          # Firebase emulator suite (requires Java)
 - **Module boundaries** are enforced by `@nx/enforce-module-boundaries` using `scope:`/`type:`
   tags in each `project.json` (see `eslint.config.mjs` for the dependency matrix).
 - Formatting is Prettier via `npx nx format:write`; CI runs `format:check`.
+- **Design system**: Adobe Spectrum. Tokens live in `libs/ui/src/lib/theme/spectrum.scss`
+  (`--forge-*` aliases over `--spectrum-*` globals); PrimeNG is themed via `ForgePreset`
+  (`libs/ui/src/lib/theme/forge-preset.ts`). Never hardcode colors — consume the tokens.
 
 ## Firebase
 

@@ -1,13 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
+import { ForgeShell, ShellLink } from '@forge/ui';
 
 @Component({
-  imports: [NxWelcome, RouterModule],
+  imports: [RouterModule, ForgeShell],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
-  protected title = 'storefront';
+  protected readonly appName = 'Soteria FORGE Store';
+  protected readonly navLinks: ShellLink[] = [{ label: 'Home', path: '/' }];
 }

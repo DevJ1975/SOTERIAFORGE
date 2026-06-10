@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'lib-lms-core',
+  selector: 'forge-lms-core',
   imports: [CommonModule],
   templateUrl: './lms-core.html',
   styleUrl: './lms-core.css',

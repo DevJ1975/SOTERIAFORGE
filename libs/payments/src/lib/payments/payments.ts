@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'lib-payments',
+  selector: 'forge-payments',
   imports: [CommonModule],
   templateUrl: './payments.html',
   styleUrl: './payments.css',

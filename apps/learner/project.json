@@ -21,22 +21,23 @@
             "input": "apps/learner/public"
           }
         ],
-        "styles": ["apps/learner/src/styles.scss"]
+        "styles": ["node_modules/primeicons/primeicons.css", "apps/learner/src/styles.scss"],
+        "budgets": [
+          {
+            "type": "initial",
+            "maximumWarning": "800kB",
+            "maximumError": "1.5MB"
+          },
+          {
+            "type": "anyComponentStyle",
+            "maximumWarning": "8kB",
+            "maximumError": "16kB"
+          }
+        ],
+        "allowedCommonJsDependencies": ["phaser"]
       },
       "configurations": {
         "production": {
-          "budgets": [
-            {
-              "type": "initial",
-              "maximumWarning": "500kb",
-              "maximumError": "1mb"
-            },
-            {
-              "type": "anyComponentStyle",
-              "maximumWarning": "4kb",
-              "maximumError": "8kb"
-            }
-          ],
           "outputHashing": "all"
         },
         "development": {

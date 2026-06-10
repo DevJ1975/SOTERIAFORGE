@@ -68,13 +68,23 @@ Exit criteria: end-to-end author→learn→complete loop works on emulators and 
 
 Exit criteria: a SCORM package and a quiz both drive enrollment completion; xAPI statements recorded with tenant scoping.
 
-## Phase 4 — Gamification (`libs/gamification`)
+## Phase 4 — Gamification (`libs/gamification`, `libs/games`)
 
 - XP/level engine: function triggers on module/course completion award `xpReward`, update member `xp`/`level`/`streakDays` transactionally.
 - Badges: admin badge CRUD, award on completion via `badgeRefs`, Open Badges 3.0 verifiable-credential issuing + public verification endpoint.
 - Leaderboards: scheduled function aggregates `daily/weekly/allTime` into the denormalized leaderboard docs; learner UI for profile, badge wall, leaderboards, streaks.
+- **Hazard Hunter** (Three.js + Phaser): first-person, turn-based hazard hunt. Level 1 is a
+  warehouse, level 2 a tool shop, each seeded with OSHA-violation hazards. Identifying a hazard
+  shows the incident it could have caused and the OSHA regulation violated; hazards missed when
+  the shift ends play out as incident reports.
+- **PERIL!** (Phaser): Jeopardy-style workplace-safety game show — full TV rules (two rounds,
+  Daily Doubles, Final PERIL wagering), board styling, synthesized sound effects. Multiplayer
+  via a pluggable opponent provider: Firestore realtime matches against other users in the
+  system, falling back to novice AI contestants (who buzz slowly and miss often) when no
+  human opponents are available.
 
-Exit criteria: completing content visibly moves XP, badges, and leaderboard rank.
+Exit criteria: completing content visibly moves XP, badges, and leaderboard rank; both games
+playable from the learner app and feeding score/completion into the progress pipeline.
 
 ## Phase 5 — B2C commerce (`apps/storefront`, `libs/payments`)
 
