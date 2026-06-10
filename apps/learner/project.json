@@ -19,6 +19,11 @@
           {
             "glob": "**/*",
             "input": "apps/learner/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "libs/ui/src/assets/brand",
+            "output": "brand"
           }
         ],
         "styles": ["node_modules/primeicons/primeicons.css", "apps/learner/src/styles.scss"],
