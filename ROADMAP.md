@@ -50,7 +50,13 @@ Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, r
 
 ## Phase 2 — LMS core (B2B MVP — first sellable slice)
 
-- **`apps/admin`**: member management (invite → email → accept flow, statuses `invited/active/deactivated`), course & module CRUD (drag-order modules), content upload to Storage (video first), publish workflow (`draft/published/archived`).
+- **`apps/admin`**: member management (invite → email → accept flow, statuses `invited/active/deactivated`), content upload to Storage (video first), publish workflow (`draft/published/archived`).
+- **Forge Studio** (started early, ahead of the backend): Articulate-Rise-style block course
+  builder — 15 block types (text, media, accordion/tabs/flashcards, knowledge checks),
+  three-pane editor with drag-and-drop, undo/redo, debounced autosave, and a pixel-identical
+  learner preview via the shared `ForgeLessonRenderer` in `libs/lms-core`. Persistence sits
+  behind `CourseRepository` (localStorage now; the Firestore implementation replaces it here
+  in Phase 2 without builder changes).
 - **`apps/learner`**: course catalog (published only), enrollment, course player shell, video module playback with `minProgressPct` completion, progress + `lastActivityAt` written to the enrollment doc.
 - **`libs/lms-core`**: enrollment/progress domain services shared by both apps.
 - Functions: enrollment-completion trigger (sets `completed`, stamps score), transactional progress aggregation.
