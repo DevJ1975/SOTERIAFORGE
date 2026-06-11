@@ -1,9 +1,13 @@
 import type {
   AuthPort,
+  CommerceDbPort,
   CreateUserOptions,
   DbPort,
   GamificationDbPort,
   StatementDbPort,
+  StripeCheckoutSessionOptions,
+  StripePort,
+  StripeWebhookEvent,
 } from './ports';
 
 /**
@@ -34,6 +38,12 @@ export class FakeAuthPort implements AuthPort {
   async setCustomClaims(uid: string, claims: Record<string, unknown> | null): Promise<void> {
     this.claims.set(uid, claims);
     this.setClaimsCalls.push({ uid, claims });
+  }
+
+  async getUser(uid: string): Promise<{ customClaims?: Record<string, unknown> } | null> {
+    const claims = this.claims.get(uid);
+    if (claims === undefined && !this.users.has(uid)) return null;
+    return claims ? { customClaims: claims } : {};
   }
 
   async getUserByEmail(email: string): Promise<{ uid: string } | null> {
@@ -169,6 +179,90 @@ export class FakeStatementDbPort implements StatementDbPort {
   }
 }
 
+export class FakeStripePort implements StripePort {
+  readonly createdSessions: StripeCheckoutSessionOptions[] = [];
+  /** What createCheckoutSession resolves to. */
+  nextSession = { id: 'cs_test_fake_1', url: 'https://checkout.stripe.com/c/pay/cs_test_fake_1' };
+  /** The event constructWebhookEvent returns; `null` simulates a signature failure. */
+  webhookEvent: StripeWebhookEvent | null = null;
+  readonly constructCalls: Array<{ rawBody: string; signature: string; secret: string }> = [];
+
+  async createCheckoutSession(
+    opts: StripeCheckoutSessionOptions,
+  ): Promise<{ id: string; url: string }> {
+    this.createdSessions.push(opts);
+    return { ...this.nextSession };
+  }
+
+  constructWebhookEvent(
+    rawBody: Buffer | string,
+    signature: string,
+    secret: string,
+  ): StripeWebhookEvent {
+    this.constructCalls.push({ rawBody: rawBody.toString(), signature, secret });
+    if (!this.webhookEvent) {
+      throw new Error('Webhook signature verification failed (fake)');
+    }
+    return this.webhookEvent;
+  }
+}
+
+export class FakeCommerceDbPort implements CommerceDbPort {
+  readonly products = new Map<string, Record<string, unknown>>();
+  readonly customers = new Map<string, Record<string, unknown>>();
+  readonly eventLog = new Map<string, Record<string, unknown>>();
+  readonly setCustomerCalls: string[] = [];
+  readonly setEventLogCalls: string[] = [];
+  /** When true, setCustomer throws — simulates a grant failure mid-webhook. */
+  failSetCustomer = false;
+
+  async getProduct(productId: string): Promise<Record<string, unknown> | null> {
+    return this.products.get(productId) ?? null;
+  }
+
+  async getCustomer(uid: string): Promise<Record<string, unknown> | null> {
+    return this.customers.get(uid) ?? null;
+  }
+
+  async setCustomer(uid: string, doc: Record<string, unknown>): Promise<void> {
+    if (this.failSetCustomer) {
+      throw new Error('setCustomer failed (fake)');
+    }
+    this.customers.set(uid, { ...(this.customers.get(uid) ?? {}), ...doc });
+    this.setCustomerCalls.push(uid);
+  }
+
+  async findCustomerByStripeId(
+    stripeCustomerId: string,
+  ): Promise<{ uid: string; data: Record<string, unknown> } | null> {
+    for (const [uid, data] of this.customers) {
+      if (data['stripeCustomerId'] === stripeCustomerId) return { uid, data };
+    }
+    return null;
+  }
+
+  async listProductsByPriceId(stripePriceId: string): Promise<Array<Record<string, unknown>>> {
+    return [...this.products.values()].filter((p) => p['stripePriceId'] === stripePriceId);
+  }
+
+  async getEventLog(eventId: string): Promise<Record<string, unknown> | null> {
+    return this.eventLog.get(eventId) ?? null;
+  }
+
+  async setEventLog(eventId: string, doc: Record<string, unknown>): Promise<void> {
+    this.eventLog.set(eventId, doc);
+    this.setEventLogCalls.push(eventId);
+  }
+}
+
 export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort } {
   return { auth: new FakeAuthPort(), db: new FakeDbPort() };
+}
+
+export function makeCommerceFakes(): {
+  auth: FakeAuthPort;
+  db: FakeCommerceDbPort;
+  stripe: FakeStripePort;
+} {
+  return { auth: new FakeAuthPort(), db: new FakeCommerceDbPort(), stripe: new FakeStripePort() };
 }
