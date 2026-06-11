@@ -3,11 +3,18 @@ rules_version = '2';
 // Soteria FORGE Firestore rules.
 //
 // Deny-by-default: every collection must be explicitly opened up, in the same
-// PR that introduces it, together with rules unit tests (see ROADMAP.md).
-// Tenant isolation is enforced via custom claims (request.auth.token.tenantId),
-// which are set exclusively by Cloud Functions.
+// PR that introduces it, together with rules unit tests (see
+// libs/data-access/src/rules/firestore.rules.spec.ts).
+//
+// Tenant isolation is enforced via custom claims (request.auth.token.tenantId,
+// request.auth.token.role), which are set exclusively by Cloud Functions; the
+// Admin SDK bypasses these rules, so "write: if false" means "Cloud Functions
+// only".
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
     function signedIn() {
       return request.auth != null;
     }
@@ -24,18 +31,97 @@ service cloud.firestore {
       return signedIn() && request.auth.token.tenantId == tenantId;
     }
 
-    // Tenant documents: members may read their own tenant; only superadmin
-    // (or Cloud Functions via Admin SDK, which bypasses rules) may write.
+    // Tenant-scoped content authors. Superadmin is handled separately.
+    function isAuthoring() {
+      return signedIn() && role() in ['tenant_admin', 'instructor'];
+    }
+
     match /tenants/{tenantId} {
+      // Tenant documents: members may read their own tenant; only superadmin
+      // (or Cloud Functions via Admin SDK) may write.
       allow read: if isSuperadmin() || inTenant(tenantId);
       allow write: if isSuperadmin();
 
-      // Members may read the roster of their own tenant. All writes go
+      // Members: readable by the tenant roster and superadmin. All writes go
       // through Cloud Functions (invites, role changes, deactivation).
       match /members/{memberUid} {
         allow read: if isSuperadmin() || inTenant(tenantId);
         allow write: if false;
       }
+
+      // Courses: learners only see published content; authoring roles
+      // (tenant_admin, instructor) and superadmin also see drafts/archived.
+      // Writers must be authoring roles inside the tenant (or superadmin) and
+      // may not spoof another tenant via the embedded tenantId field.
+      match /courses/{courseId} {
+        allow read: if isSuperadmin()
+          || (inTenant(tenantId)
+            && (resource.data.status == 'published' || isAuthoring()));
+        allow create, update: if (isSuperadmin() || (inTenant(tenantId) && isAuthoring()))
+          && request.resource.data.tenantId == tenantId;
+        allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+
+        // Modules: gated on tenant membership for reads (no published gating
+        // at this level); writes are authoring-only, with the same
+        // tenantId-spoofing guard as courses.
+        match /modules/{moduleId} {
+          allow read: if isSuperadmin() || inTenant(tenantId);
+          allow create, update: if (isSuperadmin() || (inTenant(tenantId) && isAuthoring()))
+            && request.resource.data.tenantId == tenantId;
+          allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+        }
+
+        // Enrollments: keyed by the enrollee's uid. The enrollee may read and
+        // upsert their own enrollment (progress, scores, cmi state) within
+        // their own tenant only; authoring roles and superadmin may read.
+        // Deletes are Cloud Functions only.
+        match /enrollments/{enrolleeUid} {
+          allow read: if isSuperadmin()
+            || (inTenant(tenantId) && isAuthoring())
+            || (signedIn() && request.auth.uid == enrolleeUid);
+          allow create, update: if signedIn()
+            && request.auth.uid == enrolleeUid
+            && inTenant(tenantId)
+            && request.resource.data.uid == enrolleeUid;
+          allow delete: if false;
+        }
+      }
+
+      // Badges: tenant-readable metadata; issued/managed by Cloud Functions.
+      match /badges/{badgePath=**} {
+        allow read: if isSuperadmin() || inTenant(tenantId);
+        allow write: if false;
+      }
+
+      // Leaderboard: tenant-readable, denormalized by Cloud Functions.
+      match /leaderboard/{periodPath=**} {
+        allow read: if isSuperadmin() || inTenant(tenantId);
+        allow write: if false;
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // B2C storefront. The docblock paths /b2c/catalog/{productId} and
+    // /b2c/customers/{uid} are odd-segment (non-document) paths, so the
+    // concrete layout interposes the fixed singleton document /b2c/store
+    // (see libs/data-access collections.ts):
+    //   /b2c/store/catalog/{productId}
+    //   /b2c/store/customers/{uid}
+    // -----------------------------------------------------------------------
+
+    // Catalog: world-readable (public, SEO-crawled storefront); only
+    // superadmin curates products.
+    match /b2c/store/catalog/{productId} {
+      allow read: if true;
+      allow write: if isSuperadmin();
+    }
+
+    // Customers: each customer may read only their own doc. Entitlements and
+    // purchase history are written exclusively by the Stripe webhook handler
+    // (Cloud Functions).
+    match /b2c/store/customers/{customerUid} {
+      allow read: if signedIn() && request.auth.uid == customerUid;
+      allow write: if false;
     }
 
     // Everything not explicitly matched above is denied.

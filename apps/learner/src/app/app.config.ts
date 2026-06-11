@@ -7,6 +7,7 @@ import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import { ForgePreset } from '@forge/ui';
+import { provideForgeFirebase } from '@forge/auth';
 import { appRoutes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -19,5 +20,6 @@ export const appConfig: ApplicationConfig = {
       ripple: true,
       theme: { preset: ForgePreset, options: { darkModeSelector: '.forge-dark' } },
     }),
+    provideForgeFirebase(),
   ],
 };

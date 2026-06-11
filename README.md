@@ -56,9 +56,30 @@ npm run emulators          # Firebase emulator suite (requires Java)
   `--sf-*` brand globals); PrimeNG is themed via `ForgePreset`
   (`libs/ui/src/lib/theme/forge-preset.ts`). Never hardcode colors — consume the tokens.
 
+## Auth & emulators (Phase 1)
+
+There is no real Firebase project yet — the apps run against the **emulator suite**
+(`npm run emulators`; requires Java). On `localhost` the apps auto-connect to the Auth
+(:9099) and Firestore (:8080) emulators with the demo project `soteria-forge-dev`; the
+login screen offers a create-account mode there (any email/password makes a test user).
+Tenancy is resolved from the subdomain (`acme.soteriaforge.com` → tenant `acme`), with a
+`?tenant=` query override for local development. Custom claims (`role`, `tenantId`,
+`entitlements`) are set only by the Cloud Functions in `apps/functions`
+(`setUserRole`, `inviteMember`, `provisionTenant`, plus a member-claims sync trigger).
+
+Security rules tests run against the emulator:
+
+```sh
+npm run test:rules        # or: npx firebase emulators:exec --only firestore                           #     --project demo-rules-test "npx nx test data-access --testPathPattern=rules"
+```
+
+Note: the B2C collections live under the singleton document `/b2c/store`
+(`/b2c/store/catalog/{productId}`, `/b2c/store/customers/{uid}`).
+
 ## Firebase
 
-`firebase.json` defines four hosting targets (one per app) and the emulator suite.
+`firebase.json` defines four hosting targets (one per app), the Cloud Functions codebase
+(deployed from `dist/apps/functions`), and the emulator suite.
 `.firebaserc` maps them to hosting sites of the active project — update the project ids
 when real Firebase projects are provisioned (dev/staging/prod planned; see ROADMAP.md
 Phase 8).
