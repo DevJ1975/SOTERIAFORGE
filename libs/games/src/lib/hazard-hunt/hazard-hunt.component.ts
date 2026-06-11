@@ -16,13 +16,18 @@ import {
   signal,
   inject,
 } from '@angular/core';
+import { GAME_RESULT_SINK } from '../game-result';
 import { HazardDef, LevelDef, LEVELS, getLevel } from './hazard-data';
 import { ShiftEngine, ShiftSummary } from './shift-engine';
 import { HazardWorld, PickResult } from './world';
 import { HazardHud } from './hud';
 import { SfxEngine } from './audio';
+import { hazardHunterXp } from './xp';
 
 type Phase = 'intro' | 'playing' | 'found' | 'incidents' | 'scorecard';
+
+/** Firestore sync state for the scorecard XP chip. */
+type XpSync = 'signed-out' | 'syncing' | 'recorded' | 'error';
 
 const FOUND_POINTS = 250;
 const MISS_PENALTY = 150;
@@ -186,6 +191,23 @@ const UNUSED_BONUS = 100;
                 <dd>{{ totalScore() }}</dd>
               </div>
             </dl>
+            <div class="hh-xp" role="status">
+              @if (xpSync() === 'signed-out') {
+                <span class="hh-xp-signin">Sign in to earn XP from the Arcade</span>
+              } @else {
+                <span class="hh-xp-chip">+{{ xpEarned() }} XP</span>
+                @if (xpSync() === 'syncing') {
+                  <span class="hh-xp-status hh-xp-status--syncing">syncing to your profile…</span>
+                } @else if (xpSync() === 'recorded') {
+                  <span class="hh-xp-status hh-xp-status--recorded">
+                    <span class="hh-xp-check" aria-hidden="true">✓</span>
+                    Recorded — see your Profile
+                  </span>
+                } @else {
+                  <span class="hh-xp-status hh-xp-status--error">Could not record this run</span>
+                }
+              }
+            </div>
             @if (s.levelId === 1 && !s.unlockedNext) {
               <p class="hh-unlock-note">
                 Find at least 70% of hazards to unlock Shift 2 — Tool shop.
@@ -544,6 +566,83 @@ const UNUSED_BONUS = 100;
     .hh-neg {
       color: var(--forge-negative, #d7373f);
     }
+    .hh-xp {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 18px;
+    }
+    .hh-xp-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+      background: linear-gradient(
+        135deg,
+        var(--forge-notice, #da7b11),
+        var(--forge-negative, #d7373f)
+      );
+      box-shadow: 0 2px 10px rgba(218, 123, 17, 0.45);
+      animation: hh-pop 320ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
+    }
+    .hh-xp-status {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--forge-text-subtle, #6e6e6e);
+    }
+    .hh-xp-status--syncing {
+      background: linear-gradient(
+        90deg,
+        var(--forge-text-subtle, #6e6e6e) 25%,
+        var(--forge-text, #2c2c2c) 50%,
+        var(--forge-text-subtle, #6e6e6e) 75%
+      );
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: hh-shimmer 1.4s linear infinite;
+    }
+    .hh-xp-status--recorded {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--forge-positive, #268e6c);
+    }
+    .hh-xp-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--forge-positive, #268e6c);
+      color: #ffffff;
+      font-size: 11px;
+      line-height: 1;
+    }
+    .hh-xp-status--error {
+      color: var(--forge-negative, #d7373f);
+    }
+    .hh-xp-signin {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--forge-text-subtle, #6e6e6e);
+    }
+    @keyframes hh-shimmer {
+      from {
+        background-position: 200% 0;
+      }
+      to {
+        background-position: -200% 0;
+      }
+    }
     .hh-unlock-note {
       margin: 0 0 18px;
       font-size: 13px;
@@ -622,6 +721,8 @@ const UNUSED_BONUS = 100;
 })
 export class HazardHuntComponent implements AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
+  /** Optional gamification pipeline; absent in signed-out / preview contexts. */
+  private readonly sink = inject(GAME_RESULT_SINK, { optional: true });
   @ViewChild('worldHost', { static: true })
   private worldHost!: ElementRef<HTMLDivElement>;
   @ViewChild('hudHost', { static: true })
@@ -638,6 +739,11 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
   readonly foundHazard = signal<HazardDef | null>(null);
   readonly summary = signal<ShiftSummary | null>(null);
   readonly incidentIdx = signal(0);
+
+  /** Where the shift result is in its trip to Firestore (drives the XP chip). */
+  readonly xpSync = signal<XpSync>('signed-out');
+  /** Local mirror of the backend's min(150, round(score / 10)) award. */
+  readonly xpEarned = computed(() => hazardHunterXp(this.summary()?.score ?? 0));
 
   readonly missedHazards = computed<HazardDef[]>(() => {
     const s = this.summary();
@@ -666,6 +772,8 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
   private engine: ShiftEngine | null = null;
   private level: LevelDef | null = null;
   private pendingShiftEnd = false;
+  /** Guards report() to exactly one call per shift. Reset by start(). */
+  private shiftReported = false;
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'KeyQ' && this.phase() === 'playing') {
@@ -718,6 +826,7 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
     this.foundHazard.set(null);
     this.incidentIdx.set(0);
     this.pendingShiftEnd = false;
+    this.shiftReported = false;
 
     this.zone.runOutsideAngular(() => {
       this.world?.loadLevel(level);
@@ -866,7 +975,42 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
       this.sfx?.fanfare();
       this.hud?.confetti();
     }
+    this.reportShift(summary);
     this.phase.set('scorecard');
+  }
+
+  /**
+   * Sends the finished shift (failed ones included — score is still earned)
+   * into the gamification pipeline exactly once. The sink resolves after the
+   * Firestore write; the XP trigger stamps the award server-side seconds
+   * later. A missing sink or an 'unauthenticated' rejection (the learner
+   * app's signed-out signal) shows the sign-in copy; any other failure shows
+   * a quiet error note.
+   */
+  private reportShift(summary: ShiftSummary): void {
+    if (this.shiftReported) return;
+    this.shiftReported = true;
+
+    if (!this.sink) {
+      this.xpSync.set('signed-out');
+      return;
+    }
+
+    const level = getLevel(summary.levelId);
+    const maxScore = level
+      ? level.hazards.length * FOUND_POINTS +
+        (level.inspections - level.hazards.length) * UNUSED_BONUS
+      : undefined;
+
+    this.xpSync.set('syncing');
+    this.sink
+      .report({ game: 'hazard-hunter', score: summary.score, maxScore })
+      .then(() => this.xpSync.set('recorded'))
+      .catch((err: unknown) => {
+        this.xpSync.set(
+          err instanceof Error && err.message === 'unauthenticated' ? 'signed-out' : 'error',
+        );
+      });
   }
 
   private otherLevelsScore(levelId: number): number {

@@ -29,14 +29,12 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./leaderboard/leaderboard.page').then((m) => m.LeaderboardPage),
   },
   {
-    path: 'games/hazard-hunter',
+    // Lazy-loads a local routes file (not '@forge/games' directly): the games
+    // lib is imported statically there AND in app.config.ts (sink token), so
+    // there is no mixed lazy/static import of the lib — see games.routes.ts.
+    path: 'games',
     canActivate: [authGuard],
-    loadComponent: () => import('@forge/games').then((m) => m.HazardHuntComponent),
-  },
-  {
-    path: 'games/peril',
-    canActivate: [authGuard],
-    loadComponent: () => import('@forge/games').then((m) => m.PerilComponent),
+    loadChildren: () => import('./games.routes').then((m) => m.gamesRoutes),
   },
   { path: '**', redirectTo: '' },
 ];

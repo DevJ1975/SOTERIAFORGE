@@ -21,5 +21,9 @@ export const appConfig: ApplicationConfig = {
       theme: { preset: ForgePreset, options: { darkModeSelector: '.forge-dark' } },
     }),
     provideForgeFirebase(),
+    // NOTE: the Arcade's GAME_RESULT_SINK is provided on the lazy /games
+    // routes (games.routes.ts), not here — importing the token from
+    // '@forge/games' in this file would drag three.js/phaser into the initial
+    // bundle and blow the build budget.
   ],
 };
