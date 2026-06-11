@@ -35,6 +35,41 @@ export interface StatementDbPort {
   saveStatement(tenantId: string, statementId: string, doc: Record<string, unknown>): Promise<void>;
 }
 
+/**
+ * Persistence the gamification cores need. Member reads/writes are shared with
+ * DbPort; the rest covers the XP ledger, badge awards and game-result stamps.
+ */
+export interface GamificationDbPort extends Pick<DbPort, 'getMember' | 'setMember'> {
+  /** Read one XP ledger entry, or `null` when it does not exist. */
+  getXpEvent(
+    tenantId: string,
+    uid: string,
+    eventId: string,
+  ): Promise<Record<string, unknown> | null>;
+  /** Persist one XP ledger entry at /tenants/{t}/members/{uid}/xpEvents/{eventId}. */
+  addXpEvent(
+    tenantId: string,
+    uid: string,
+    eventId: string,
+    doc: Record<string, unknown>,
+  ): Promise<void>;
+  /** Read one badge award, or `null` when the badge was never earned. */
+  getAward(tenantId: string, uid: string, badgeId: string): Promise<Record<string, unknown> | null>;
+  /** Persist one badge award at /tenants/{t}/members/{uid}/awards/{badgeId}. */
+  setAward(
+    tenantId: string,
+    uid: string,
+    badgeId: string,
+    doc: Record<string, unknown>,
+  ): Promise<void>;
+  /** Merge fields onto /tenants/{t}/gameResults/{resultId} (e.g. the xpAwarded stamp). */
+  updateGameResult(
+    tenantId: string,
+    resultId: string,
+    data: Record<string, unknown>,
+  ): Promise<void>;
+}
+
 export interface CorePorts {
   auth: AuthPort;
   db: DbPort;

@@ -3,27 +3,33 @@ import type { CollectionReference, DocumentReference, Firestore } from 'firebase
 import {
   b2cCustomer,
   badge,
+  badgeAward,
   catalogProduct,
   course,
   courseDraft,
   enrollment,
+  gameResult,
   leaderboard,
   member,
   module as moduleSchema,
   tenant,
+  xpEvent,
 } from '@forge/shared';
 import type {
   B2cCustomer,
   Badge,
+  BadgeAward,
   CatalogProduct,
   Course,
   CourseDraft,
   Enrollment,
+  GameResult,
   Leaderboard,
   LeaderboardPeriod,
   Member,
   Module,
   Tenant,
+  XpEvent,
 } from '@forge/shared';
 import { zodConverter } from './converters';
 
@@ -57,6 +63,9 @@ const badgeConverter = zodConverter(badge);
 const leaderboardConverter = zodConverter(leaderboard);
 const catalogProductConverter = zodConverter(catalogProduct);
 const b2cCustomerConverter = zodConverter(b2cCustomer);
+const xpEventConverter = zodConverter(xpEvent);
+const badgeAwardConverter = zodConverter(badgeAward);
+const gameResultConverter = zodConverter(gameResult);
 
 /** /tenants */
 export function tenantsCol(db: Firestore): CollectionReference<Tenant> {
@@ -146,6 +155,62 @@ export function enrollmentDoc(
   uid: string,
 ): DocumentReference<Enrollment> {
   return doc(enrollmentsCol(db, tenantId, courseId), uid);
+}
+
+/** /tenants/{tenantId}/members/{uid}/xpEvents — XP ledger, Cloud Functions only. */
+export function xpEventsCol(
+  db: Firestore,
+  tenantId: string,
+  uid: string,
+): CollectionReference<XpEvent> {
+  return collection(db, 'tenants', tenantId, 'members', uid, 'xpEvents').withConverter(
+    xpEventConverter,
+  );
+}
+
+/** /tenants/{tenantId}/members/{uid}/xpEvents/{eventId} */
+export function xpEventDoc(
+  db: Firestore,
+  tenantId: string,
+  uid: string,
+  eventId: string,
+): DocumentReference<XpEvent> {
+  return doc(xpEventsCol(db, tenantId, uid), eventId);
+}
+
+/** /tenants/{tenantId}/members/{uid}/awards — earned badges, Cloud Functions only. */
+export function awardsCol(
+  db: Firestore,
+  tenantId: string,
+  uid: string,
+): CollectionReference<BadgeAward> {
+  return collection(db, 'tenants', tenantId, 'members', uid, 'awards').withConverter(
+    badgeAwardConverter,
+  );
+}
+
+/** /tenants/{tenantId}/members/{uid}/awards/{badgeId} */
+export function awardDoc(
+  db: Firestore,
+  tenantId: string,
+  uid: string,
+  badgeId: string,
+): DocumentReference<BadgeAward> {
+  return doc(awardsCol(db, tenantId, uid), badgeId);
+}
+
+/** /tenants/{tenantId}/gameResults — player-created game runs. */
+export function gameResultsCol(db: Firestore, tenantId: string): CollectionReference<GameResult> {
+  return collection(db, 'tenants', tenantId, 'gameResults').withConverter(gameResultConverter);
+}
+
+/** /tenants/{tenantId}/gameResults/{resultId} */
+export function gameResultDoc(
+  db: Firestore,
+  tenantId: string,
+  resultId: string,
+): DocumentReference<GameResult> {
+  return doc(gameResultsCol(db, tenantId), resultId);
 }
 
 /** /tenants/{tenantId}/badges */

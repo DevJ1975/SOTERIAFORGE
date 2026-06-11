@@ -47,6 +47,25 @@ service cloud.firestore {
       match /members/{memberUid} {
         allow read: if isSuperadmin() || inTenant(tenantId);
         allow write: if false;
+
+        // XP ledger: a member may read their own events; authoring roles and
+        // superadmin may read anyone's. All writes go through the gamification
+        // Cloud Functions (Admin SDK bypasses rules).
+        match /xpEvents/{eventId} {
+          allow read: if isSuperadmin()
+            || (inTenant(tenantId) && isAuthoring())
+            || (signedIn() && request.auth.uid == memberUid);
+          allow write: if false;
+        }
+
+        // Badge awards (Open Badges credentials): same visibility as the XP
+        // ledger; issued exclusively by Cloud Functions.
+        match /awards/{badgeId} {
+          allow read: if isSuperadmin()
+            || (inTenant(tenantId) && isAuthoring())
+            || (signedIn() && request.auth.uid == memberUid);
+          allow write: if false;
+        }
       }
 
       // Courses: learners only see published content; authoring roles
@@ -110,6 +129,25 @@ service cloud.firestore {
       match /leaderboard/{periodPath=**} {
         allow read: if isSuperadmin() || inTenant(tenantId);
         allow write: if false;
+      }
+
+      // Game results: players create their own result docs (uid field must
+      // match the caller) inside their own tenant; scores must be
+      // non-negative integers and the game must be a known platform game.
+      // Players may read their own results; authoring roles and superadmin
+      // may read all. Updates (e.g. the xpAwarded stamp) and deletes are
+      // Cloud Functions only.
+      match /gameResults/{resultId} {
+        allow read: if isSuperadmin()
+          || (inTenant(tenantId) && isAuthoring())
+          || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if signedIn()
+          && inTenant(tenantId)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && request.resource.data.game in ['hazard-hunter', 'peril'];
+        allow update, delete: if false;
       }
 
       // xAPI statements (the per-tenant LRS store): readable by superadmin

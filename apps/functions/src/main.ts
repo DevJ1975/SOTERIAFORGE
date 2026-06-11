@@ -1,5 +1,5 @@
-import { onDocumentWritten } from 'firebase-functions/v2/firestore';
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import {
   createAuthAdapter,
   createDbAdapter,
@@ -8,6 +8,10 @@ import {
 } from './lib/adapters';
 import { FunctionsDomainError } from './lib/errors';
 import { inviteMemberCore } from './lib/invite-member.core';
+import { createGamificationDbAdapter } from './lib/adapters';
+import { onEnrollmentWrittenCore } from './lib/on-enrollment-written.core';
+import { onGameResultCreatedCore } from './lib/on-game-result-created.core';
+import { createVerifyBadgeHandler } from './lib/verify-badge.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';
 import type { CorePorts } from './lib/ports';
 import { provisionTenantCore } from './lib/provision-tenant.core';
@@ -22,6 +26,7 @@ const deps: CorePorts = {
 };
 
 const statementDeps = { db: createStatementDbAdapter() };
+const gamificationDeps = { db: createGamificationDbAdapter() };
 
 const CALLABLE_OPTS = { cors: true, region: 'us-central1' } as const;
 
@@ -82,4 +87,38 @@ export const onMemberWritten = onDocumentWritten(
       after,
     });
   },
+);
+
+/** Award XP/badges for lesson and course completions recorded on enrollments. */
+export const onEnrollmentWritten = onDocumentWritten(
+  { document: 'tenants/{tenantId}/courses/{courseId}/enrollments/{uid}', region: 'us-central1' },
+  async (event) => {
+    const before = event.data?.before.exists ? (event.data.before.data() ?? null) : null;
+    const after = event.data?.after.exists ? (event.data.after.data() ?? null) : null;
+    await onEnrollmentWrittenCore(gamificationDeps, {
+      tenantId: event.params.tenantId,
+      courseId: event.params.courseId,
+      uid: event.params.uid,
+      before,
+      after,
+    });
+  },
+);
+
+/** Award XP/badges for player-created game results and stamp xpAwarded back. */
+export const onGameResultCreated = onDocumentCreated(
+  { document: 'tenants/{tenantId}/gameResults/{resultId}', region: 'us-central1' },
+  async (event) => {
+    await onGameResultCreatedCore(gamificationDeps, {
+      tenantId: event.params.tenantId,
+      resultId: event.params.resultId,
+      data: event.data?.data() ?? null,
+    });
+  },
+);
+
+/** Public Open Badges credential verification: GET /verifyBadge?tenant=&uid=&badge= */
+export const verifyBadge = onRequest(
+  { cors: true, region: 'us-central1' },
+  createVerifyBadgeHandler(gamificationDeps),
 );

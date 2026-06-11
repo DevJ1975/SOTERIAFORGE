@@ -1,7 +1,7 @@
 import { getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
-import type { AuthPort, DbPort, StatementDbPort } from './ports';
+import type { AuthPort, DbPort, GamificationDbPort, StatementDbPort } from './ports';
 
 /** Module-level lazy admin app singleton. */
 let app: App | null = null;
@@ -87,6 +87,42 @@ export function createDbAdapter(): DbPort {
 
     async setMember(tenantId, uid, data) {
       await memberRef(tenantId, uid).set(data, { merge: true });
+    },
+  };
+}
+
+/** GamificationDbPort over firebase-admin/firestore. */
+export function createGamificationDbAdapter(): GamificationDbPort {
+  return {
+    async getMember(tenantId, uid) {
+      const snap = await memberRef(tenantId, uid).get();
+      return snap.exists ? ((snap.data() ?? null) as Record<string, unknown> | null) : null;
+    },
+
+    async setMember(tenantId, uid, data) {
+      await memberRef(tenantId, uid).set(data, { merge: true });
+    },
+
+    async getXpEvent(tenantId, uid, eventId) {
+      const snap = await memberRef(tenantId, uid).collection('xpEvents').doc(eventId).get();
+      return snap.exists ? ((snap.data() ?? null) as Record<string, unknown> | null) : null;
+    },
+
+    async addXpEvent(tenantId, uid, eventId, doc) {
+      await memberRef(tenantId, uid).collection('xpEvents').doc(eventId).set(doc);
+    },
+
+    async getAward(tenantId, uid, badgeId) {
+      const snap = await memberRef(tenantId, uid).collection('awards').doc(badgeId).get();
+      return snap.exists ? ((snap.data() ?? null) as Record<string, unknown> | null) : null;
+    },
+
+    async setAward(tenantId, uid, badgeId, doc) {
+      await memberRef(tenantId, uid).collection('awards').doc(badgeId).set(doc);
+    },
+
+    async updateGameResult(tenantId, resultId, data) {
+      await tenantRef(tenantId).collection('gameResults').doc(resultId).set(data, { merge: true });
     },
   };
 }
