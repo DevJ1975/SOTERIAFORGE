@@ -85,6 +85,25 @@ const lessonWithEveryKind: LessonDraft = {
       feedbackCorrect: 'Right — before every shift.',
       feedbackIncorrect: 'No — OSHA requires a pre-shift inspection.',
     },
+    {
+      id: 'b16',
+      kind: 'quiz',
+      title: 'Forklift final',
+      passingScore: 80,
+      shuffleQuestions: false,
+      questions: [
+        {
+          id: 'fq1',
+          type: 'mcq',
+          prompt: 'What states the rated capacity?',
+          options: [
+            { id: 'fq1-a', text: 'The data plate' },
+            { id: 'fq1-b', text: 'The horn' },
+          ],
+          correctOptionId: 'fq1-a',
+        },
+      ],
+    },
   ],
 };
 
@@ -119,6 +138,9 @@ describe('ForgeLessonRenderer', () => {
     expect(element.querySelectorAll('.tab-button')).toHaveLength(2);
     expect(element.querySelectorAll('.flashcard')).toHaveLength(2);
     expect(element.querySelector('.kc-question')?.textContent).toContain('daily inspection');
+    expect(element.querySelector('.quiz-title')?.textContent).toContain('Forklift final');
+    expect(element.querySelector('.quiz-meta')?.textContent).toContain('80% to pass');
+    expect(element.querySelector('.quiz-progress')?.textContent).toContain('Question 1 of 1');
   });
 
   it('expands and collapses accordion panels', () => {
@@ -306,5 +328,279 @@ describe('ForgeLessonRenderer knowledge-check outputs', () => {
     answer(0, 0);
     expect(answered.at(-1)).toEqual({ blockId: 'kc9', correct: true, firstAttempt: true });
     expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
+  });
+});
+
+describe('ForgeLessonRenderer quiz block', () => {
+  type QuizBlockDraft = Extract<LessonDraft['blocks'][number], { kind: 'quiz' }>;
+
+  /** Single-mcq quiz: option index 0 is correct. */
+  function mcqQuiz(id: string, overrides: Partial<QuizBlockDraft> = {}): QuizBlockDraft {
+    return {
+      id,
+      kind: 'quiz',
+      title: 'Final check',
+      passingScore: 80,
+      shuffleQuestions: false,
+      questions: [
+        {
+          id: `${id}-q1`,
+          type: 'mcq',
+          prompt: 'Pick the right one',
+          options: [
+            { id: `${id}-right`, text: 'Right' },
+            { id: `${id}-wrong`, text: 'Wrong' },
+          ],
+          correctOptionId: `${id}-right`,
+          explanation: 'Because it is right.',
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  /** Quiz exercising all six question types (authored order, no shuffle). */
+  const sixTypeQuiz: QuizBlockDraft = {
+    id: 'quiz6',
+    kind: 'quiz',
+    title: 'All six types',
+    passingScore: 100,
+    shuffleQuestions: false,
+    questions: [
+      {
+        id: 'six-mcq',
+        type: 'mcq',
+        prompt: 'MCQ prompt',
+        options: [
+          { id: 'mc-a', text: 'Alpha' },
+          { id: 'mc-b', text: 'Beta' },
+        ],
+        correctOptionId: 'mc-b',
+      },
+      {
+        id: 'six-ms',
+        type: 'multi_select',
+        prompt: 'Multi prompt',
+        options: [
+          { id: 'ms-a', text: 'One' },
+          { id: 'ms-b', text: 'Two' },
+          { id: 'ms-c', text: 'Three' },
+        ],
+        correctOptionIds: ['ms-a', 'ms-c'],
+      },
+      { id: 'six-tf', type: 'true_false', prompt: 'TF prompt', correct: false },
+      {
+        id: 'six-ord',
+        type: 'ordering',
+        prompt: 'Ordering prompt',
+        items: [
+          { id: 'ord-1', text: 'First step' },
+          { id: 'ord-2', text: 'Second step' },
+        ],
+      },
+      {
+        id: 'six-match',
+        type: 'matching',
+        prompt: 'Matching prompt',
+        pairs: [
+          { id: 'pair-1', left: 'Left one', right: 'Right one' },
+          { id: 'pair-2', left: 'Left two', right: 'Right two' },
+        ],
+      },
+      {
+        id: 'six-fill',
+        type: 'fill_in',
+        prompt: 'The ____ states capacity.',
+        acceptedAnswers: ['data plate'],
+      },
+    ],
+  };
+
+  function setup(blocks: LessonDraft['blocks']) {
+    const fixture = TestBed.createComponent(ForgeLessonRenderer);
+    const answered: CheckAnsweredEvent[] = [];
+    const states: ChecksStateEvent[] = [];
+    fixture.componentInstance.checkAnswered.subscribe((event) => answered.push(event));
+    fixture.componentInstance.checksState.subscribe((event) => states.push(event));
+    fixture.componentRef.setInput('lesson', { id: 'lesson-quiz', title: 'Quiz lesson', blocks });
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const click = (selector: string, index = 0) => {
+      element.querySelectorAll<HTMLButtonElement>(selector)[index]?.click();
+      fixture.detectChanges();
+    };
+    /** Clicks the quiz option whose text matches, then nothing else. */
+    const clickOption = (text: string) => {
+      const option = Array.from(element.querySelectorAll<HTMLButtonElement>('.quiz-option')).find(
+        (candidate) => candidate.textContent?.includes(text),
+      );
+      option?.click();
+      fixture.detectChanges();
+    };
+    return { fixture, element, answered, states, click, clickOption };
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [ForgeLessonRenderer] }).compileComponents();
+  });
+
+  it('counts quizzes alongside knowledge checks in the initial checksState', () => {
+    const { states } = setup([
+      mcqQuiz('quizA'),
+      {
+        id: 'kc1',
+        kind: 'knowledgeCheck',
+        question: 'KC?',
+        type: 'mcq',
+        options: [
+          { id: 'kc1-a', text: 'Yes', correct: true },
+          { id: 'kc1-b', text: 'No', correct: false },
+        ],
+        feedbackCorrect: 'Yes.',
+        feedbackIncorrect: 'No.',
+      },
+    ]);
+    expect(states).toEqual([{ total: 2, answered: 0, correctOnFirstAttempt: 0 }]);
+  });
+
+  it('passes a single-question quiz and emits one check with firstAttempt true', () => {
+    const { element, answered, states, click, clickOption } = setup([mcqQuiz('quizA')]);
+    expect(element.querySelector('.quiz-progress')?.textContent).toContain('Question 1 of 1');
+    expect(element.querySelector<HTMLButtonElement>('.quiz-check')?.disabled).toBe(true);
+
+    clickOption('Right');
+    expect(element.querySelector<HTMLButtonElement>('.quiz-check')?.disabled).toBe(false);
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    expect(element.querySelector('.quiz-explanation')?.textContent).toContain(
+      'Because it is right.',
+    );
+    expect(answered).toEqual([]); // not emitted until the run finishes
+
+    expect(element.querySelector('.quiz-next')?.textContent).toContain('See results');
+    click('.quiz-next');
+
+    expect(element.querySelector('.quiz-results.pass')).toBeTruthy();
+    expect(element.querySelector('.quiz-score-big')?.textContent).toContain('100%');
+    expect(element.querySelector('.quiz-verdict')?.textContent).toContain('Passed');
+    expect(element.querySelectorAll('.quiz-review-row.ok')).toHaveLength(1);
+    expect(answered).toEqual([{ blockId: 'quizA', correct: true, firstAttempt: true }]);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
+  });
+
+  it('fails below the passing score, and a passed retake stays firstAttempt false', () => {
+    const { element, answered, states, click, clickOption } = setup([mcqQuiz('quizA')]);
+
+    clickOption('Wrong');
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.nope')).toBeTruthy();
+    click('.quiz-next');
+
+    expect(element.querySelector('.quiz-results.fail')).toBeTruthy();
+    expect(element.querySelector('.quiz-score-big')?.textContent).toContain('0%');
+    expect(element.querySelector('.quiz-verdict')?.textContent).toContain('Not passed');
+    expect(answered).toEqual([{ blockId: 'quizA', correct: false, firstAttempt: true }]);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 0 });
+    const stateEmissions = states.length;
+
+    // Retake resets the run.
+    click('.quiz-retake');
+    expect(element.querySelector('.quiz-progress')?.textContent).toContain('Question 1 of 1');
+    expect(element.querySelector('.quiz-option.selected')).toBeFalsy();
+
+    clickOption('Right');
+    click('.quiz-check');
+    click('.quiz-next');
+    expect(element.querySelector('.quiz-results.pass')).toBeTruthy();
+    // The retake emits a non-first attempt and never moves the aggregate.
+    expect(answered.at(-1)).toEqual({ blockId: 'quizA', correct: true, firstAttempt: false });
+    expect(states).toHaveLength(stateEmissions);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 0 });
+  });
+
+  it('walks all six question types to a perfect score', () => {
+    const { fixture, element, answered, click, clickOption } = setup([sixTypeQuiz]);
+    const progress = () => element.querySelector('.quiz-progress')?.textContent ?? '';
+
+    // 1. mcq
+    expect(progress()).toContain('Question 1 of 6');
+    clickOption('Beta');
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    // 2. multi_select (all-or-nothing: both correct options)
+    expect(progress()).toContain('Question 2 of 6');
+    clickOption('One');
+    clickOption('Three');
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    // 3. true_false (correct: false)
+    expect(progress()).toContain('Question 3 of 6');
+    clickOption('False');
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    // 4. ordering — two items always start reversed, one move-up fixes them.
+    expect(progress()).toContain('Question 4 of 6');
+    const rows = element.querySelectorAll('.quiz-order-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain('Second step');
+    click('.order-move.up', 1);
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    // 5. matching — pick each pair's own right side via its select.
+    expect(progress()).toContain('Question 5 of 6');
+    const selects = element.querySelectorAll<HTMLSelectElement>('.quiz-match-select');
+    expect(selects).toHaveLength(2);
+    selects.forEach((select, index) => {
+      select.value = `pair-${index + 1}`;
+      select.dispatchEvent(new Event('change'));
+    });
+    fixture.detectChanges();
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    // 6. fill_in — normalization forgives case and extra whitespace.
+    expect(progress()).toContain('Question 6 of 6');
+    const input = element.querySelector<HTMLInputElement>('.quiz-fill-input');
+    expect(input).toBeTruthy();
+    if (input) {
+      input.value = '  DATA   Plate ';
+      input.dispatchEvent(new Event('input'));
+    }
+    fixture.detectChanges();
+    click('.quiz-check');
+    expect(element.querySelector('.quiz-feedback.ok')).toBeTruthy();
+    click('.quiz-next');
+
+    expect(element.querySelector('.quiz-results.pass')).toBeTruthy();
+    expect(element.querySelector('.quiz-score-big')?.textContent).toContain('100%');
+    expect(element.querySelectorAll('.quiz-review-row.ok')).toHaveLength(6);
+    expect(answered).toEqual([{ blockId: 'quiz6', correct: true, firstAttempt: true }]);
+  });
+
+  it('resets quiz state when the lesson changes', () => {
+    const { fixture, element, states, click, clickOption } = setup([mcqQuiz('quizA')]);
+    clickOption('Right');
+    click('.quiz-check');
+    click('.quiz-next');
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
+
+    fixture.componentRef.setInput('lesson', {
+      id: 'lesson-next',
+      title: 'Next',
+      blocks: [mcqQuiz('quizB')],
+    });
+    fixture.detectChanges();
+    expect(states.at(-1)).toEqual({ total: 1, answered: 0, correctOnFirstAttempt: 0 });
+    expect(element.querySelector('.quiz-results')).toBeFalsy();
+    expect(element.querySelector('.quiz-progress')?.textContent).toContain('Question 1 of 1');
   });
 });

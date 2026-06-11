@@ -111,6 +111,15 @@ service cloud.firestore {
         allow read: if isSuperadmin() || inTenant(tenantId);
         allow write: if false;
       }
+
+      // xAPI statements (the per-tenant LRS store): readable by superadmin
+      // and in-tenant authoring roles only — learners may not read the
+      // firehose. All writes go through the recordStatements Cloud Function
+      // (Admin SDK bypasses rules).
+      match /xapiStatements/{statementId} {
+        allow read: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+        allow write: if false;
+      }
     }
 
     // -----------------------------------------------------------------------

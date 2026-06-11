@@ -220,6 +220,262 @@
           }
         </div>
       }
+      @case ('scorm') {
+        <section class="block-scorm">
+          @if (b.title) {
+            <h3 class="scorm-title">{{ b.title }}</h3>
+          }
+          <forge-scorm-player
+            [src]="b.url"
+            [version]="b.version"
+            (statusChanged)="onScormStatus(b, $event)"
+          />
+        </section>
+      }
+      @case ('quiz') {
+        <section class="block-quiz">
+          <header class="quiz-head">
+            <span class="quiz-label">Quiz</span>
+            <h3 class="quiz-title">{{ b.title }}</h3>
+            <span class="quiz-meta">
+              {{ b.questions.length }}
+              {{ b.questions.length === 1 ? 'question' : 'questions' }} &middot;
+              {{ b.passingScore }}% to pass
+            </span>
+          </header>
+          @if (quizState(b); as qs) {
+            @if (quizCurrentQuestion(b); as q) {
+              <div class="quiz-body">
+                <p class="quiz-progress">Question {{ qs.index + 1 }} of {{ qs.sequence.length }}</p>
+                <p class="quiz-prompt">{{ q.prompt }}</p>
+                @switch (q.type) {
+                  @case ('mcq') {
+                    <div class="quiz-options" role="radiogroup" [attr.aria-label]="q.prompt">
+                      @for (option of q.options; track option.id) {
+                        <button
+                          type="button"
+                          class="quiz-option"
+                          role="radio"
+                          [attr.aria-checked]="quizIsSelected(b, q, option.id)"
+                          [class.selected]="quizIsSelected(b, q, option.id)"
+                          [class.correct]="quizChecked(b, q) && option.id === q.correctOptionId"
+                          [class.incorrect]="
+                            quizChecked(b, q) &&
+                            quizIsSelected(b, q, option.id) &&
+                            option.id !== q.correctOptionId
+                          "
+                          [disabled]="quizChecked(b, q)"
+                          (click)="quizSelect(b, q, option.id)"
+                        >
+                          <span class="quiz-marker round"></span>
+                          <span class="quiz-option-text">{{ option.text }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  @case ('multi_select') {
+                    <p class="quiz-hint">Select all that apply.</p>
+                    <div class="quiz-options">
+                      @for (option of q.options; track option.id) {
+                        <button
+                          type="button"
+                          class="quiz-option"
+                          role="checkbox"
+                          [attr.aria-checked]="quizIsSelected(b, q, option.id)"
+                          [class.selected]="quizIsSelected(b, q, option.id)"
+                          [class.correct]="
+                            quizChecked(b, q) && q.correctOptionIds.includes(option.id)
+                          "
+                          [class.incorrect]="
+                            quizChecked(b, q) &&
+                            quizIsSelected(b, q, option.id) &&
+                            !q.correctOptionIds.includes(option.id)
+                          "
+                          [disabled]="quizChecked(b, q)"
+                          (click)="quizSelect(b, q, option.id)"
+                        >
+                          <span class="quiz-marker"></span>
+                          <span class="quiz-option-text">{{ option.text }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  @case ('true_false') {
+                    <div class="quiz-options" role="radiogroup" [attr.aria-label]="q.prompt">
+                      @for (value of ['true', 'false']; track value) {
+                        <button
+                          type="button"
+                          class="quiz-option"
+                          role="radio"
+                          [attr.aria-checked]="quizIsSelected(b, q, value)"
+                          [class.selected]="quizIsSelected(b, q, value)"
+                          [class.correct]="
+                            quizChecked(b, q) && value === (q.correct ? 'true' : 'false')
+                          "
+                          [class.incorrect]="
+                            quizChecked(b, q) &&
+                            quizIsSelected(b, q, value) &&
+                            value !== (q.correct ? 'true' : 'false')
+                          "
+                          [disabled]="quizChecked(b, q)"
+                          (click)="quizSelect(b, q, value)"
+                        >
+                          <span class="quiz-marker round"></span>
+                          <span class="quiz-option-text">{{
+                            value === 'true' ? 'True' : 'False'
+                          }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  @case ('ordering') {
+                    <p class="quiz-hint">Arrange the items into the correct order.</p>
+                    <ol class="quiz-order">
+                      @for (
+                        item of quizOrderedItems(b, q);
+                        track item.id;
+                        let i = $index;
+                        let last = $last
+                      ) {
+                        <li
+                          class="quiz-order-row"
+                          [class.correct]="quizChecked(b, q) && q.items[i].id === item.id"
+                          [class.incorrect]="quizChecked(b, q) && q.items[i].id !== item.id"
+                        >
+                          <span class="order-pos" aria-hidden="true">{{ i + 1 }}</span>
+                          <span class="order-text">{{ item.text }}</span>
+                          <span class="order-moves">
+                            <button
+                              type="button"
+                              class="order-move up"
+                              [disabled]="i === 0 || quizChecked(b, q)"
+                              (click)="quizMoveItem(b, q, i, -1)"
+                              [attr.aria-label]="'Move \'' + item.text + '\' up'"
+                            >
+                              &#9650;
+                            </button>
+                            <button
+                              type="button"
+                              class="order-move down"
+                              [disabled]="last || quizChecked(b, q)"
+                              (click)="quizMoveItem(b, q, i, 1)"
+                              [attr.aria-label]="'Move \'' + item.text + '\' down'"
+                            >
+                              &#9660;
+                            </button>
+                          </span>
+                        </li>
+                      }
+                    </ol>
+                  }
+                  @case ('matching') {
+                    <p class="quiz-hint">Match each item on the left with its partner.</p>
+                    <div class="quiz-match">
+                      @for (pair of q.pairs; track pair.id) {
+                        <label
+                          class="quiz-match-row"
+                          [class.correct]="
+                            quizChecked(b, q) && quizMatchOf(b, q, pair.id) === pair.id
+                          "
+                          [class.incorrect]="
+                            quizChecked(b, q) && quizMatchOf(b, q, pair.id) !== pair.id
+                          "
+                        >
+                          <span class="match-left">{{ pair.left }}</span>
+                          <select
+                            class="quiz-match-select"
+                            [disabled]="quizChecked(b, q)"
+                            (change)="quizSetMatch(b, q, pair.id, $event)"
+                          >
+                            <option value="" [selected]="quizMatchOf(b, q, pair.id) === ''">
+                              Choose a match…
+                            </option>
+                            @for (right of quizShuffledRights(b, q); track right.id) {
+                              <option
+                                [value]="right.id"
+                                [selected]="quizMatchOf(b, q, pair.id) === right.id"
+                              >
+                                {{ right.right }}
+                              </option>
+                            }
+                          </select>
+                        </label>
+                      }
+                    </div>
+                  }
+                  @case ('fill_in') {
+                    <input
+                      type="text"
+                      class="quiz-fill-input"
+                      placeholder="Type your answer…"
+                      [value]="quizAnswer(b, q.id)?.text ?? ''"
+                      [disabled]="quizChecked(b, q)"
+                      (input)="quizSetText(b, q, $event)"
+                      (keydown.enter)="quizCheck(b, q)"
+                    />
+                  }
+                }
+                @if (!quizChecked(b, q)) {
+                  <button
+                    type="button"
+                    class="quiz-check"
+                    [disabled]="!quizAnswerable(b, q)"
+                    (click)="quizCheck(b, q)"
+                  >
+                    Check
+                  </button>
+                } @else {
+                  <div
+                    class="quiz-feedback"
+                    [class.ok]="quizResultOf(b, q)"
+                    [class.nope]="!quizResultOf(b, q)"
+                  >
+                    <strong>{{ quizResultOf(b, q) ? 'Correct' : 'Incorrect' }}</strong>
+                    @if (!quizResultOf(b, q) && q.type === 'fill_in') {
+                      <p class="quiz-accepted">Accepted answer: {{ q.acceptedAnswers[0] }}</p>
+                    }
+                    @if (q.explanation) {
+                      <p class="quiz-explanation">{{ q.explanation }}</p>
+                    }
+                  </div>
+                  <button type="button" class="quiz-next" (click)="quizNext(b)">
+                    {{ qs.index === qs.sequence.length - 1 ? 'See results' : 'Next question' }}
+                  </button>
+                }
+              </div>
+            } @else {
+              <div
+                class="quiz-results"
+                [class.pass]="quizPassedOf(b)"
+                [class.fail]="!quizPassedOf(b)"
+              >
+                <div class="quiz-score-big">{{ quizScoreOf(b) }}%</div>
+                <p class="quiz-verdict">
+                  {{ quizPassedOf(b) ? 'Passed' : 'Not passed' }} &middot; {{ b.passingScore }}%
+                  needed
+                </p>
+                <ul class="quiz-review">
+                  @for (entry of quizReview(b); track entry.question.id) {
+                    <li
+                      class="quiz-review-row"
+                      [class.ok]="entry.correct"
+                      [class.nope]="!entry.correct"
+                    >
+                      <span class="review-mark" aria-hidden="true">{{
+                        entry.correct ? '✓' : '✕'
+                      }}</span>
+                      <span class="review-prompt">{{ entry.question.prompt }}</span>
+                    </li>
+                  }
+                </ul>
+                <button type="button" class="quiz-retake" (click)="quizRetake(b)">
+                  Retake quiz
+                </button>
+              </div>
+            }
+          }
+        </section>
+      }
     }
   } @empty {
     <p class="lesson-empty">This lesson has no content yet.</p>

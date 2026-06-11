@@ -101,6 +101,20 @@ export const BLOCK_DEFS: readonly BlockDef[] = [
     icon: 'pi pi-check-circle',
     group: 'Interactive',
   },
+  {
+    kind: 'quiz',
+    label: 'Quiz',
+    description: 'Graded assessment with 6 question types',
+    icon: 'pi pi-list-check',
+    group: 'Interactive',
+  },
+  {
+    kind: 'scorm',
+    label: 'SCORM package',
+    description: 'Launch a SCORM 1.2 / 2004 module in the embedded runtime',
+    icon: 'pi pi-box',
+    group: 'Interactive',
+  },
   // Layout
   {
     kind: 'callout',
@@ -185,5 +199,30 @@ export function createBlock(kind: BlockKind): Block {
         feedbackCorrect: 'Correct!',
         feedbackIncorrect: 'Not quite — review the lesson and try again.',
       };
+    case 'quiz': {
+      const correctId = createId('opt');
+      return {
+        id,
+        kind,
+        title: 'Quiz',
+        passingScore: 80,
+        shuffleQuestions: false,
+        questions: [
+          {
+            id: createId('q'),
+            type: 'mcq',
+            prompt: 'Ask a question about this lesson…',
+            options: [
+              { id: correctId, text: 'Correct answer' },
+              { id: createId('opt'), text: 'Distractor' },
+              { id: createId('opt'), text: 'Another distractor' },
+            ],
+            correctOptionId: correctId,
+          },
+        ],
+      };
+    }
+    case 'scorm':
+      return { id, kind, title: 'SCORM module', url: '', version: '1.2' };
   }
 }

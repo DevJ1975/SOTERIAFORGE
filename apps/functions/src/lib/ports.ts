@@ -30,6 +30,11 @@ export interface DbPort {
   setMember(tenantId: string, uid: string, data: Record<string, unknown>): Promise<void>;
 }
 
+export interface StatementDbPort {
+  /** Persist one xAPI statement at /tenants/{tenantId}/xapiStatements/{id}. */
+  saveStatement(tenantId: string, statementId: string, doc: Record<string, unknown>): Promise<void>;
+}
+
 export interface CorePorts {
   auth: AuthPort;
   db: DbPort;

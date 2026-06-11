@@ -6,3 +6,5 @@ export * from './lib/lesson-renderer/lesson-renderer';
 export * from './lib/firestore-course-repository';
 export * from './lib/catalog.service';
 export * from './lib/enrollment.service';
+export * from './lib/scorm/scorm-player';
+export * from './lib/xapi-emitter';

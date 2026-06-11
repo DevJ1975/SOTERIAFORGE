@@ -490,6 +490,85 @@ maybe('firestore.rules', () => {
     });
   });
 
+  describe('/tenants/{tenantId}/xapiStatements/{statementId}', () => {
+    const STATEMENT = {
+      id: 'stmt-1',
+      actor: {
+        objectType: 'Agent',
+        account: { homePage: 'https://soteriaforge.com', name: 'learner-1' },
+      },
+      verb: { id: 'http://adlnet.gov/expapi/verbs/progressed', display: { 'en-US': 'progressed' } },
+      object: {
+        objectType: 'Activity',
+        id: 'https://soteriaforge.com/xapi/activities/lesson/acme/pub-1/l1',
+      },
+      context: {
+        extensions: { 'https://soteriaforge.com/xapi/extensions/tenantId': 'acme' },
+      },
+      timestamp: '2026-06-11T12:00:00.000Z',
+      version: '1.0.3',
+      receivedAt: '2026-06-11T12:00:01.000Z',
+    };
+
+    beforeAll(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, 'tenants/acme/xapiStatements/stmt-1'), STATEMENT);
+        await setDoc(doc(db, 'tenants/globex/xapiStatements/stmt-2'), {
+          ...STATEMENT,
+          id: 'stmt-2',
+          context: {
+            extensions: { 'https://soteriaforge.com/xapi/extensions/tenantId': 'globex' },
+          },
+        });
+      });
+    });
+
+    it('allows an instructor to read statements in their own tenant', async () => {
+      await assertSucceeds(getDoc(doc(acmeInstructor(), 'tenants/acme/xapiStatements/stmt-1')));
+    });
+
+    it('allows a tenant admin to read statements in their own tenant', async () => {
+      await assertSucceeds(getDoc(doc(acmeAdmin(), 'tenants/acme/xapiStatements/stmt-1')));
+    });
+
+    it('denies learners reading the statement firehose, even in their own tenant', async () => {
+      await assertFails(getDoc(doc(acmeLearner(), 'tenants/acme/xapiStatements/stmt-1')));
+    });
+
+    it('denies cross-tenant statement reads, even for authoring roles', async () => {
+      await assertFails(getDoc(doc(acmeInstructor(), 'tenants/globex/xapiStatements/stmt-2')));
+    });
+
+    it('denies unauthenticated statement reads', async () => {
+      await assertFails(getDoc(doc(anonDb(), 'tenants/acme/xapiStatements/stmt-1')));
+    });
+
+    it('allows superadmin to read statements in any tenant', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), 'tenants/acme/xapiStatements/stmt-1')));
+      await assertSucceeds(getDoc(doc(superadmin(), 'tenants/globex/xapiStatements/stmt-2')));
+    });
+
+    it('denies statement writes for every client, including superadmin (Cloud Functions only)', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), 'tenants/acme/xapiStatements/stmt-new'), STATEMENT),
+      );
+      await assertFails(
+        setDoc(doc(acmeInstructor(), 'tenants/acme/xapiStatements/stmt-new'), STATEMENT),
+      );
+      await assertFails(
+        setDoc(doc(acmeAdmin(), 'tenants/acme/xapiStatements/stmt-new'), STATEMENT),
+      );
+      await assertFails(
+        setDoc(doc(superadmin(), 'tenants/acme/xapiStatements/stmt-new'), STATEMENT),
+      );
+      await assertFails(
+        updateDoc(doc(acmeAdmin(), 'tenants/acme/xapiStatements/stmt-1'), { id: 'tampered' }),
+      );
+      await assertFails(deleteDoc(doc(acmeAdmin(), 'tenants/acme/xapiStatements/stmt-1')));
+    });
+  });
+
   describe('/b2c/store/catalog/{productId}', () => {
     it('allows unauthenticated catalog reads (public storefront)', async () => {
       await assertSucceeds(getDoc(doc(anonDb(), 'b2c/store/catalog/prod-1')));

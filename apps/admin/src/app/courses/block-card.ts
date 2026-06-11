@@ -6,6 +6,8 @@ import type {
   KnowledgeCheckBlock,
   KnowledgeCheckOption,
   KnowledgeCheckType,
+  QuestionType,
+  QuizBlock,
   RichTextItem,
 } from '@forge/shared';
 import type { Block } from '@forge/shared';
@@ -204,5 +206,33 @@ export class BlockCard {
   protected removeOption(options: KnowledgeCheckOption[], index: number): void {
     if (options.length <= 2) return;
     this.patch({ options: options.filter((_, i) => i !== index) }, 'Remove answer option');
+  }
+
+  // ---- Quiz -------------------------------------------------------------------------------
+
+  protected quizTypeLabel(type: QuestionType): string {
+    switch (type) {
+      case 'mcq':
+        return 'Multiple choice';
+      case 'multi_select':
+        return 'Multi-select';
+      case 'true_false':
+        return 'True / False';
+      case 'ordering':
+        return 'Ordering';
+      case 'matching':
+        return 'Matching';
+      case 'fill_in':
+        return 'Fill in the blank';
+    }
+  }
+
+  /** Question-count chips grouped by type, in QUESTION_TYPES order of appearance. */
+  protected quizTypeCounts(block: QuizBlock): { type: QuestionType; count: number }[] {
+    const counts = new Map<QuestionType, number>();
+    for (const question of block.questions) {
+      counts.set(question.type, (counts.get(question.type) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([type, count]) => ({ type, count }));
   }
 }

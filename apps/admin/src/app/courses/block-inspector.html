@@ -221,6 +221,44 @@
         />
       </div>
     }
+    @case ('scorm') {
+      <div class="field">
+        <label for="insp-scorm-title">Title</label>
+        <input
+          pInputText
+          id="insp-scorm-title"
+          [value]="sel.title"
+          (change)="patchInput(sel.id, 'title', $event, 'Set SCORM title')"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-scorm-url">Launch URL</label>
+        <input
+          pInputText
+          id="insp-scorm-url"
+          [value]="sel.url"
+          placeholder="https://… (package launch HTML)"
+          (change)="patchInput(sel.id, 'url', $event, 'Set SCORM launch URL')"
+        />
+        <small>
+          Point at the package's launch file (e.g. index_lms.html). The embedded runtime provides
+          the SCORM API and records completion and score.
+        </small>
+      </div>
+      <div class="field">
+        <label for="insp-scorm-version">SCORM version</label>
+        <p-select
+          inputId="insp-scorm-version"
+          [options]="scormVersionOptions"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="sel.version"
+          (ngModelChange)="patch(sel.id, { version: $event }, 'Set SCORM version')"
+          styleClass="insp-select"
+          appendTo="body"
+        />
+      </div>
+    }
     @case ('knowledgeCheck') {
       <div class="field">
         <label for="insp-kc-type">Question type</label>
@@ -254,6 +292,344 @@
         ></textarea>
       </div>
       <p class="insp-hint">Edit the question, options, and correct answers on the canvas.</p>
+    }
+    @case ('quiz') {
+      <div class="field">
+        <label for="insp-quiz-title">Quiz title</label>
+        <input
+          pInputText
+          id="insp-quiz-title"
+          [value]="sel.title"
+          placeholder="Quiz"
+          (change)="patchInput(sel.id, 'title', $event, 'Edit quiz title')"
+        />
+      </div>
+      <div class="field">
+        <label for="insp-quiz-pass">Passing score (%)</label>
+        <input
+          pInputText
+          id="insp-quiz-pass"
+          type="number"
+          min="0"
+          max="100"
+          [value]="sel.passingScore"
+          (change)="setQuizPassingScore(sel, $event)"
+        />
+        <small>Learners pass at or above this rounded percentage.</small>
+      </div>
+      <div class="field">
+        <span class="field-label">Question order</span>
+        <div class="seg">
+          <button
+            type="button"
+            [class.on]="!sel.shuffleQuestions"
+            (click)="setQuizShuffle(sel, false)"
+          >
+            In order
+          </button>
+          <button
+            type="button"
+            [class.on]="sel.shuffleQuestions"
+            (click)="setQuizShuffle(sel, true)"
+          >
+            Shuffled
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Questions ({{ sel.questions.length }})</span>
+        <div class="quiz-q-list">
+          @for (q of sel.questions; track q.id; let i = $index; let last = $last) {
+            <div class="quiz-q" [class.open]="expandedQuestion() === i">
+              <div class="quiz-q-head">
+                <button
+                  type="button"
+                  class="quiz-q-toggle"
+                  [attr.aria-expanded]="expandedQuestion() === i"
+                  (click)="toggleQuestion(i)"
+                >
+                  <span class="q-num">{{ i + 1 }}</span>
+                  <span class="q-summary">
+                    <span class="q-prompt">{{ q.prompt || 'Untitled question' }}</span>
+                    <span class="q-type">{{ quizTypeLabel(q.type) }}</span>
+                  </span>
+                </button>
+                <span class="quiz-q-tools">
+                  <button
+                    type="button"
+                    class="q-tool"
+                    [disabled]="i === 0"
+                    (click)="moveQuizQuestion(sel, i, -1)"
+                    title="Move question up"
+                  >
+                    <i class="pi pi-arrow-up"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="q-tool"
+                    [disabled]="last"
+                    (click)="moveQuizQuestion(sel, i, 1)"
+                    title="Move question down"
+                  >
+                    <i class="pi pi-arrow-down"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="q-tool danger"
+                    [disabled]="sel.questions.length <= 1"
+                    (click)="removeQuizQuestion(sel, i)"
+                    title="Remove question (minimum 1)"
+                  >
+                    <i class="pi pi-trash"></i>
+                  </button>
+                </span>
+              </div>
+              @if (expandedQuestion() === i) {
+                <div class="quiz-q-body">
+                  <div class="field">
+                    <label [for]="'insp-q-type-' + q.id">Question type</label>
+                    <p-select
+                      [inputId]="'insp-q-type-' + q.id"
+                      [options]="quizTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      [ngModel]="q.type"
+                      (ngModelChange)="changeQuizQuestionType(sel, i, $event)"
+                      styleClass="insp-select"
+                      appendTo="body"
+                    />
+                  </div>
+                  <div class="field">
+                    <label [for]="'insp-q-prompt-' + q.id">Prompt</label>
+                    <textarea
+                      [id]="'insp-q-prompt-' + q.id"
+                      rows="3"
+                      [value]="q.prompt"
+                      [placeholder]="
+                        q.type === 'fill_in'
+                          ? 'Use a blank, e.g. The ____ states the capacity.'
+                          : 'Ask the question…'
+                      "
+                      (change)="setQuizQuestionText(sel, i, 'prompt', $event)"
+                    ></textarea>
+                  </div>
+                  @switch (q.type) {
+                    @case ('mcq') {
+                      <span class="field-label">Options (pick the correct one)</span>
+                      @for (option of q.options; track option.id; let oi = $index) {
+                        <div class="q-opt-row">
+                          <button
+                            type="button"
+                            class="q-correct round"
+                            [class.on]="q.correctOptionId === option.id"
+                            (click)="setQuizCorrectOption(sel, i, option.id)"
+                            [title]="
+                              q.correctOptionId === option.id ? 'Correct answer' : 'Mark as correct'
+                            "
+                          >
+                            @if (q.correctOptionId === option.id) {
+                              <i class="pi pi-check"></i>
+                            }
+                          </button>
+                          <input
+                            [value]="option.text"
+                            placeholder="Option text…"
+                            (change)="setQuizOptionText(sel, i, oi, $event)"
+                          />
+                          <button
+                            type="button"
+                            class="q-tool danger"
+                            [disabled]="q.options.length <= 2"
+                            (click)="removeQuizOption(sel, i, oi)"
+                            title="Remove option (minimum 2)"
+                          >
+                            <i class="pi pi-times"></i>
+                          </button>
+                        </div>
+                      }
+                      <button type="button" class="q-add" (click)="addQuizOption(sel, i)">
+                        <i class="pi pi-plus"></i> Add option
+                      </button>
+                    }
+                    @case ('multi_select') {
+                      <span class="field-label">Options (check every correct one)</span>
+                      @for (option of q.options; track option.id; let oi = $index) {
+                        <div class="q-opt-row">
+                          <button
+                            type="button"
+                            class="q-correct"
+                            [class.on]="q.correctOptionIds.includes(option.id)"
+                            (click)="toggleQuizCorrectOption(sel, i, option.id)"
+                            [title]="
+                              q.correctOptionIds.includes(option.id)
+                                ? 'Correct answer'
+                                : 'Mark as correct'
+                            "
+                          >
+                            @if (q.correctOptionIds.includes(option.id)) {
+                              <i class="pi pi-check"></i>
+                            }
+                          </button>
+                          <input
+                            [value]="option.text"
+                            placeholder="Option text…"
+                            (change)="setQuizOptionText(sel, i, oi, $event)"
+                          />
+                          <button
+                            type="button"
+                            class="q-tool danger"
+                            [disabled]="q.options.length <= 2"
+                            (click)="removeQuizOption(sel, i, oi)"
+                            title="Remove option (minimum 2)"
+                          >
+                            <i class="pi pi-times"></i>
+                          </button>
+                        </div>
+                      }
+                      <button type="button" class="q-add" (click)="addQuizOption(sel, i)">
+                        <i class="pi pi-plus"></i> Add option
+                      </button>
+                    }
+                    @case ('true_false') {
+                      <span class="field-label">Correct answer</span>
+                      <div class="seg">
+                        <button
+                          type="button"
+                          [class.on]="q.correct"
+                          (click)="setQuizTrueFalse(sel, i, true)"
+                        >
+                          True
+                        </button>
+                        <button
+                          type="button"
+                          [class.on]="!q.correct"
+                          (click)="setQuizTrueFalse(sel, i, false)"
+                        >
+                          False
+                        </button>
+                      </div>
+                    }
+                    @case ('ordering') {
+                      <span class="field-label">Items, in the correct order</span>
+                      @for (item of q.items; track item.id; let ii = $index; let lastItem = $last) {
+                        <div class="q-opt-row">
+                          <span class="q-pos">{{ ii + 1 }}</span>
+                          <input
+                            [value]="item.text"
+                            placeholder="Item text…"
+                            (change)="setQuizItemText(sel, i, ii, $event)"
+                          />
+                          <button
+                            type="button"
+                            class="q-tool"
+                            [disabled]="ii === 0"
+                            (click)="moveQuizItem(sel, i, ii, -1)"
+                            title="Move item up"
+                          >
+                            <i class="pi pi-arrow-up"></i>
+                          </button>
+                          <button
+                            type="button"
+                            class="q-tool"
+                            [disabled]="lastItem"
+                            (click)="moveQuizItem(sel, i, ii, 1)"
+                            title="Move item down"
+                          >
+                            <i class="pi pi-arrow-down"></i>
+                          </button>
+                          <button
+                            type="button"
+                            class="q-tool danger"
+                            [disabled]="q.items.length <= 2"
+                            (click)="removeQuizItem(sel, i, ii)"
+                            title="Remove item (minimum 2)"
+                          >
+                            <i class="pi pi-times"></i>
+                          </button>
+                        </div>
+                      }
+                      <button type="button" class="q-add" (click)="addQuizItem(sel, i)">
+                        <i class="pi pi-plus"></i> Add item
+                      </button>
+                      <small>Learners see the items shuffled and restore this order.</small>
+                    }
+                    @case ('matching') {
+                      <span class="field-label">Pairs (left matches right)</span>
+                      @for (pair of q.pairs; track pair.id; let pi = $index) {
+                        <div class="q-pair-row">
+                          <input
+                            [value]="pair.left"
+                            placeholder="Left…"
+                            (change)="setQuizPairText(sel, i, pi, 'left', $event)"
+                          />
+                          <i class="pi pi-arrow-right-arrow-left q-pair-link"></i>
+                          <input
+                            [value]="pair.right"
+                            placeholder="Right…"
+                            (change)="setQuizPairText(sel, i, pi, 'right', $event)"
+                          />
+                          <button
+                            type="button"
+                            class="q-tool danger"
+                            [disabled]="q.pairs.length <= 2"
+                            (click)="removeQuizPair(sel, i, pi)"
+                            title="Remove pair (minimum 2)"
+                          >
+                            <i class="pi pi-times"></i>
+                          </button>
+                        </div>
+                      }
+                      <button type="button" class="q-add" (click)="addQuizPair(sel, i)">
+                        <i class="pi pi-plus"></i> Add pair
+                      </button>
+                      <small>The right column is shuffled for learners.</small>
+                    }
+                    @case ('fill_in') {
+                      <span class="field-label">Accepted answers</span>
+                      <div class="q-chips">
+                        @for (answer of q.acceptedAnswers; track $index; let ai = $index) {
+                          <span class="q-chip">
+                            {{ answer }}
+                            <button
+                              type="button"
+                              class="q-chip-remove"
+                              [disabled]="q.acceptedAnswers.length <= 1"
+                              (click)="removeQuizAnswer(sel, i, ai)"
+                              title="Remove answer (minimum 1)"
+                            >
+                              <i class="pi pi-times"></i>
+                            </button>
+                          </span>
+                        }
+                      </div>
+                      <input
+                        pInputText
+                        placeholder="Add an accepted answer and press Enter…"
+                        (change)="addQuizAnswer(sel, i, $event)"
+                      />
+                      <small>Matching ignores case and extra whitespace.</small>
+                    }
+                  }
+                  <div class="field">
+                    <label [for]="'insp-q-expl-' + q.id">Explanation (optional)</label>
+                    <textarea
+                      [id]="'insp-q-expl-' + q.id"
+                      rows="2"
+                      [value]="q.explanation ?? ''"
+                      placeholder="Shown with the feedback after checking"
+                      (change)="setQuizQuestionText(sel, i, 'explanation', $event)"
+                    ></textarea>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <button type="button" class="q-add primary" (click)="addQuizQuestion(sel)">
+          <i class="pi pi-plus"></i> Add question
+        </button>
+      </div>
     }
     @default {
       <p class="insp-hint">This block is edited directly on the canvas — click into the text.</p>

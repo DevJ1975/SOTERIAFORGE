@@ -378,5 +378,25 @@
         }
       </div>
     }
+    @case ('quiz') {
+      <div class="quiz-summary">
+        <span class="kc-chip">Quiz · graded assessment</span>
+        <div class="quiz-summary-title">{{ b.title || 'Untitled quiz' }}</div>
+        <div class="quiz-summary-meta">
+          {{ b.questions.length }}
+          {{ b.questions.length === 1 ? 'question' : 'questions' }} &middot; pass at
+          {{ b.passingScore }}%
+          @if (b.shuffleQuestions) {
+            &middot; shuffled order
+          }
+        </div>
+        <div class="quiz-summary-chips">
+          @for (chip of quizTypeCounts(b); track chip.type) {
+            <span class="quiz-type-chip">{{ chip.count }} × {{ quizTypeLabel(chip.type) }}</span>
+          }
+        </div>
+        <p class="quiz-summary-hint">Edit questions and settings in the inspector →</p>
+      </div>
+    }
   }
 </div>

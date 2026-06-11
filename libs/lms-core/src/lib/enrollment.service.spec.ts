@@ -1,11 +1,22 @@
-import { enrollment as enrollmentSchema, type CourseDraft, type Enrollment } from '@forge/shared';
+import { TestBed } from '@angular/core/testing';
+import type { Firestore } from 'firebase/firestore';
+import {
+  enrollment as enrollmentSchema,
+  XAPI_TENANT_EXTENSION,
+  XAPI_VERBS,
+  type CourseDraft,
+  type Enrollment,
+} from '@forge/shared';
+import type { Statement } from '@forge/standards';
 import {
   completedLessonsOf,
+  ForgeEnrollment,
   nextEnrollment,
   progressFor,
   scoreFor,
   withCompletedLesson,
 } from './enrollment.service';
+import { ForgeXapiEmitter } from './xapi-emitter';
 
 function course(lessonIds: string[]): CourseDraft {
   return {
@@ -246,5 +257,163 @@ describe('nextEnrollment', () => {
       now,
     );
     expect(next.cmi).toEqual({ completedLessons: ['a', 'b'], suspendData: 'bookmark=3' });
+  });
+});
+
+describe('ForgeEnrollment.markLessonComplete — xAPI emission', () => {
+  const db = {} as Firestore;
+
+  /** Service from TestBed with `upsert` stubbed and the emitter replaced. */
+  function makeService(emitter: { emit: jest.Mock } | null): ForgeEnrollment {
+    TestBed.configureTestingModule({
+      providers: [{ provide: ForgeXapiEmitter, useValue: emitter }],
+    });
+    const service = TestBed.inject(ForgeEnrollment);
+    jest.spyOn(service, 'upsert').mockResolvedValue(undefined);
+    return service;
+  }
+
+  function emittedStatements(emitter: { emit: jest.Mock }, call = 0): Statement[] {
+    return emitter.emit.mock.calls[call][0] as Statement[];
+  }
+
+  it("emits a tenant-scoped 'progressed' statement for the lesson", async () => {
+    const emitter = { emit: jest.fn() };
+    const service = makeService(emitter);
+
+    await service.markLessonComplete(db, {
+      tenantId: 'acme',
+      uid: 'user-1',
+      course: course(['a', 'b']),
+      lessonId: 'a',
+      existing: null,
+    });
+
+    expect(emitter.emit).toHaveBeenCalledTimes(1);
+    const statements = emittedStatements(emitter);
+    expect(statements).toHaveLength(1); // course not yet complete — no 'completed'
+    const [progressed] = statements;
+    expect(progressed.verb.id).toBe(XAPI_VERBS.progressed);
+    expect(progressed.object.id).toBe(
+      'https://soteriaforge.com/xapi/activities/lesson/acme/course-1/a',
+    );
+    expect(progressed.actor.account).toEqual({
+      homePage: 'https://soteriaforge.com',
+      name: 'user-1',
+    });
+    expect(progressed.result).toEqual({ completion: true });
+    expect(progressed.context.extensions[XAPI_TENANT_EXTENSION]).toBe('acme');
+    expect(progressed.context.contextActivities?.parent?.[0]?.id).toBe(
+      'https://soteriaforge.com/xapi/activities/course/acme/course-1',
+    );
+  });
+
+  it("emits 'completed' for the course (with scaled score) when it just became complete", async () => {
+    const emitter = { emit: jest.fn() };
+    const service = makeService(emitter);
+    const existing = existingEnrollment({
+      score: 90,
+      cmi: { completedLessons: ['a'] },
+    });
+
+    await service.markLessonComplete(db, {
+      tenantId: 'acme',
+      uid: 'user-1',
+      course: course(['a', 'b']),
+      lessonId: 'b',
+      existing,
+    });
+
+    const statements = emittedStatements(emitter);
+    expect(statements.map((s) => s.verb.id)).toEqual([XAPI_VERBS.progressed, XAPI_VERBS.completed]);
+    const completed = statements[1];
+    expect(completed.object.id).toBe(
+      'https://soteriaforge.com/xapi/activities/course/acme/course-1',
+    );
+    expect(completed.context.extensions[XAPI_TENANT_EXTENSION]).toBe('acme');
+    expect(completed.result).toEqual({
+      completion: true,
+      score: { scaled: 0.9 },
+      success: true,
+    });
+  });
+
+  it("emits 'completed' without score/success when no score was ever recorded", async () => {
+    const emitter = { emit: jest.fn() };
+    const service = makeService(emitter);
+
+    await service.markLessonComplete(db, {
+      tenantId: 'acme',
+      uid: 'user-1',
+      course: course(['a']),
+      lessonId: 'a',
+      existing: null,
+    });
+
+    const completed = emittedStatements(emitter)[1];
+    expect(completed.verb.id).toBe(XAPI_VERBS.completed);
+    expect(completed.result).toEqual({ completion: true });
+  });
+
+  it("does not re-emit 'completed' when the course was already complete", async () => {
+    const emitter = { emit: jest.fn() };
+    const service = makeService(emitter);
+    const existing = existingEnrollment({
+      progressPct: 100,
+      completed: true,
+      cmi: { completedLessons: ['a', 'b'] },
+    });
+
+    await service.markLessonComplete(db, {
+      tenantId: 'acme',
+      uid: 'user-1',
+      course: course(['a', 'b']),
+      lessonId: 'b',
+      existing,
+    });
+
+    expect(emittedStatements(emitter).map((s) => s.verb.id)).toEqual([XAPI_VERBS.progressed]);
+  });
+
+  it('still resolves the enrollment when the emitter throws synchronously', async () => {
+    const emitter = {
+      emit: jest.fn(() => {
+        throw new Error('telemetry down');
+      }),
+    };
+    const service = makeService(emitter);
+    const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => undefined);
+
+    try {
+      const next = await service.markLessonComplete(db, {
+        tenantId: 'acme',
+        uid: 'user-1',
+        course: course(['a']),
+        lessonId: 'a',
+        existing: null,
+      });
+
+      expect(emitter.emit).toHaveBeenCalledTimes(1);
+      expect(next.completed).toBe(true);
+      expect(service.upsert).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenCalled();
+    } finally {
+      debugSpy.mockRestore();
+    }
+  });
+
+  it('works without an emitter (telemetry fully disabled)', async () => {
+    const service = makeService(null);
+
+    const next = await service.markLessonComplete(db, {
+      tenantId: 'acme',
+      uid: 'user-1',
+      course: course(['a', 'b']),
+      lessonId: 'a',
+      existing: null,
+    });
+
+    expect(next.progressPct).toBe(50);
+    expect(service.upsert).toHaveBeenCalledTimes(1);
   });
 });

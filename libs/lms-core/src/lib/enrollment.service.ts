@@ -1,8 +1,11 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { getDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { enrollmentDoc } from '@forge/data-access';
 import type { CourseDraft, Enrollment } from '@forge/shared';
+import { activityIdFor, buildStatement, XAPI_ACTIVITY_TYPES } from '@forge/standards';
+import type { Statement } from '@forge/standards';
+import { ForgeXapiEmitter } from './xapi-emitter';
 
 /**
  * Learner enrollment/progress persistence for Phase 2.
@@ -117,6 +120,13 @@ export function nextEnrollment(
 
 @Injectable({ providedIn: 'root' })
 export class ForgeEnrollment {
+  /**
+   * Optional learning-record emitter: when present, lesson/course progress is
+   * mirrored as xAPI statements (fire-and-forget — never blocks or fails the
+   * learning flow).
+   */
+  private readonly xapi = inject(ForgeXapiEmitter, { optional: true });
+
   /** The caller's enrollment for a course, or undefined when never enrolled. */
   async get(
     db: Firestore,
@@ -152,6 +162,59 @@ export class ForgeEnrollment {
         : ((await this.get(db, args.tenantId, args.course.id, args.uid)) ?? null);
     const next = nextEnrollment({ ...args, existing });
     await this.upsert(db, next);
+    this.emitProgressStatements(args, existing, next);
     return next;
+  }
+
+  /**
+   * Mirrors a successful lesson completion into the LRS: always 'progressed'
+   * on the lesson, plus 'completed' on the course the moment the enrollment
+   * first flips to complete. Best-effort — any failure is swallowed so the
+   * learning flow never observes telemetry errors.
+   */
+  private emitProgressStatements(
+    args: MarkLessonCompleteArgs,
+    existing: Enrollment | null,
+    next: Enrollment,
+  ): void {
+    if (!this.xapi) return;
+    try {
+      const { tenantId, uid, course, lessonId } = args;
+      const courseActivityId = activityIdFor('course', tenantId, course.id);
+      const lessonTitle = course.lessons.find((lesson) => lesson.id === lessonId)?.title;
+      const statements: Statement[] = [
+        buildStatement({
+          actorUid: uid,
+          verb: 'progressed',
+          activityId: activityIdFor('lesson', tenantId, `${course.id}/${lessonId}`),
+          ...(lessonTitle ? { activityName: lessonTitle } : {}),
+          activityType: XAPI_ACTIVITY_TYPES.lesson,
+          tenantId,
+          result: { completion: true },
+          parentActivityId: courseActivityId,
+        }),
+      ];
+      if (next.completed && existing?.completed !== true) {
+        statements.push(
+          buildStatement({
+            actorUid: uid,
+            verb: 'completed',
+            activityId: courseActivityId,
+            activityName: course.title,
+            activityType: XAPI_ACTIVITY_TYPES.course,
+            tenantId,
+            result: {
+              completion: true,
+              ...(next.score !== undefined
+                ? { score: { scaled: next.score / 100 }, success: next.score >= 80 }
+                : {}),
+            },
+          }),
+        );
+      }
+      this.xapi.emit(statements);
+    } catch (err) {
+      console.debug('[lms-core] xAPI emission skipped', err);
+    }
   }
 }

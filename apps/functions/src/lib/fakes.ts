@@ -1,4 +1,4 @@
-import type { AuthPort, CreateUserOptions, DbPort } from './ports';
+import type { AuthPort, CreateUserOptions, DbPort, StatementDbPort } from './ports';
 
 /**
  * In-memory fakes for the ports. Used by the colocated jest specs — no emulator,
@@ -72,6 +72,21 @@ export class FakeDbPort implements DbPort {
   async setMember(tenantId: string, uid: string, data: Record<string, unknown>): Promise<void> {
     const key = this.memberKey(tenantId, uid);
     this.members.set(key, { ...(this.members.get(key) ?? {}), ...data });
+  }
+}
+
+export class FakeStatementDbPort implements StatementDbPort {
+  /** `${tenantId}/${statementId}` -> stored doc. */
+  readonly statements = new Map<string, Record<string, unknown>>();
+  readonly saveCalls: Array<{ tenantId: string; statementId: string }> = [];
+
+  async saveStatement(
+    tenantId: string,
+    statementId: string,
+    doc: Record<string, unknown>,
+  ): Promise<void> {
+    this.statements.set(`${tenantId}/${statementId}`, doc);
+    this.saveCalls.push({ tenantId, statementId });
   }
 }
 

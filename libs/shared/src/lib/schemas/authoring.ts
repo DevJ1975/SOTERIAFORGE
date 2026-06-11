@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PUBLISH_STATUSES } from '../constants';
+import { PUBLISH_STATUSES, QUESTION_TYPES } from '../constants';
 import { isoDateTime } from './primitives';
 
 /**
@@ -184,6 +184,152 @@ export const knowledgeCheckBlock = z.object({
 });
 export type KnowledgeCheckBlock = z.infer<typeof knowledgeCheckBlock>;
 
+// ---- Quiz ------------------------------------------------------------------
+//
+// A graded, multi-question assessment block — heavier than a knowledge check.
+// Questions are a discriminated union on `type` over the six platform
+// QUESTION_TYPES; the renderer scores each question 0 or 1 (all-or-nothing
+// for multi_select / ordering / matching) and compares the rounded percentage
+// against `passingScore`.
+
+/** A selectable quiz answer option (mcq / multi_select) or ordering item. */
+export const quizOption = z.object({
+  id: blockId,
+  text: z.string().default(''),
+});
+export type QuizOption = z.infer<typeof quizOption>;
+
+/** One left/right pair of a matching question (authored as the correct pair). */
+export const matchingPair = z.object({
+  id: blockId,
+  left: z.string().default(''),
+  right: z.string().default(''),
+});
+export type MatchingPair = z.infer<typeof matchingPair>;
+
+const quizQuestionBase = {
+  id: blockId,
+  prompt: z.string().default(''),
+  /** Optional rationale shown with the per-question feedback. */
+  explanation: z.string().optional(),
+};
+
+export const mcqQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('mcq'),
+  options: z.array(quizOption).min(2, 'A multiple-choice question needs at least 2 options'),
+  correctOptionId: blockId,
+});
+export type McqQuestion = z.infer<typeof mcqQuestion>;
+
+export const multiSelectQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('multi_select'),
+  options: z.array(quizOption).min(2, 'A multi-select question needs at least 2 options'),
+  correctOptionIds: z
+    .array(blockId)
+    .min(1, 'A multi-select question needs at least 1 correct option'),
+});
+export type MultiSelectQuestion = z.infer<typeof multiSelectQuestion>;
+
+export const trueFalseQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('true_false'),
+  correct: z.boolean(),
+});
+export type TrueFalseQuestion = z.infer<typeof trueFalseQuestion>;
+
+export const orderingQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('ordering'),
+  /** Items listed in the correct order; the player presents them shuffled. */
+  items: z.array(quizOption).min(2, 'An ordering question needs at least 2 items'),
+});
+export type OrderingQuestion = z.infer<typeof orderingQuestion>;
+
+export const matchingQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('matching'),
+  pairs: z.array(matchingPair).min(2, 'A matching question needs at least 2 pairs'),
+});
+export type MatchingQuestion = z.infer<typeof matchingQuestion>;
+
+export const fillInQuestion = z.object({
+  ...quizQuestionBase,
+  type: z.literal('fill_in'),
+  /** Any of these counts as correct (case/whitespace-insensitive match). */
+  acceptedAnswers: z
+    .array(z.string())
+    .min(1, 'A fill-in question needs at least 1 accepted answer'),
+});
+export type FillInQuestion = z.infer<typeof fillInQuestion>;
+
+const quizQuestionUnion = z.discriminatedUnion('type', [
+  mcqQuestion,
+  multiSelectQuestion,
+  trueFalseQuestion,
+  orderingQuestion,
+  matchingQuestion,
+  fillInQuestion,
+]);
+
+/**
+ * One quiz question, discriminated on `type` over the six QUESTION_TYPES.
+ * Cheap cross-field refinements live here (correct ids must reference real
+ * options); the union members stay plain ZodObjects so the discriminated
+ * union machinery keeps working.
+ */
+export const quizQuestion = quizQuestionUnion.superRefine((question, ctx) => {
+  if (question.type === 'mcq') {
+    if (!question.options.some((option) => option.id === question.correctOptionId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['correctOptionId'],
+        message: 'correctOptionId must reference one of the options',
+      });
+    }
+  } else if (question.type === 'multi_select') {
+    const ids = new Set(question.options.map((option) => option.id));
+    if (!question.correctOptionIds.every((id) => ids.has(id))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['correctOptionIds'],
+        message: 'Every correctOptionId must reference one of the options',
+      });
+    }
+  }
+});
+export type QuizQuestion = z.infer<typeof quizQuestionUnion>;
+// Compile-time guard: the union covers every platform QUESTION_TYPES entry.
+const quizQuestionTypes: readonly QuizQuestion['type'][] = QUESTION_TYPES;
+void quizQuestionTypes;
+
+export const quizBlock = z.object({
+  ...blockBase,
+  kind: z.literal('quiz'),
+  title: z.string().max(300).default('Quiz'),
+  /** Minimum rounded percentage required to pass. */
+  passingScore: z.number().int().min(0).max(100).default(80),
+  /** Reshuffle the question order on every run-through. */
+  shuffleQuestions: z.boolean().default(false),
+  questions: z.array(quizQuestion).min(1, 'A quiz needs at least 1 question'),
+});
+export type QuizBlock = z.infer<typeof quizBlock>;
+
+/**
+ * A SCORM package launched in the embedded runtime (ForgeScormPlayer).
+ * `url` points at the package's launch HTML (e.g. an extracted index_lms.html
+ * hosted on tenant media or any HTTPS origin).
+ */
+export const scormBlock = z.object({
+  ...blockBase,
+  kind: z.literal('scorm'),
+  title: z.string().max(300).default('SCORM module'),
+  url: z.string().default(''),
+  version: z.enum(['1.2', '2004']).default('1.2'),
+});
+export type ScormBlock = z.infer<typeof scormBlock>;
+
 /** Every authorable content block, discriminated on `kind`. */
 export const block = z.discriminatedUnion('kind', [
   headingBlock,
@@ -201,6 +347,8 @@ export const block = z.discriminatedUnion('kind', [
   tabsBlock,
   flashcardsBlock,
   knowledgeCheckBlock,
+  quizBlock,
+  scormBlock,
 ]);
 export type Block = z.infer<typeof block>;
 export type BlockKind = Block['kind'];
@@ -221,6 +369,8 @@ export const BLOCK_KINDS = [
   'tabs',
   'flashcards',
   'knowledgeCheck',
+  'quiz',
+  'scorm',
 ] as const satisfies readonly BlockKind[];
 
 export const lessonDraft = z.object({

@@ -1,11 +1,17 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { createAuthAdapter, createDbAdapter, ensureApp } from './lib/adapters';
+import {
+  createAuthAdapter,
+  createDbAdapter,
+  createStatementDbAdapter,
+  ensureApp,
+} from './lib/adapters';
 import { FunctionsDomainError } from './lib/errors';
 import { inviteMemberCore } from './lib/invite-member.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';
 import type { CorePorts } from './lib/ports';
 import { provisionTenantCore } from './lib/provision-tenant.core';
+import { recordStatementsCore } from './lib/record-statements.core';
 import { setUserRoleCore } from './lib/set-user-role.core';
 
 ensureApp();
@@ -14,6 +20,8 @@ const deps: CorePorts = {
   auth: createAuthAdapter(),
   db: createDbAdapter(),
 };
+
+const statementDeps = { db: createStatementDbAdapter() };
 
 const CALLABLE_OPTS = { cors: true, region: 'us-central1' } as const;
 
@@ -47,6 +55,15 @@ export const inviteMember = onCall(CALLABLE_OPTS, async (request) => {
 export const provisionTenant = onCall(CALLABLE_OPTS, async (request) => {
   try {
     return await provisionTenantCore(deps, request.auth?.token, request.data);
+  } catch (err) {
+    throw toHttpsError(err);
+  }
+});
+
+/** Persist a batch of tenant-scoped xAPI statements into the LRS store. */
+export const recordStatements = onCall(CALLABLE_OPTS, async (request) => {
+  try {
+    return await recordStatementsCore(statementDeps, request.auth?.token, request.data);
   } catch (err) {
     throw toHttpsError(err);
   }

@@ -137,7 +137,8 @@ export function shouldAutoComplete(args: {
                 @if (firstTryBreakdown(); as breakdown) {
                   <p class="score-note">
                     You nailed {{ breakdown.correct }} of {{ breakdown.total }}
-                    {{ breakdown.total === 1 ? 'check' : 'checks' }} on the first try.
+                    {{ breakdown.total === 1 ? 'check or quiz' : 'checks & quizzes' }} on the first
+                    try.
                   </p>
                 }
                 <div class="celebration-actions">
@@ -567,10 +568,11 @@ export class PlayerPage {
     );
   });
 
-  /** Knowledge checks across the whole course (from the authored draft). */
+  /** Knowledge checks + quizzes across the whole course (a quiz is one check). */
   private readonly courseCheckTotal = computed(() =>
     this.lessons().reduce(
-      (sum, lesson) => sum + lesson.blocks.filter((b) => b.kind === 'knowledgeCheck').length,
+      (sum, lesson) =>
+        sum + lesson.blocks.filter((b) => b.kind === 'knowledgeCheck' || b.kind === 'quiz').length,
       0,
     ),
   );

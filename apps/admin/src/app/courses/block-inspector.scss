@@ -149,3 +149,288 @@
   line-height: 1.5;
   color: var(--forge-text-subtle);
 }
+
+// ---- Quiz question editor
+
+.quiz-q-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quiz-q {
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius-small);
+  background: var(--forge-surface);
+  overflow: hidden;
+
+  &.open {
+    border-color: var(--forge-accent);
+  }
+}
+
+.quiz-q-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.quiz-q-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.q-num {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--forge-surface-dim);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--forge-text-subtle);
+}
+
+.q-summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.q-prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--forge-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.q-type {
+  font-size: 11px;
+  color: var(--forge-text-subtle);
+}
+
+.quiz-q-tools {
+  display: flex;
+  gap: 2px;
+}
+
+.q-tool {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--forge-radius-small);
+  background: transparent;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--forge-surface-dim);
+    color: var(--forge-text);
+  }
+
+  &.danger:hover:not(:disabled) {
+    color: var(--forge-negative);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+.quiz-q-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid var(--forge-border);
+  background: var(--forge-surface-dim);
+
+  input,
+  textarea {
+    background: var(--forge-surface);
+  }
+
+  small {
+    font-size: 11.5px;
+    color: var(--forge-text-subtle);
+  }
+}
+
+.q-opt-row,
+.q-pair-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--forge-border);
+    border-radius: var(--forge-radius-small);
+    font: inherit;
+    font-size: 13px;
+    color: var(--forge-text);
+
+    &:focus {
+      outline: none;
+      border-color: var(--forge-accent);
+    }
+  }
+}
+
+.q-pair-link {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--forge-text-subtle);
+}
+
+.q-pos {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--forge-text-subtle);
+}
+
+.q-correct {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--forge-border);
+  border-radius: 5px;
+  background: var(--forge-surface);
+  color: #fff;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  .pi {
+    font-size: 10px;
+  }
+
+  &.round {
+    border-radius: 50%;
+  }
+
+  &:hover {
+    border-color: var(--forge-positive);
+  }
+
+  &.on {
+    background: var(--forge-positive);
+    border-color: var(--forge-positive);
+  }
+}
+
+.q-add {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius-small);
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  .pi {
+    font-size: 11px;
+  }
+
+  &:hover {
+    border-color: var(--forge-accent);
+    color: var(--forge-accent);
+  }
+
+  &.primary {
+    margin-top: 8px;
+    border-style: solid;
+    border-color: var(--forge-accent);
+    color: var(--forge-accent);
+
+    &:hover {
+      background: var(--forge-accent);
+      color: #fff;
+    }
+  }
+}
+
+.q-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.q-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--forge-border);
+  border-radius: 12px;
+  background: var(--forge-surface);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--forge-text);
+}
+
+.q-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--forge-text-subtle);
+  cursor: pointer;
+
+  .pi {
+    font-size: 9px;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--forge-surface-dim);
+    color: var(--forge-negative);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}

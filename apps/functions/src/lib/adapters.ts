@@ -1,7 +1,7 @@
 import { getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
-import type { AuthPort, DbPort } from './ports';
+import type { AuthPort, DbPort, StatementDbPort } from './ports';
 
 /** Module-level lazy admin app singleton. */
 let app: App | null = null;
@@ -87,6 +87,15 @@ export function createDbAdapter(): DbPort {
 
     async setMember(tenantId, uid, data) {
       await memberRef(tenantId, uid).set(data, { merge: true });
+    },
+  };
+}
+
+/** StatementDbPort over firebase-admin/firestore (per-tenant LRS store). */
+export function createStatementDbAdapter(): StatementDbPort {
+  return {
+    async saveStatement(tenantId, statementId, doc) {
+      await tenantRef(tenantId).collection('xapiStatements').doc(statementId).set(doc);
     },
   };
 }

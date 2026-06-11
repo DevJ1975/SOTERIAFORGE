@@ -48,7 +48,7 @@ Everything else depends on this; do it before any feature UI.
 
 Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, rules tests prove cross-tenant reads are denied.
 
-## Phase 2 — LMS core (B2B MVP — first sellable slice) 🔨 IN PROGRESS
+## Phase 2 — LMS core (B2B MVP — first sellable slice) ✅ DONE (journey e2e pending)
 
 - **`apps/admin`**: member management (invite → email → accept flow, statuses `invited/active/deactivated`), content upload to Storage (video first), publish workflow (`draft/published/archived`).
 - **Forge Studio** (started early, ahead of the backend): Articulate-Rise-style block course
@@ -65,7 +65,7 @@ Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, r
 
 Exit criteria: end-to-end author→learn→complete loop works on emulators and a staging Firebase project.
 
-## Phase 3 — Standards & content runtimes (`libs/standards`, `libs/games`)
+## Phase 3 — Standards & content runtimes (`libs/standards`, `libs/games`) 🔨 IN PROGRESS (SCORM, xAPI/LRS, quiz engine done; cmi5 + game embed wrappers pending)
 
 - SCORM 1.2/2004 runtime adapter: API discovery shim in the player iframe, `cmi` state persisted per enrollment (schema field already exists), package upload/unzip pipeline (function) for admin.
 - cmi5/xAPI: statement builder using `XAPI_VERBS` + the tenant context extension; LRS endpoint as an HTTP function (or adapter to an external LRS) with statement storage and basic queries.

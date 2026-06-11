@@ -109,6 +109,29 @@ describe('PlayerPage auto-completion and scoring', () => {
     };
   }
 
+  /** Single-mcq quiz block; option 'Right answer' passes, 'Wrong answer' fails. */
+  function quizBlock(id: string): Block {
+    return {
+      id,
+      kind: 'quiz',
+      title: 'Final check',
+      passingScore: 80,
+      shuffleQuestions: false,
+      questions: [
+        {
+          id: `${id}-q1`,
+          type: 'mcq',
+          prompt: 'Pick the right one',
+          options: [
+            { id: `${id}-right`, text: 'Right answer' },
+            { id: `${id}-wrong`, text: 'Wrong answer' },
+          ],
+          correctOptionId: `${id}-right`,
+        },
+      ],
+    };
+  }
+
   function lesson(id: string, blocks: Block[]): LessonDraft {
     return { id, title: `Lesson ${id}`, blocks };
   }
@@ -183,6 +206,19 @@ describe('PlayerPage auto-completion and scoring', () => {
     return Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
       button.textContent?.includes(label),
     );
+  }
+
+  /** Answers the single quiz question by option text, checks, and finishes. */
+  function completeQuiz(fixture: ComponentFixture<PlayerPage>, optionText: string): void {
+    const element = fixture.nativeElement as HTMLElement;
+    Array.from(element.querySelectorAll<HTMLButtonElement>('.quiz-option'))
+      .find((option) => option.textContent?.includes(optionText))
+      ?.click();
+    fixture.detectChanges();
+    element.querySelector<HTMLButtonElement>('.quiz-check')?.click();
+    fixture.detectChanges();
+    element.querySelector<HTMLButtonElement>('.quiz-next')?.click();
+    fixture.detectChanges();
   }
 
   it('auto-completes a checked lesson once every check is answered and the end is reached', async () => {
@@ -289,6 +325,64 @@ describe('PlayerPage auto-completion and scoring', () => {
     expect(text).toContain('Course complete');
     expect(text).toContain('Knowledge-check score: 50%');
     expect(text).toContain('You nailed 1 of 2');
-    expect(text).toContain('checks on the first try');
+    expect(text).toContain('checks & quizzes on the');
+  });
+
+  it('auto-completes a quiz lesson once the quiz finishes, recording its pass', async () => {
+    const { fixture, element, markLessonComplete } = await setup(
+      courseWith([lesson('l1', [quizBlock('qz1')]), paragraphLesson('l2')]),
+    );
+    // The quiz counts as a pending check: fallback CTA + no auto-complete yet.
+    expect(markLessonComplete).not.toHaveBeenCalled();
+    expect(buttonByLabel(element, 'Mark complete anyway')).toBeTruthy();
+    expect(element.querySelector('.lesson-rail .ember-dot')).toBeTruthy();
+
+    completeQuiz(fixture, 'Right answer');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.quiz-results.pass')).toBeTruthy();
+    expect(markLessonComplete).toHaveBeenCalledTimes(1);
+    expect(markLessonComplete).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ lessonId: 'l1', knowledgeCheckResults: [true] }),
+    );
+    expect(element.querySelector('.lesson-rail .check.done')).toBeTruthy();
+  });
+
+  it('a failed quiz still completes the lesson but scores it false', async () => {
+    const { fixture, element, markLessonComplete } = await setup(
+      courseWith([lesson('l1', [quizBlock('qz1')]), paragraphLesson('l2')]),
+    );
+
+    completeQuiz(fixture, 'Wrong answer');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.quiz-results.fail')).toBeTruthy();
+    expect(markLessonComplete).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ lessonId: 'l1', knowledgeCheckResults: [false] }),
+    );
+  });
+
+  it('waits for both the knowledge check and the quiz in a mixed lesson', async () => {
+    const { fixture, markLessonComplete } = await setup(
+      courseWith([lesson('l1', [knowledgeCheck('kc1'), quizBlock('qz1')]), paragraphLesson('l2')]),
+    );
+
+    answerCheck(fixture, 0, 0); // kc correct — quiz still unfinished
+    await fixture.whenStable();
+    expect(markLessonComplete).not.toHaveBeenCalled();
+
+    completeQuiz(fixture, 'Right answer');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(markLessonComplete).toHaveBeenCalledTimes(1);
+    expect(markLessonComplete).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ lessonId: 'l1', knowledgeCheckResults: [true, true] }),
+    );
   });
 });
