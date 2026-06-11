@@ -92,7 +92,7 @@ Exit criteria: a SCORM package and a quiz both drive enrollment completion; xAPI
 Exit criteria: completing content visibly moves XP, badges, and leaderboard rank; both games
 playable from the learner app and feeding score/completion into the progress pipeline.
 
-## Phase 5 — B2C commerce (`apps/storefront`, `libs/payments`)
+## Phase 5 — B2C commerce (`apps/storefront`, `libs/payments`) ✅ DONE (live keys + custom domains are Phase 8 launch wiring)
 
 - Storefront: public catalog from `/b2c/catalog`, SSR-enabled for SEO (`@angular/ssr` is already a dependency), Stripe Checkout (one-time + subscription per `mode`).
 - Functions: Stripe webhook handler with idempotency via `/stripe/events`, entitlement writes to `/b2c/customers/{uid}` mirrored into custom claims (`entitlements`), subscription lifecycle (cancel/expire revokes).

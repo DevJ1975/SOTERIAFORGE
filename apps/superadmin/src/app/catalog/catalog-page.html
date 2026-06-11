@@ -1,0 +1,136 @@
+<div class="forge-page">
+  <header class="catalog-header">
+    <div>
+      <h1 class="catalog-title">B2C <span class="ember">Catalog</span></h1>
+      <p class="catalog-sub">
+        Curate what the public storefront sells — products, pricing, publishing.
+      </p>
+    </div>
+    <p-button label="New product" icon="pi pi-plus" (onClick)="createProduct()" />
+  </header>
+
+  @if (toast(); as t) {
+    <div class="toast" [class.negative]="t.kind === 'negative'" role="status">
+      <i
+        class="pi"
+        [class.pi-check-circle]="t.kind === 'positive'"
+        [class.pi-exclamation-triangle]="t.kind === 'negative'"
+      ></i>
+      {{ t.text }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="forge-card catalog-card" aria-busy="true" aria-label="Loading catalog">
+      @for (row of skeletonRows; track row) {
+        <div class="product-row skeleton-row">
+          <span class="identity">
+            <span class="skeleton w-60"></span>
+            <span class="skeleton w-80 thin"></span>
+          </span>
+          <span><span class="skeleton chip-skel"></span></span>
+          <span><span class="skeleton chip-skel"></span></span>
+          <span><span class="skeleton w-70"></span></span>
+          <span><span class="skeleton w-50"></span></span>
+          <span class="end"><span class="skeleton w-40"></span></span>
+        </div>
+      }
+    </div>
+  } @else if (products().length === 0) {
+    <div class="state-card">
+      <i class="pi pi-shopping-bag"></i>
+      <h2>No products yet</h2>
+      <p>No products yet — create the first thing your storefront sells.</p>
+      <p-button label="New product" icon="pi pi-plus" (onClick)="createProduct()" />
+    </div>
+  } @else {
+    <div class="forge-card catalog-card">
+      <div class="product-row head" aria-hidden="true">
+        <span>Product</span>
+        <span>Grants</span>
+        <span>Mode</span>
+        <span>Stripe price</span>
+        <span>Published</span>
+        <span class="end">Actions</span>
+      </div>
+
+      <!-- Track by object identity (not id): an optimistic publish toggle that is
+           rolled back restores the original object, which must recreate the row so
+           the p-togglebutton's internal checked state resets with it. -->
+      @for (product of products(); track product) {
+        <div class="product-row">
+          <span class="identity">
+            <span class="name">{{ product.title }}</span>
+            @if (product.description) {
+              <span class="desc">{{ excerpt(product.description) }}</span>
+            } @else {
+              <span class="desc subtle">No description yet.</span>
+            }
+          </span>
+
+          <span class="grants">
+            <span class="chip" [class.steel]="product.grants.kind !== 'all_access'">
+              {{ grantsChipLabel(product.grants.kind) }}
+            </span>
+            @if (product.grants.refId) {
+              <code class="ref">{{ product.grants.refId }}</code>
+            }
+          </span>
+
+          <span>
+            <span class="chip mode" [class.subscription]="product.mode === 'subscription'">
+              {{ modeChipLabel(product.mode) }}
+            </span>
+          </span>
+
+          <code class="price-id">{{ product.stripePriceId }}</code>
+
+          <p-togglebutton
+            class="publish-toggle"
+            size="small"
+            onLabel="Published"
+            offLabel="Draft"
+            onIcon="pi pi-eye"
+            offIcon="pi pi-eye-slash"
+            [ariaLabel]="'Toggle published for ' + product.title"
+            [ngModel]="product.published"
+            [disabled]="togglePending() === product.id"
+            (onChange)="togglePublished(product, $event.checked)"
+          />
+
+          <span class="row-actions end">
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="Edit product"
+              tooltipPosition="top"
+              [ariaLabel]="'Edit ' + product.title"
+              (onClick)="edit(product)"
+            />
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              [rounded]="true"
+              pTooltip="Delete product"
+              tooltipPosition="top"
+              [ariaLabel]="'Delete ' + product.title"
+              (onClick)="confirmDelete(product)"
+            />
+          </span>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<app-product-editor-dialog
+  [visible]="editorOpen()"
+  (visibleChange)="editorOpen.set($event)"
+  [product]="editing()"
+  (saved)="onSaved($event)"
+/>
+
+<p-confirmdialog [style]="{ maxWidth: '420px' }" />

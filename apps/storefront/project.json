@@ -38,7 +38,12 @@
             "maximumWarning": "8kB",
             "maximumError": "16kB"
           }
-        ]
+        ],
+        "server": "apps/storefront/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/storefront/src/server.ts"
+        },
+        "outputMode": "server"
       },
       "configurations": {
         "production": {

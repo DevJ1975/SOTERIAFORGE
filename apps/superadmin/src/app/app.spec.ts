@@ -15,4 +15,12 @@ describe('App', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('FORGE Superadmin');
   });
+
+  it('exposes Home and Catalog nav links', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const nav = (fixture.nativeElement as HTMLElement).querySelector('nav');
+    expect(nav?.textContent).toContain('Home');
+    expect(nav?.textContent).toContain('Catalog');
+  });
 });

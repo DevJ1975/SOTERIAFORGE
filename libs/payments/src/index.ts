@@ -1,1 +1,2 @@
-export * from './lib/payments/payments';
+export * from './lib/checkout.service';
+export * from './lib/entitlements.service';
