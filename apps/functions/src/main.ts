@@ -16,6 +16,8 @@ import {
   buildRebuildLeaderboardsCallable,
   buildRebuildLeaderboardsSchedule,
 } from './lib/leaderboard.core';
+import { buildCreateCheckoutSessionCallable } from './lib/create-checkout-session.core';
+import { buildStripeWebhook } from './lib/stripe-webhook.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';
 import type { CorePorts } from './lib/ports';
 import { provisionTenantCore } from './lib/provision-tenant.core';
@@ -132,3 +134,9 @@ export const rebuildLeaderboardsHourly = buildRebuildLeaderboardsSchedule();
 
 /** On-demand rebuild: superadmin (explicit tenantId) or own-tenant authoring roles. */
 export const rebuildLeaderboards = buildRebuildLeaderboardsCallable();
+
+/** B2C checkout: any signed-in user; emulated mode without STRIPE_SECRET_KEY. */
+export const createCheckoutSession = buildCreateCheckoutSessionCallable();
+
+/** Stripe webhook: raw-body signature verification, idempotent via the event log. */
+export const stripeWebhook = buildStripeWebhook();
