@@ -19,6 +19,16 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./courses/player.page').then((m) => m.PlayerPage),
   },
   {
+    path: 'profile',
+    canActivate: [authGuard],
+    loadComponent: () => import('./profile/profile.page').then((m) => m.ProfilePage),
+  },
+  {
+    path: 'leaderboard',
+    canActivate: [authGuard],
+    loadComponent: () => import('./leaderboard/leaderboard.page').then((m) => m.LeaderboardPage),
+  },
+  {
     path: 'games/hazard-hunter',
     canActivate: [authGuard],
     loadComponent: () => import('@forge/games').then((m) => m.HazardHuntComponent),

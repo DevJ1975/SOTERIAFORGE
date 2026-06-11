@@ -12,6 +12,10 @@ import { createGamificationDbAdapter } from './lib/adapters';
 import { onEnrollmentWrittenCore } from './lib/on-enrollment-written.core';
 import { onGameResultCreatedCore } from './lib/on-game-result-created.core';
 import { createVerifyBadgeHandler } from './lib/verify-badge.core';
+import {
+  buildRebuildLeaderboardsCallable,
+  buildRebuildLeaderboardsSchedule,
+} from './lib/leaderboard.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';
 import type { CorePorts } from './lib/ports';
 import { provisionTenantCore } from './lib/provision-tenant.core';
@@ -122,3 +126,9 @@ export const verifyBadge = onRequest(
   { cors: true, region: 'us-central1' },
   createVerifyBadgeHandler(gamificationDeps),
 );
+
+/** Hourly leaderboard rebuild across all tenants (daily/weekly/allTime). */
+export const rebuildLeaderboardsHourly = buildRebuildLeaderboardsSchedule();
+
+/** On-demand rebuild: superadmin (explicit tenantId) or own-tenant authoring roles. */
+export const rebuildLeaderboards = buildRebuildLeaderboardsCallable();

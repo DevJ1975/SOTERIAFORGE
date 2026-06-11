@@ -16,6 +16,8 @@ export class App {
     { label: 'Courses', path: '/courses' },
     { label: 'Hazard Hunter', path: '/games/hazard-hunter' },
     { label: 'PERIL!', path: '/games/peril' },
+    { label: 'Leaderboard', path: '/leaderboard' },
+    { label: 'Profile', path: '/profile' },
   ];
 
   constructor() {
