@@ -18,5 +18,11 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./courses/course-builder-page').then((m) => m.CourseBuilderPage),
   },
+  {
+    // Member management is tenant_admin-only (instructors author, not administer).
+    path: 'members',
+    canActivate: [authGuard, roleGuard('tenant_admin')],
+    loadComponent: () => import('./members/members-page').then((m) => m.MembersPage),
+  },
   { path: '**', redirectTo: '' },
 ];

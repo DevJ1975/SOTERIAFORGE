@@ -5,6 +5,7 @@ import {
   badge,
   catalogProduct,
   course,
+  courseDraft,
   enrollment,
   leaderboard,
   member,
@@ -16,6 +17,7 @@ import type {
   Badge,
   CatalogProduct,
   Course,
+  CourseDraft,
   Enrollment,
   Leaderboard,
   LeaderboardPeriod,
@@ -48,6 +50,7 @@ export const B2C_STORE_DOC_PATH = 'b2c/store';
 const tenantConverter = zodConverter(tenant);
 const memberConverter = zodConverter(member);
 const courseConverter = zodConverter(course);
+const courseDraftConverter = zodConverter(courseDraft);
 const moduleConverter = zodConverter(moduleSchema);
 const enrollmentConverter = zodConverter(enrollment);
 const badgeConverter = zodConverter(badge);
@@ -87,6 +90,20 @@ export function courseDoc(
   courseId: string,
 ): DocumentReference<Course> {
   return doc(coursesCol(db, tenantId), courseId);
+}
+
+/** /tenants/{tenantId}/courseDrafts — Forge Studio authoring documents. */
+export function courseDraftsCol(db: Firestore, tenantId: string): CollectionReference<CourseDraft> {
+  return collection(db, 'tenants', tenantId, 'courseDrafts').withConverter(courseDraftConverter);
+}
+
+/** /tenants/{tenantId}/courseDrafts/{courseId} */
+export function courseDraftDoc(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+): DocumentReference<CourseDraft> {
+  return doc(courseDraftsCol(db, tenantId), courseId);
 }
 
 /** /tenants/{tenantId}/courses/{courseId}/modules */

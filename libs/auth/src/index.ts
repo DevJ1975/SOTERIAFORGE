@@ -1,3 +1,4 @@
+export * from './lib/admin-api.service';
 export * from './lib/firebase.providers';
 export * from './lib/tenant-host';
 export * from './lib/claims';

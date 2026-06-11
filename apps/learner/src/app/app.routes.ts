@@ -9,6 +9,16 @@ export const appRoutes: Route[] = [
   // and trips the lazy-vs-static module boundary lint rule.
   { path: 'login', component: ForgeLogin },
   {
+    path: 'courses',
+    canActivate: [authGuard],
+    loadComponent: () => import('./courses/catalog.page').then((m) => m.CatalogPage),
+  },
+  {
+    path: 'courses/:courseId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./courses/player.page').then((m) => m.PlayerPage),
+  },
+  {
     path: 'games/hazard-hunter',
     canActivate: [authGuard],
     loadComponent: () => import('@forge/games').then((m) => m.HazardHuntComponent),

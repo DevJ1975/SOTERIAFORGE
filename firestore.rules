@@ -87,6 +87,19 @@ service cloud.firestore {
         }
       }
 
+      // Course drafts (Forge Studio authoring docs): same policy as courses —
+      // learners only see published drafts; authoring roles and superadmin
+      // see everything and may write. Draft docs carry no embedded tenantId
+      // field (see @forge/shared courseDraft), so there is no spoofing guard;
+      // the path alone scopes them to the tenant.
+      match /courseDrafts/{courseId} {
+        allow read: if isSuperadmin()
+          || (inTenant(tenantId)
+            && (resource.data.status == 'published' || isAuthoring()));
+        allow create, update: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+        allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+      }
+
       // Badges: tenant-readable metadata; issued/managed by Cloud Functions.
       match /badges/{badgePath=**} {
         allow read: if isSuperadmin() || inTenant(tenantId);

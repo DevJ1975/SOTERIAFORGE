@@ -13,6 +13,7 @@ export class App {
   protected readonly appName = 'Soteria FORGE';
   protected readonly navLinks: ShellLink[] = [
     { label: 'Home', path: '/' },
+    { label: 'Courses', path: '/courses' },
     { label: 'Hazard Hunter', path: '/games/hazard-hunter' },
     { label: 'PERIL!', path: '/games/peril' },
   ];

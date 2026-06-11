@@ -32,13 +32,20 @@ import { ButtonModule } from 'primeng/button';
           />
         </section>
 
-        <section class="forge-card tile">
-          <span class="tile-kicker">Coming next</span>
-          <h2>Members &amp; reporting</h2>
+        <section class="forge-card tile members-tile">
+          <span class="tile-kicker">Tenant administration</span>
+          <h2>Members</h2>
           <p>
-            Invite operators, assign published courses, and track completions. Arrives in a later
-            phase — see ROADMAP.md for the delivery plan.
+            Invite operators, assign roles, and watch the live roster — XP, levels, streaks, and
+            last activity for everyone in your tenant.
           </p>
+          <p-button
+            label="Manage members"
+            icon="pi pi-users"
+            iconPos="right"
+            severity="secondary"
+            routerLink="/members"
+          />
         </section>
       </div>
     </div>
@@ -87,6 +94,10 @@ import { ButtonModule } from 'primeng/button';
 
     .studio-tile .tile-kicker {
       color: var(--forge-accent);
+    }
+
+    .members-tile {
+      border-top: 3px solid var(--sf-steel, #3a4048);
     }
 
     .ember {

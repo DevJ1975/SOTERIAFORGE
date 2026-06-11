@@ -1,0 +1,158 @@
+<div class="forge-page">
+  <header class="members-header">
+    <div>
+      <h1 class="members-title">Tenant <span class="ember">Members</span></h1>
+      <p class="members-sub">
+        @if (authStatus() === 'signedIn' && tenantId()) {
+          {{ members().length }} {{ members().length === 1 ? 'member' : 'members' }} in
+          <strong>{{ tenantId() }}</strong>
+        } @else {
+          Invite operators, assign roles, and track activity.
+        }
+      </p>
+    </div>
+    @if (authStatus() === 'signedIn' && tenantId()) {
+      <p-button label="Invite member" icon="pi pi-user-plus" (onClick)="inviteOpen.set(true)" />
+    }
+  </header>
+
+  @if (toast(); as t) {
+    <div class="toast" [class.negative]="t.kind === 'negative'" role="status">
+      <i
+        class="pi"
+        [class.pi-check-circle]="t.kind === 'positive'"
+        [class.pi-exclamation-triangle]="t.kind === 'negative'"
+      ></i>
+      {{ t.text }}
+    </div>
+  }
+
+  @if (authStatus() === 'loading') {
+    <div class="state-card">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Checking your session…</p>
+    </div>
+  } @else if (authStatus() === 'signedOut') {
+    <div class="state-card">
+      <i class="pi pi-lock"></i>
+      <h2>Sign in to manage members</h2>
+      <p>Member management is available to tenant admins. Sign in to continue.</p>
+      <p-button label="Sign in" icon="pi pi-sign-in" routerLink="/login" />
+    </div>
+  } @else if (!tenantId()) {
+    <div class="state-card">
+      <i class="pi pi-building"></i>
+      <h2>No tenant selected</h2>
+      <p>
+        Your account is not bound to a tenant, so there is no member roster to show. Superadmins
+        manage tenants from the superadmin console.
+      </p>
+    </div>
+  } @else if (membersLoading()) {
+    <div class="state-card">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Loading members…</p>
+    </div>
+  } @else if (members().length === 0) {
+    <div class="state-card">
+      <i class="pi pi-users"></i>
+      <h2>No members yet</h2>
+      <p>Invite your first operator — they appear here the moment the invite lands.</p>
+      <p-button
+        label="Invite your first member"
+        icon="pi pi-user-plus"
+        (onClick)="inviteOpen.set(true)"
+      />
+    </div>
+  } @else {
+    <div class="forge-card members-card">
+      <div class="toolbar">
+        <span class="search">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="search"
+            name="memberSearch"
+            placeholder="Search by name, email, or role…"
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+          />
+        </span>
+        <span class="result-count"> {{ filtered().length }} of {{ members().length }} shown </span>
+      </div>
+
+      @if (filtered().length === 0) {
+        <p class="no-match">No members match “{{ query() }}”.</p>
+      } @else {
+        <ul class="member-list">
+          @for (member of filtered(); track member.uid) {
+            <li class="member-row">
+              <span class="avatar" [class.steel]="roleChipKind(member.role) === 'steel'">
+                {{ memberInitial(member) }}
+              </span>
+
+              <span class="identity">
+                <span class="name">
+                  {{ memberLabel(member) }}
+                  @if (isSelf(member)) {
+                    <em class="you">(you)</em>
+                  }
+                </span>
+                <span class="email">{{ member.email }}</span>
+              </span>
+
+              <span class="chip role" [class.steel]="roleChipKind(member.role) === 'steel'">
+                {{ roleLabel(member.role) }}
+              </span>
+
+              <span
+                class="chip status"
+                [class.notice]="statusChipKind(member.status) === 'notice'"
+                [class.positive]="statusChipKind(member.status) === 'positive'"
+                [class.muted]="statusChipKind(member.status) === 'muted'"
+              >
+                {{ member.status }}
+              </span>
+
+              <span class="progress">
+                <span class="level">Level {{ member.level }}</span>
+                <span class="xp">{{ member.xp }} XP</span>
+              </span>
+
+              <span class="last-active">
+                @if (member.lastActiveAt) {
+                  <i class="pi pi-clock"></i> {{ member.lastActiveAt | date: 'MMM d, HH:mm' }}
+                } @else {
+                  <span class="never">Never active</span>
+                }
+              </span>
+
+              <span class="row-actions">
+                @if (canChangeRole(member)) {
+                  <p-select
+                    class="role-select"
+                    [size]="'small'"
+                    [options]="roleOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    [ngModel]="member.role"
+                    (ngModelChange)="changeRole(member, $event)"
+                    [disabled]="roleChangePending() === member.uid"
+                    appendTo="body"
+                    aria-label="Change role"
+                  />
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+</div>
+
+<app-invite-member-dialog
+  [visible]="inviteOpen()"
+  (visibleChange)="inviteOpen.set($event)"
+  (invited)="onInvited($event)"
+/>

@@ -11,10 +11,25 @@ import { ButtonModule } from 'primeng/button';
       <section class="hero forge-card">
         <h1>Welcome back</h1>
         <p>
-          Your safety training hub. Courses arrive with Phase 2 — meanwhile, sharpen your hazard
-          instincts in the Safety Arcade below.
+          Your safety training hub. Work through your team's published courses in My Training, or
+          sharpen your hazard instincts in the Safety Arcade below.
         </p>
       </section>
+
+      <h2 class="arcade-title">My Training</h2>
+      <div class="game-grid training-grid">
+        <article class="forge-card game-card">
+          <div class="game-art training" aria-hidden="true">
+            <span class="game-emblem training-emblem">&#9874;</span>
+          </div>
+          <h3>My Training</h3>
+          <p>
+            Your team's published safety courses — interactive lessons, knowledge checks, and a
+            progress bar that remembers exactly where you left off.
+          </p>
+          <p-button label="Browse courses" routerLink="/courses" />
+        </article>
+      </div>
 
       <h2 class="arcade-title">Safety Arcade</h2>
       <div class="game-grid">
@@ -63,6 +78,21 @@ import { ButtonModule } from 'primeng/button';
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 24px;
+    }
+
+    .training-grid {
+      margin-bottom: 32px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 480px));
+    }
+
+    .game-art.training {
+      background: var(--sf-grad-ember);
+    }
+
+    .game-art.training .training-emblem {
+      font-size: 44px;
+      color: rgb(255 255 255 / 0.92);
+      text-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
     }
 
     .game-card {

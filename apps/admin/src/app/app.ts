@@ -14,6 +14,7 @@ export class App {
   protected readonly navLinks: ShellLink[] = [
     { label: 'Home', path: '/' },
     { label: 'Courses', path: '/courses' },
+    { label: 'Members', path: '/members' },
   ];
 
   constructor() {

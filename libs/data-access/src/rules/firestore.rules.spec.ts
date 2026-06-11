@@ -101,6 +101,34 @@ maybe('firestore.rules', () => {
         status: 'draft',
         ...AUDIT,
       });
+      // Course drafts (Forge Studio authoring docs — no tenantId field).
+      await setDoc(doc(db, 'tenants/acme/courseDrafts/cd-pub-1'), {
+        id: 'cd-pub-1',
+        title: 'Published draft course',
+        description: '',
+        status: 'published',
+        lessons: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await setDoc(doc(db, 'tenants/acme/courseDrafts/cd-draft-1'), {
+        id: 'cd-draft-1',
+        title: 'Draft course draft',
+        description: '',
+        status: 'draft',
+        lessons: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      });
+      await setDoc(doc(db, 'tenants/globex/courseDrafts/cd-draft-2'), {
+        id: 'cd-draft-2',
+        title: 'Globex draft course',
+        description: '',
+        status: 'draft',
+        lessons: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      });
       // Modules.
       await setDoc(doc(db, 'tenants/acme/courses/pub-1/modules/m1'), {
         id: 'm1',
@@ -275,6 +303,68 @@ maybe('firestore.rules', () => {
     it('allows authoring roles to delete a course in their tenant, denies learners', async () => {
       await assertFails(deleteDoc(doc(acmeLearner(), 'tenants/acme/courses/new-1')));
       await assertSucceeds(deleteDoc(doc(acmeAdmin(), 'tenants/acme/courses/new-1')));
+    });
+  });
+
+  describe('/tenants/{tenantId}/courseDrafts/{courseId}', () => {
+    const DRAFT_DOC = {
+      id: 'cd-new-1',
+      title: 'Instructor draft',
+      description: '',
+      status: 'draft',
+      lessons: [],
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    };
+
+    it('allows a learner to read a published course draft', async () => {
+      await assertSucceeds(getDoc(doc(acmeLearner(), 'tenants/acme/courseDrafts/cd-pub-1')));
+    });
+
+    it('denies a learner reading an unpublished course draft', async () => {
+      await assertFails(getDoc(doc(acmeLearner(), 'tenants/acme/courseDrafts/cd-draft-1')));
+    });
+
+    it('denies course-draft writes by learners', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), 'tenants/acme/courseDrafts/cd-learner-1'), DRAFT_DOC),
+      );
+      await assertFails(deleteDoc(doc(acmeLearner(), 'tenants/acme/courseDrafts/cd-draft-1')));
+    });
+
+    it('allows an instructor to create, read, update and delete drafts in their tenant', async () => {
+      await assertSucceeds(
+        setDoc(doc(acmeInstructor(), 'tenants/acme/courseDrafts/cd-new-1'), DRAFT_DOC),
+      );
+      await assertSucceeds(getDoc(doc(acmeInstructor(), 'tenants/acme/courseDrafts/cd-new-1')));
+      await assertSucceeds(
+        updateDoc(doc(acmeInstructor(), 'tenants/acme/courseDrafts/cd-new-1'), {
+          title: 'Instructor draft v2',
+          updatedAt: '2024-01-02T00:00:00.000Z',
+        }),
+      );
+      await assertSucceeds(deleteDoc(doc(acmeInstructor(), 'tenants/acme/courseDrafts/cd-new-1')));
+    });
+
+    it('denies an instructor reading or writing course drafts in another tenant', async () => {
+      await assertFails(getDoc(doc(acmeInstructor(), 'tenants/globex/courseDrafts/cd-draft-2')));
+      await assertFails(
+        setDoc(doc(acmeInstructor(), 'tenants/globex/courseDrafts/cd-intruder-1'), DRAFT_DOC),
+      );
+      await assertFails(deleteDoc(doc(acmeInstructor(), 'tenants/globex/courseDrafts/cd-draft-2')));
+    });
+
+    it('denies unauthenticated course-draft reads and writes', async () => {
+      await assertFails(getDoc(doc(anonDb(), 'tenants/acme/courseDrafts/cd-pub-1')));
+      await assertFails(setDoc(doc(anonDb(), 'tenants/acme/courseDrafts/cd-anon-1'), DRAFT_DOC));
+    });
+
+    it('allows superadmin to read and write drafts in any tenant', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), 'tenants/globex/courseDrafts/cd-draft-2')));
+      await assertSucceeds(
+        setDoc(doc(superadmin(), 'tenants/globex/courseDrafts/cd-root-1'), DRAFT_DOC),
+      );
+      await assertSucceeds(deleteDoc(doc(superadmin(), 'tenants/globex/courseDrafts/cd-root-1')));
     });
   });
 
