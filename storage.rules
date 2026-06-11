@@ -1,10 +1,66 @@
 rules_version = '2';
 
-// Deny-by-default. Tenant-scoped content paths are opened up alongside the
-// upload features that use them (Phase 2+), with the same claim checks as
-// Firestore.
+// Soteria FORGE Cloud Storage rules.
+//
+// Deny-by-default: every path must be explicitly opened up, in the same PR
+// that introduces it, together with rules unit tests (see
+// libs/data-access/src/rules/storage.rules.spec.ts).
+//
+// Tenant isolation mirrors firestore.rules: custom claims
+// (request.auth.token.tenantId, request.auth.token.role) are set exclusively
+// by Cloud Functions; the Admin SDK bypasses these rules.
 service firebase.storage {
   match /b/{bucket}/o {
+    // ---------------------------------------------------------------------
+    // Helpers (kept in lockstep with firestore.rules)
+    // ---------------------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function isSuperadmin() {
+      return signedIn() && role() == 'superadmin';
+    }
+
+    function inTenant(tenantId) {
+      return signedIn() && request.auth.token.tenantId == tenantId;
+    }
+
+    // Tenant-scoped content authors. Superadmin is handled separately.
+    function isAuthoring() {
+      return signedIn() && role() in ['tenant_admin', 'instructor'];
+    }
+
+    // Forge Studio media uploads must be images or videos under 200 MB
+    // (mirrored client-side in @forge/data-access ForgeMediaUpload).
+    function isMediaObject() {
+      return request.resource.size < 200 * 1024 * 1024
+        && request.resource.contentType.matches('^(image|video)/.*');
+    }
+
+    // ---------------------------------------------------------------------
+    // Tenant media (Forge Studio: course covers, image blocks, video blocks)
+    //   tenants/{tenantId}/media/{kind}/{timestamp}-{slug}
+    // ---------------------------------------------------------------------
+    match /tenants/{tenantId}/media/{allPaths=**} {
+      // Reads: any signed-in member of the tenant, or superadmin.
+      allow read: if isSuperadmin() || inTenant(tenantId);
+
+      // Uploads/overwrites: superadmin or in-tenant authoring roles, and the
+      // object must pass the size/contentType guards.
+      allow create, update: if (isSuperadmin() || (inTenant(tenantId) && isAuthoring()))
+        && isMediaObject();
+
+      // Deletes: same principals as writes (no object guards — there is no
+      // request.resource on delete).
+      allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+    }
+
+    // Everything not explicitly matched above is denied.
     match /{allPaths=**} {
       allow read, write: if false;
     }

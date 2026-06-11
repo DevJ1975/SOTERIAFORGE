@@ -37,6 +37,10 @@
           placeholder="https://…"
           (change)="patchInput(sel.id, 'url', $event, 'Set image URL')"
         />
+        <app-media-upload-button
+          kind="image"
+          (uploaded)="patch(sel.id, { url: $event }, 'Upload image')"
+        />
       </div>
       <div class="field">
         <label for="insp-img-alt">Alt text</label>
@@ -82,6 +86,10 @@
           [value]="sel.url"
           placeholder="YouTube, Vimeo, or direct file URL"
           (change)="patchInput(sel.id, 'url', $event, 'Set video URL')"
+        />
+        <app-media-upload-button
+          kind="video"
+          (uploaded)="patch(sel.id, { url: $event }, 'Upload video')"
         />
         <small>YouTube and Vimeo links become players automatically.</small>
       </div>
@@ -267,6 +275,18 @@
     </div>
   }
   @if (store.course(); as course) {
+    <div class="field">
+      <label for="insp-course-cover">Cover image URL</label>
+      <input
+        pInputText
+        id="insp-course-cover"
+        [value]="course.coverImageUrl ?? ''"
+        placeholder="https://…"
+        (change)="setCoverImageInput($event)"
+      />
+      <app-media-upload-button kind="cover" (uploaded)="setCoverImage($event)" />
+      <small>Shown on the course card in Forge Studio and the learner catalog.</small>
+    </div>
     <div class="field">
       <label for="insp-course-desc">Course description</label>
       <textarea

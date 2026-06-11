@@ -1,10 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
+  NgZone,
   computed,
   effect,
   inject,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -18,20 +23,51 @@ import {
   ForgeEnrollment,
   ForgeLessonRenderer,
   nextEnrollment,
+  scoreFor,
+  type CheckAnsweredEvent,
+  type ChecksStateEvent,
 } from '@forge/lms-core';
-import type { CourseDraft, Enrollment } from '@forge/shared';
+import type { CourseDraft, Enrollment, LessonDraft } from '@forge/shared';
 
 type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
 
+/** Aggregate knowledge-check state for one lesson (renderer `checksState`). */
+export interface LessonChecksSnapshot {
+  total: number;
+  answered: number;
+  correctOnFirstAttempt: number;
+}
+
 /**
- * Course player: lesson rail (free navigation, completion checkmarks), the
- * current lesson rendered via ForgeLessonRenderer, and a 'Mark lesson
- * complete' CTA persisting progress through ForgeEnrollment (optimistic UI
- * with an inline error toast on failure).
+ * Auto-completion decision: a lesson completes by itself exactly when it has
+ * knowledge checks, every one of them has been answered, the learner has
+ * reached the end of the lesson, and it isn't already complete. Lessons
+ * without checks (total 0, or no renderer state yet) stay manual-CTA only.
+ */
+export function shouldAutoComplete(args: {
+  checks: LessonChecksSnapshot | undefined;
+  endReached: boolean;
+  alreadyComplete: boolean;
+}): boolean {
+  const { checks, endReached, alreadyComplete } = args;
+  if (alreadyComplete) return false;
+  if (!checks || checks.total === 0) return false;
+  return checks.answered >= checks.total && endReached;
+}
+
+/**
+ * Course player: lesson rail (free navigation, completion checkmarks, an
+ * ember dot on visited lessons with unanswered checks), the current lesson
+ * rendered via ForgeLessonRenderer, and completion persisted through
+ * ForgeEnrollment (optimistic UI with an inline error toast on failure).
  *
- * Note: ForgeLessonRenderer keeps knowledge-check answers internal (no
- * outputs), so completion is the explicit CTA only — no auto-complete on
- * scroll/answers, and no knowledge-check score is recorded yet.
+ * Lessons with knowledge checks auto-complete once every check is answered
+ * and the learner reaches the end-of-lesson sentinel (IntersectionObserver;
+ * short lessons intersect immediately, environments without the API are
+ * treated as end-reached). First-attempt correctness per check feeds
+ * `knowledgeCheckResults`, so enrollments carry a real score. Lessons without
+ * checks keep the explicit CTA; checked lessons keep it as a fallback
+ * ('Mark complete anyway').
  */
 @Component({
   selector: 'app-player-page',
@@ -83,6 +119,10 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
               <div class="toast" role="alert">{{ message }}</div>
             }
 
+            @if (completionToast()) {
+              <div class="complete-toast" role="status">Lesson complete &#10003;</div>
+            }
+
             @if (celebrating()) {
               <section class="forge-card celebration">
                 <p class="forge-tagline">Training record updated</p>
@@ -91,8 +131,14 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
                   You've finished every lesson in <strong>{{ course.title }}</strong
                   >. Nice work — stay sharp out there.
                 </p>
-                @if (enrollment()?.score !== undefined) {
-                  <p class="score">Knowledge-check score: {{ enrollment()?.score }}%</p>
+                @if (courseScore() !== undefined) {
+                  <p class="score">Knowledge-check score: {{ courseScore() }}%</p>
+                }
+                @if (firstTryBreakdown(); as breakdown) {
+                  <p class="score-note">
+                    You nailed {{ breakdown.correct }} of {{ breakdown.total }}
+                    {{ breakdown.total === 1 ? 'check' : 'checks' }} on the first try.
+                  </p>
                 }
                 <div class="celebration-actions">
                   <p-button label="Back to catalog" routerLink="/courses" />
@@ -124,6 +170,13 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
                             >&#10003;</span
                           >
                           <span class="rail-title">{{ lesson.title }}</span>
+                          @if (hasUnansweredChecks(lesson.id)) {
+                            <span
+                              class="ember-dot"
+                              title="Knowledge checks remaining"
+                              aria-hidden="true"
+                            ></span>
+                          }
                         </button>
                       </li>
                     }
@@ -134,8 +187,13 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
                   @if (currentLesson(); as lesson) {
                     <article class="lesson-canvas forge-card">
                       <h2 class="lesson-title">{{ lesson.title }}</h2>
-                      <forge-lesson-renderer [lesson]="lesson" />
+                      <forge-lesson-renderer
+                        [lesson]="lesson"
+                        (checkAnswered)="onCheckAnswered(lesson.id, $event)"
+                        (checksState)="onChecksState(lesson.id, $event)"
+                      />
                     </article>
+                    <div #lessonEnd class="lesson-end-sentinel" aria-hidden="true"></div>
                     <footer class="lesson-actions">
                       <p-button
                         label="Previous"
@@ -147,7 +205,14 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
                         <span class="done-note">&#10003; Lesson completed</span>
                       } @else {
                         <p-button
-                          [label]="saving() ? 'Saving…' : 'Mark lesson complete'"
+                          [label]="
+                            saving()
+                              ? 'Saving…'
+                              : currentHasChecks()
+                                ? 'Mark complete anyway'
+                                : 'Mark lesson complete'
+                          "
+                          [outlined]="currentHasChecks()"
                           [disabled]="saving()"
                           (onClick)="markComplete()"
                         />
@@ -155,6 +220,7 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
                       <p-button
                         label="Next"
                         [outlined]="true"
+                        [class.pulse-next]="nextPulse()"
                         [disabled]="currentIndex() >= lessons().length - 1"
                         (onClick)="goTo(currentIndex() + 1)"
                       />
@@ -222,6 +288,33 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
       border-radius: var(--forge-radius);
       padding: 10px 16px;
       margin-bottom: 16px;
+    }
+
+    .complete-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: color-mix(in srgb, var(--sf-ember) 14%, var(--forge-surface));
+      border: 1px solid var(--sf-ember);
+      color: var(--sf-ember-hover);
+      border-radius: var(--forge-radius);
+      padding: 10px 18px;
+      font-weight: 600;
+      box-shadow: 0 6px 24px rgb(0 0 0 / 18%);
+      animation: toast-in 130ms ease-out;
+      z-index: 30;
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 8px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
     }
 
     .player-layout {
@@ -304,12 +397,26 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
       color: #fff;
     }
 
+    .ember-dot {
+      flex: none;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--sf-ember);
+      margin-left: auto;
+    }
+
     .lesson-canvas {
       max-width: 760px;
     }
 
     .lesson-title {
       margin-bottom: 16px;
+    }
+
+    .lesson-end-sentinel {
+      height: 1px;
+      max-width: 760px;
     }
 
     .lesson-actions {
@@ -326,6 +433,21 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
       font-weight: 600;
     }
 
+    p-button.pulse-next {
+      display: inline-block;
+      animation: next-pulse 1.4s ease-in-out 3;
+    }
+
+    @keyframes next-pulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.04);
+      }
+    }
+
     .celebration {
       max-width: 560px;
       margin: 32px auto;
@@ -335,6 +457,11 @@ type PlayerState = 'loading' | 'ready' | 'missing' | 'error';
 
     .celebration .score {
       font-weight: 600;
+    }
+
+    .celebration .score-note {
+      color: var(--forge-text-subtle);
+      font-size: 14px;
     }
 
     .celebration-actions {
@@ -389,6 +516,8 @@ export class PlayerPage {
   private readonly catalog = inject(ForgeCatalog);
   private readonly enrollments = inject(ForgeEnrollment);
   private readonly principal = inject(PrincipalStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly zone = inject(NgZone);
 
   private readonly courseId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('courseId'))),
@@ -403,17 +532,81 @@ export class PlayerPage {
   protected readonly saveError = signal<string | null>(null);
   /** Full-course celebration card, shown when the course completes. */
   protected readonly celebrating = signal(false);
+  /** Ember 'Lesson complete' banner, shown briefly on auto-completion. */
+  protected readonly completionToast = signal(false);
+  /** Lesson that just completed (drives the subtle Next-button pulse). */
+  private readonly justCompletedId = signal<string | null>(null);
+
+  /** lessonId → latest aggregate from the renderer (visited lessons only). */
+  private readonly checkStates = signal<Record<string, LessonChecksSnapshot>>({});
+  /** lessonId → blockId → correctness of the learner's first attempt. */
+  private readonly checkResults = signal<Record<string, Record<string, boolean>>>({});
+  /** Lessons whose end-of-lesson sentinel has come into view. */
+  private readonly endReachedIds = signal<ReadonlySet<string>>(new Set());
+
+  private readonly lessonEnd = viewChild<ElementRef<HTMLElement>>('lessonEnd');
 
   protected readonly lessons = computed(() => this.course()?.lessons ?? []);
   protected readonly currentLesson = computed(() => this.lessons()[this.currentIndex()] ?? null);
   protected readonly completedIds = computed(() => new Set(completedLessonsOf(this.enrollment())));
   protected readonly progressPct = computed(() => this.enrollment()?.progressPct ?? 0);
 
+  /** True once the renderer reported knowledge checks in the current lesson. */
+  protected readonly currentHasChecks = computed(() => {
+    const lesson = this.currentLesson();
+    return !!lesson && (this.checkStates()[lesson.id]?.total ?? 0) > 0;
+  });
+
+  /** Pulse the Next button right after the current lesson completed. */
+  protected readonly nextPulse = computed(() => {
+    const lesson = this.currentLesson();
+    return (
+      !!lesson &&
+      this.justCompletedId() === lesson.id &&
+      this.currentIndex() < this.lessons().length - 1
+    );
+  });
+
+  /** Knowledge checks across the whole course (from the authored draft). */
+  private readonly courseCheckTotal = computed(() =>
+    this.lessons().reduce(
+      (sum, lesson) => sum + lesson.blocks.filter((b) => b.kind === 'knowledgeCheck').length,
+      0,
+    ),
+  );
+
+  /** Every first-attempt result collected this session, flattened. */
+  private readonly sessionResults = computed(() =>
+    Object.values(this.checkResults()).flatMap((perBlock) => Object.values(perBlock)),
+  );
+
+  /**
+   * Score for the celebration card: the live session average once every check
+   * in the course has been answered this session, otherwise the persisted
+   * enrollment score (falling back to a partial session average).
+   */
+  protected readonly courseScore = computed(() => {
+    const session = this.sessionResults();
+    const total = this.courseCheckTotal();
+    if (total > 0 && session.length >= total) return scoreFor(session);
+    return this.enrollment()?.score ?? scoreFor(session);
+  });
+
+  /** 'You nailed X of Y' line — only when this session covered every check. */
+  protected readonly firstTryBreakdown = computed(() => {
+    const total = this.courseCheckTotal();
+    const session = this.sessionResults();
+    if (total === 0 || session.length < total) return null;
+    return { correct: session.filter(Boolean).length, total };
+  });
+
   /** Guards the load effect against re-running for the same course/principal. */
   private loadedFor: string | null = null;
+  private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     this.principal.init();
+    this.destroyRef.onDestroy(() => clearTimeout(this.toastTimer));
     effect(() => {
       const courseId = this.courseId();
       const status = this.principal.status();
@@ -429,10 +622,40 @@ export class PlayerPage {
       this.loadedFor = key;
       void this.load(courseId, tenantId, uid);
     });
+
+    // Watch the end-of-lesson sentinel per lesson. Short lessons intersect
+    // immediately; environments without IntersectionObserver (SSR shells,
+    // jsdom) treat the end as reached so auto-completion still works.
+    effect((onCleanup) => {
+      const sentinel = this.lessonEnd()?.nativeElement;
+      const lessonId = this.currentLesson()?.id;
+      if (!sentinel || !lessonId) return;
+      untracked(() => {
+        if (typeof IntersectionObserver === 'undefined') {
+          this.markEndReached(lessonId);
+          return;
+        }
+        const observer = new IntersectionObserver((entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer.disconnect();
+            this.markEndReached(lessonId);
+          }
+        });
+        observer.observe(sentinel);
+        onCleanup(() => observer.disconnect());
+      });
+    });
   }
 
   protected isCompleted(lessonId: string): boolean {
     return this.completedIds().has(lessonId);
+  }
+
+  /** Ember rail dot: the learner saw this lesson but left checks unanswered. */
+  protected hasUnansweredChecks(lessonId: string): boolean {
+    if (this.isCompleted(lessonId)) return false;
+    const checks = this.checkStates()[lessonId];
+    return !!checks && checks.total > 0 && checks.answered < checks.total;
   }
 
   protected goTo(index: number): void {
@@ -440,16 +663,55 @@ export class PlayerPage {
     this.currentIndex.set(index);
   }
 
-  /**
-   * Persists the current lesson as complete: optimistic local update first,
-   * rolled back with an inline error toast if the Firestore write fails.
-   */
-  protected async markComplete(): Promise<void> {
-    const course = this.course();
+  protected onCheckAnswered(lessonId: string, event: CheckAnsweredEvent): void {
+    if (!event.firstAttempt) return; // retries never re-score
+    this.checkResults.update((all) => ({
+      ...all,
+      [lessonId]: { ...(all[lessonId] ?? {}), [event.blockId]: event.correct },
+    }));
+  }
+
+  protected onChecksState(lessonId: string, state: ChecksStateEvent): void {
+    this.checkStates.update((all) => ({ ...all, [lessonId]: state }));
+    this.maybeAutoComplete();
+  }
+
+  protected markComplete(): void {
     const lesson = this.currentLesson();
+    if (lesson) void this.completeLesson(lesson, 'manual');
+  }
+
+  private markEndReached(lessonId: string): void {
+    if (this.endReachedIds().has(lessonId)) return;
+    this.endReachedIds.update((ids) => new Set(ids).add(lessonId));
+    this.maybeAutoComplete();
+  }
+
+  private maybeAutoComplete(): void {
+    const lesson = this.currentLesson();
+    if (!lesson || this.saving()) return;
+    const complete = shouldAutoComplete({
+      checks: this.checkStates()[lesson.id],
+      endReached: this.endReachedIds().has(lesson.id),
+      alreadyComplete: this.isCompleted(lesson.id),
+    });
+    if (complete) void this.completeLesson(lesson, 'auto');
+  }
+
+  /**
+   * Persists a lesson completion (manual CTA or auto): optimistic local
+   * update first, rolled back with an inline error toast if the Firestore
+   * write fails. First-attempt knowledge-check results ride along so the
+   * enrollment records a real score.
+   */
+  private async completeLesson(lesson: LessonDraft, trigger: 'auto' | 'manual'): Promise<void> {
+    const course = this.course();
     const tenantId = this.principal.tenantId();
     const uid = this.principal.uid();
-    if (!course || !lesson || !tenantId || !uid || this.saving()) return;
+    if (!course || !tenantId || !uid || this.saving() || this.isCompleted(lesson.id)) return;
+
+    const collected = Object.values(this.checkResults()[lesson.id] ?? {});
+    const knowledgeCheckResults = collected.length > 0 ? collected : undefined;
 
     const previous = this.enrollment();
     const optimistic = nextEnrollment({
@@ -458,9 +720,12 @@ export class PlayerPage {
       course,
       lessonId: lesson.id,
       existing: previous,
+      knowledgeCheckResults,
     });
     this.saveError.set(null);
     this.enrollment.set(optimistic);
+    this.justCompletedId.set(lesson.id);
+    if (trigger === 'auto') this.showCompletionToast();
     if (optimistic.completed && !previous?.completed) this.celebrating.set(true);
 
     this.saving.set(true);
@@ -471,16 +736,29 @@ export class PlayerPage {
         course,
         lessonId: lesson.id,
         existing: previous,
+        knowledgeCheckResults,
       });
       this.enrollment.set(persisted);
     } catch (error) {
       console.error('[learner] failed to save lesson completion', error);
       this.enrollment.set(previous);
       this.celebrating.set(false);
+      this.completionToast.set(false);
+      this.justCompletedId.set(null);
       this.saveError.set('Could not save your progress — check your connection and try again.');
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private showCompletionToast(): void {
+    this.completionToast.set(true);
+    clearTimeout(this.toastTimer);
+    // Outside the zone so a pending dismiss timer never blocks stability;
+    // the signal write still schedules change detection.
+    this.zone.runOutsideAngular(() => {
+      this.toastTimer = setTimeout(() => this.completionToast.set(false), 2500);
+    });
   }
 
   private async load(courseId: string, tenantId: string, uid: string): Promise<void> {

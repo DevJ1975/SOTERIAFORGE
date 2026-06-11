@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import type {
   AccordionBlock,
@@ -16,6 +25,24 @@ interface KnowledgeCheckState {
 
 const EMPTY_KC_STATE: KnowledgeCheckState = { selected: [], result: null };
 
+/** Emitted every time a knowledge check is checked (not on retry-reset). */
+export interface CheckAnsweredEvent {
+  blockId: string;
+  correct: boolean;
+  /** True only for the first check of a block; retries re-emit with false. */
+  firstAttempt: boolean;
+}
+
+/** Aggregate knowledge-check state for the current lesson. */
+export interface ChecksStateEvent {
+  /** Number of knowledgeCheck blocks in the lesson (0 for check-less lessons). */
+  total: number;
+  /** Blocks answered at least once (retry-resets never decrement this). */
+  answered: number;
+  /** Blocks answered correctly on their very first attempt. */
+  correctOnFirstAttempt: number;
+}
+
 /**
  * Renders a Forge Studio lesson read-only but fully interactive: accordions
  * expand, tabs switch, flashcards flip, knowledge checks are answerable.
@@ -23,6 +50,10 @@ const EMPTY_KC_STATE: KnowledgeCheckState = { selected: [], result: null };
  * This is the exact surface the learner player will ship with, so the
  * builder's preview mode is pixel-identical by construction. All rich-text
  * fields pass through the allowlist sanitizer before being bound.
+ *
+ * Knowledge-check progress is reported through two outputs — `checkAnswered`
+ * per check click and the aggregate `checksState` — so the player can score
+ * lessons and auto-complete them. Answer state resets when `lesson` changes.
  */
 @Component({
   selector: 'forge-lesson-renderer',
@@ -32,6 +63,15 @@ const EMPTY_KC_STATE: KnowledgeCheckState = { selected: [], result: null };
 })
 export class ForgeLessonRenderer {
   readonly lesson = input.required<LessonDraft>();
+
+  /** Fires on every 'Check answer' click; retries fire with firstAttempt false. */
+  readonly checkAnswered = output<CheckAnsweredEvent>();
+  /**
+   * Fires whenever the aggregate check state changes, including once per
+   * `lesson` input change so hosts learn the lesson's total up front (total: 0
+   * for lessons without checks).
+   */
+  readonly checksState = output<ChecksStateEvent>();
 
   private readonly domSanitizer = inject(DomSanitizer);
   private readonly htmlCache = new Map<string, SafeHtml>();
@@ -45,6 +85,21 @@ export class ForgeLessonRenderer {
   protected readonly flippedCards = signal<Record<string, boolean>>({});
   /** blockId → knowledge check state */
   protected readonly kcStates = signal<Record<string, KnowledgeCheckState>>({});
+  /** blockId → correctness of the very first attempt (sticky across retries). */
+  private readonly kcFirstAttempts = signal<Record<string, boolean>>({});
+
+  constructor() {
+    // Reset answer state and re-announce the aggregate whenever the lesson
+    // input changes, so hosts always know the per-lesson totals.
+    effect(() => {
+      const lesson = this.lesson();
+      untracked(() => {
+        this.kcStates.set({});
+        this.kcFirstAttempts.set({});
+        this.checksState.emit(this.aggregateChecksState(lesson));
+      });
+    });
+  }
 
   /** Sanitize (allowlist) then trust, so target/rel on links survive binding. */
   protected html(raw: string): SafeHtml {
@@ -143,6 +198,13 @@ export class ForgeLessonRenderer {
       ...state,
       [block.id]: { selected, result: isCorrect ? 'correct' : 'incorrect' },
     }));
+    const firstAttempt = !(block.id in this.kcFirstAttempts());
+    if (firstAttempt) {
+      this.kcFirstAttempts.update((state) => ({ ...state, [block.id]: isCorrect }));
+    }
+    this.checkAnswered.emit({ blockId: block.id, correct: isCorrect, firstAttempt });
+    // Aggregate counts only move on first attempts (retries never re-score).
+    if (firstAttempt) this.checksState.emit(this.aggregateChecksState(this.lesson()));
   }
 
   protected resetCheck(block: KnowledgeCheckBlock): void {
@@ -151,5 +213,15 @@ export class ForgeLessonRenderer {
 
   protected isSelected(block: KnowledgeCheckBlock, optionId: string): boolean {
     return this.kcState(block).selected.includes(optionId);
+  }
+
+  private aggregateChecksState(lesson: LessonDraft): ChecksStateEvent {
+    const total = lesson.blocks.filter((block) => block.kind === 'knowledgeCheck').length;
+    const outcomes = Object.values(this.kcFirstAttempts());
+    return {
+      total,
+      answered: outcomes.length,
+      correctOnFirstAttempt: outcomes.filter(Boolean).length,
+    };
   }
 }

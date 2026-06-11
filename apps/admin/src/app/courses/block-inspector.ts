@@ -13,6 +13,7 @@ import {
 import { createId } from '@forge/lms-core';
 import { BuilderStore } from './builder-store';
 import { blockDef } from './block-defs';
+import { MediaUploadButton } from './media-upload-button';
 
 /**
  * Right rail: kind-specific settings for the selected block, or lesson/course
@@ -21,7 +22,7 @@ import { blockDef } from './block-defs';
 @Component({
   selector: 'app-block-inspector',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, InputTextModule, SelectModule],
+  imports: [FormsModule, InputTextModule, SelectModule, MediaUploadButton],
   templateUrl: './block-inspector.html',
   styleUrl: './block-inspector.scss',
 })
@@ -89,5 +90,22 @@ export class BlockInspector {
 
   protected setDescription(event: Event): void {
     this.store.setDescription((event.target as HTMLTextAreaElement).value);
+  }
+
+  protected setCoverImageInput(event: Event): void {
+    this.setCoverImage((event.target as HTMLInputElement).value);
+  }
+
+  /**
+   * Cover image changes go through the builder store's commit gateway, the
+   * same path as every block edit, so undo and autosave keep working.
+   */
+  protected setCoverImage(url: string): void {
+    const value = url.trim();
+    if (value === (this.store.course()?.coverImageUrl ?? '')) return;
+    this.store.commit('Set cover image', (draft) => {
+      if (value) draft.coverImageUrl = value;
+      else delete draft.coverImageUrl;
+    });
   }
 }

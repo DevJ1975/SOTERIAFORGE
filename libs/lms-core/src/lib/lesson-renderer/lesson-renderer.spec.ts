@@ -1,6 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { LessonDraft } from '@forge/shared';
-import { ForgeLessonRenderer } from './lesson-renderer';
+import {
+  ForgeLessonRenderer,
+  type CheckAnsweredEvent,
+  type ChecksStateEvent,
+} from './lesson-renderer';
 
 const lessonWithEveryKind: LessonDraft = {
   id: 'lesson-1',
@@ -179,5 +183,128 @@ describe('ForgeLessonRenderer', () => {
     fixture.componentRef.setInput('lesson', { id: 'empty', title: 'Empty', blocks: [] });
     fixture.detectChanges();
     expect(element.querySelector('.lesson-empty')?.textContent).toContain('no content');
+  });
+});
+
+describe('ForgeLessonRenderer knowledge-check outputs', () => {
+  function knowledgeCheck(id: string, correctFirst = true): LessonDraft['blocks'][number] {
+    return {
+      id,
+      kind: 'knowledgeCheck',
+      question: `Question ${id}`,
+      type: 'mcq',
+      options: [
+        { id: `${id}-o1`, text: 'Option A', correct: correctFirst },
+        { id: `${id}-o2`, text: 'Option B', correct: !correctFirst },
+      ],
+      feedbackCorrect: 'Correct!',
+      feedbackIncorrect: 'Not quite.',
+    };
+  }
+
+  const oneCheckLesson: LessonDraft = {
+    id: 'lesson-kc',
+    title: 'One check',
+    blocks: [knowledgeCheck('kc1')],
+  };
+
+  /** Creates a renderer with output recorders attached before the first CD. */
+  function setup(lesson: LessonDraft) {
+    const fixture = TestBed.createComponent(ForgeLessonRenderer);
+    const answered: CheckAnsweredEvent[] = [];
+    const states: ChecksStateEvent[] = [];
+    fixture.componentInstance.checkAnswered.subscribe((event) => answered.push(event));
+    fixture.componentInstance.checksState.subscribe((event) => states.push(event));
+    fixture.componentRef.setInput('lesson', lesson);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    /** Clicks option `optionIndex` of check `kcIndex`, then 'Check answer'. */
+    const answer = (kcIndex: number, optionIndex: number) => {
+      const kc = element.querySelectorAll('.block-kc')[kcIndex];
+      kc?.querySelectorAll<HTMLButtonElement>('.kc-option')[optionIndex]?.click();
+      fixture.detectChanges();
+      kc?.querySelector<HTMLButtonElement>('.kc-check')?.click();
+      fixture.detectChanges();
+    };
+    const retry = (kcIndex: number) => {
+      const kc = element.querySelectorAll('.block-kc')[kcIndex];
+      kc?.querySelector<HTMLButtonElement>('.kc-retry')?.click();
+      fixture.detectChanges();
+    };
+    return { fixture, element, answered, states, answer, retry };
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [ForgeLessonRenderer] }).compileComponents();
+  });
+
+  it('emits the initial checksState when the lesson input is set', () => {
+    const { answered, states } = setup(oneCheckLesson);
+    expect(states).toEqual([{ total: 1, answered: 0, correctOnFirstAttempt: 0 }]);
+    expect(answered).toEqual([]);
+  });
+
+  it('emits total: 0 for a lesson without knowledge checks', () => {
+    const { states } = setup({ id: 'plain', title: 'Plain', blocks: [] });
+    expect(states).toEqual([{ total: 0, answered: 0, correctOnFirstAttempt: 0 }]);
+  });
+
+  it('emits checkAnswered and an updated checksState on a correct first attempt', () => {
+    const { answered, states, answer } = setup(oneCheckLesson);
+    answer(0, 0); // correct option
+    expect(answered).toEqual([{ blockId: 'kc1', correct: true, firstAttempt: true }]);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
+  });
+
+  it('does not count retries toward correctOnFirstAttempt and stays silent on retry-reset', () => {
+    const { answered, states, answer, retry } = setup(oneCheckLesson);
+    answer(0, 1); // wrong first attempt
+    expect(answered).toEqual([{ blockId: 'kc1', correct: false, firstAttempt: true }]);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 0 });
+
+    const emissionsAfterFirstAttempt = { answered: answered.length, states: states.length };
+    retry(0); // reset emits nothing
+    expect(answered).toHaveLength(emissionsAfterFirstAttempt.answered);
+    expect(states).toHaveLength(emissionsAfterFirstAttempt.states);
+
+    answer(0, 0); // correct on the retry
+    expect(answered.at(-1)).toEqual({ blockId: 'kc1', correct: true, firstAttempt: false });
+    // Aggregate is unchanged by retries, so no further checksState emission.
+    expect(states).toHaveLength(emissionsAfterFirstAttempt.states);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 0 });
+  });
+
+  it('tracks several checks independently', () => {
+    const { states, answer } = setup({
+      id: 'lesson-multi',
+      title: 'Two checks',
+      blocks: [knowledgeCheck('kc1'), knowledgeCheck('kc2')],
+    });
+    expect(states.at(-1)).toEqual({ total: 2, answered: 0, correctOnFirstAttempt: 0 });
+    answer(0, 1); // wrong
+    expect(states.at(-1)).toEqual({ total: 2, answered: 1, correctOnFirstAttempt: 0 });
+    answer(1, 0); // correct
+    expect(states.at(-1)).toEqual({ total: 2, answered: 2, correctOnFirstAttempt: 1 });
+  });
+
+  it('resets answer state and re-emits the aggregate when the lesson changes', () => {
+    const { fixture, element, answered, states, answer } = setup(oneCheckLesson);
+    answer(0, 0);
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
+
+    fixture.componentRef.setInput('lesson', {
+      id: 'lesson-next',
+      title: 'Next lesson',
+      blocks: [knowledgeCheck('kc9')],
+    });
+    fixture.detectChanges();
+    expect(states.at(-1)).toEqual({ total: 1, answered: 0, correctOnFirstAttempt: 0 });
+    expect(element.querySelector('.kc-feedback')).toBeFalsy();
+    expect(element.querySelector('.kc-option.selected')).toBeFalsy();
+
+    // Answering in the new lesson is a first attempt again.
+    answer(0, 0);
+    expect(answered.at(-1)).toEqual({ blockId: 'kc9', correct: true, firstAttempt: true });
+    expect(states.at(-1)).toEqual({ total: 1, answered: 1, correctOnFirstAttempt: 1 });
   });
 });

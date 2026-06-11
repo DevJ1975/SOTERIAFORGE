@@ -3,6 +3,7 @@ import { FirebaseOptions, initializeApp, provideFirebaseApp } from '@angular/fir
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { connectFunctionsEmulator, getFunctions, provideFunctions } from '@angular/fire/functions';
+import { connectStorageEmulator, getStorage, provideStorage } from '@angular/fire/storage';
 
 /**
  * Demo options used against the local Firebase emulators (no real project).
@@ -12,6 +13,8 @@ export const DEFAULT_FIREBASE_OPTIONS: FirebaseOptions = {
   projectId: 'soteria-forge-dev',
   apiKey: 'demo-api-key',
   authDomain: 'soteria-forge-dev.firebaseapp.com',
+  // Required for getStorage(): refs against the (emulated) default bucket.
+  storageBucket: 'soteria-forge-dev.appspot.com',
   appId: 'demo',
 };
 
@@ -20,6 +23,8 @@ const FIRESTORE_EMULATOR_HOST = 'localhost';
 const FIRESTORE_EMULATOR_PORT = 8080;
 const FUNCTIONS_EMULATOR_HOST = 'localhost';
 const FUNCTIONS_EMULATOR_PORT = 5001;
+const STORAGE_EMULATOR_HOST = 'localhost';
+const STORAGE_EMULATOR_PORT = 9199;
 
 /** True when the app is served from a local dev host (use the emulators). */
 function isLocalHost(): boolean {
@@ -31,11 +36,13 @@ function isLocalHost(): boolean {
 let authEmulatorConnected = false;
 let firestoreEmulatorConnected = false;
 let functionsEmulatorConnected = false;
+let storageEmulatorConnected = false;
 
 /**
- * Composes Firebase app + Auth + Firestore + Functions providers for every
- * Forge app. On localhost the SDKs are pointed at the local emulator suite
- * (auth :9099, firestore :8080, functions :5001 — see workspace firebase.json).
+ * Composes Firebase app + Auth + Firestore + Functions + Storage providers for
+ * every Forge app. On localhost the SDKs are pointed at the local emulator
+ * suite (auth :9099, firestore :8080, functions :5001, storage :9199 — see
+ * workspace firebase.json).
  */
 export function provideForgeFirebase(options?: FirebaseOptions): EnvironmentProviders {
   const firebaseOptions = options ?? DEFAULT_FIREBASE_OPTIONS;
@@ -76,6 +83,18 @@ export function provideForgeFirebase(options?: FirebaseOptions): EnvironmentProv
         }
       }
       return functions;
+    }),
+    provideStorage(() => {
+      const storage = getStorage();
+      if (isLocalHost() && !storageEmulatorConnected) {
+        try {
+          connectStorageEmulator(storage, STORAGE_EMULATOR_HOST, STORAGE_EMULATOR_PORT);
+          storageEmulatorConnected = true;
+        } catch {
+          // Already connected (e.g. hot reload) — safe to ignore.
+        }
+      }
+      return storage;
     }),
   ]);
 }

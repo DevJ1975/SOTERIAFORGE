@@ -23,7 +23,7 @@ Target architecture (already encoded in `tsconfig.base.json` paths and `package.
 
 ---
 
-## Phase 0 (finish) — Workspace foundation
+## Phase 0 (finish) — Workspace foundation ✅ DONE
 
 Goal: `npm install && npm run lint && npm test && npm run build` all green in CI.
 
@@ -36,7 +36,7 @@ Goal: `npm install && npm run lint && npm test && npm run build` all green in CI
 
 Exit criteria: CI green, all apps serve a hello-world shell, emulators boot.
 
-## Phase 1 — Identity, tenancy, and data access (the platform spine)
+## Phase 1 — Identity, tenancy, and data access (the platform spine) ✅ DONE
 
 Everything else depends on this; do it before any feature UI.
 
@@ -48,7 +48,7 @@ Everything else depends on this; do it before any feature UI.
 
 Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, rules tests prove cross-tenant reads are denied.
 
-## Phase 2 — LMS core (B2B MVP — first sellable slice)
+## Phase 2 — LMS core (B2B MVP — first sellable slice) 🔨 IN PROGRESS
 
 - **`apps/admin`**: member management (invite → email → accept flow, statuses `invited/active/deactivated`), content upload to Storage (video first), publish workflow (`draft/published/archived`).
 - **Forge Studio** (started early, ahead of the backend): Articulate-Rise-style block course
