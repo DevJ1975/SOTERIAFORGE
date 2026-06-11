@@ -1,9 +1,14 @@
 import {
   GAME_IDS,
+  PERIL_MATCH_EVENT_TYPES,
+  PERIL_MATCH_MAX_PLAYERS,
+  PERIL_MATCH_STATUSES,
   PLATFORM_BADGES,
   badgeAward,
   gameResult,
   levelForXp,
+  perilMatch,
+  perilMatchEvent,
   platformBadgeById,
   xpEvent,
   xpForLevel,
@@ -119,6 +124,91 @@ describe('gameResult', () => {
 
   it('covers exactly the platform game ids', () => {
     expect(GAME_IDS).toEqual(['hazard-hunter', 'peril']);
+  });
+});
+
+describe('perilMatch', () => {
+  const player = (uid: string) => ({
+    uid,
+    displayName: `Player ${uid}`,
+    joinedAt: '2026-06-11T12:00:00.000Z',
+  });
+  const base = {
+    id: 'm1',
+    tenantId: 'acme',
+    hostUid: 'u1',
+    status: 'open',
+    createdAt: '2026-06-11T12:00:00.000Z',
+    players: [player('u1')],
+    seed: 1234567,
+    updatedAt: '2026-06-11T12:00:00.000Z',
+  };
+
+  it('parses an open match and a full three-seat playing match', () => {
+    expect(perilMatch.parse(base)).toMatchObject({ status: 'open', seed: 1234567 });
+    expect(
+      perilMatch.parse({
+        ...base,
+        status: 'playing',
+        players: [player('u1'), player('u2'), player('u3')],
+      }).players,
+    ).toHaveLength(3);
+  });
+
+  it('covers exactly the documented statuses', () => {
+    expect(PERIL_MATCH_STATUSES).toEqual(['open', 'playing', 'finished', 'abandoned']);
+    expect(perilMatch.safeParse({ ...base, status: 'lobby' }).success).toBe(false);
+  });
+
+  it('rejects more than three players', () => {
+    expect(PERIL_MATCH_MAX_PLAYERS).toBe(3);
+    expect(
+      perilMatch.safeParse({
+        ...base,
+        players: [player('u1'), player('u2'), player('u3'), player('u4')],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects fractional seeds, missing host, and nameless players', () => {
+    expect(perilMatch.safeParse({ ...base, seed: 0.5 }).success).toBe(false);
+    expect(perilMatch.safeParse({ ...base, hostUid: undefined }).success).toBe(false);
+    expect(
+      perilMatch.safeParse({ ...base, players: [{ ...player('u1'), displayName: '' }] }).success,
+    ).toBe(false);
+  });
+});
+
+describe('perilMatchEvent', () => {
+  const base = {
+    id: 'e1',
+    matchId: 'm1',
+    uid: 'u2',
+    at: '2026-06-11T12:00:01.000Z',
+    type: 'buzz',
+    payload: { latencyMs: 412 },
+  };
+
+  it('parses player events and host state snapshots', () => {
+    expect(perilMatchEvent.parse(base)).toMatchObject({ type: 'buzz' });
+    expect(
+      perilMatchEvent.parse({
+        ...base,
+        type: 'state',
+        payload: { scores: { u1: 600, u2: -200 }, phase: 'board' },
+      }).payload['phase'],
+    ).toBe('board');
+  });
+
+  it('covers exactly the documented event types', () => {
+    expect(PERIL_MATCH_EVENT_TYPES).toEqual(['buzz', 'answer', 'wager', 'select', 'state']);
+    expect(perilMatchEvent.safeParse({ ...base, type: 'chat' }).success).toBe(false);
+  });
+
+  it('requires a payload object and an ISO timestamp', () => {
+    expect(perilMatchEvent.safeParse({ ...base, payload: undefined }).success).toBe(false);
+    expect(perilMatchEvent.safeParse({ ...base, payload: 'buzz' }).success).toBe(false);
+    expect(perilMatchEvent.safeParse({ ...base, at: 'yesterday' }).success).toBe(false);
   });
 });
 

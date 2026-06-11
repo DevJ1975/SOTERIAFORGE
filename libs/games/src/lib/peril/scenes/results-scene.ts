@@ -10,10 +10,12 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   getAudio,
+  getServices,
   getSession,
   hexString,
   makePodium,
   makeTextButton,
+  PerilSession,
   REGISTRY_KEYS,
   SCENE_KEYS,
   UI_FONT,
@@ -36,6 +38,10 @@ export class ResultsScene extends Phaser.Scene {
     const standings = [...session.engine.contestants].sort((a, b) => b.score - a.score);
     const winner = standings[0];
     const humanWon = winner.isHuman;
+
+    // The host retires the realtime match cleanly (no-op for guests/AI).
+    session.provider.completeMatch?.();
+    this.reportResult(session, humanWon);
 
     // Spotlight sweep.
     const spotlight = this.add.graphics().setDepth(2);
@@ -142,5 +148,31 @@ export class ResultsScene extends Phaser.Scene {
       },
       { fontSize: 30 },
     ).container.setDepth(30);
+  }
+
+  /**
+   * Reports the finished game (win or lose, vs humans or bots) through
+   * GAME_RESULT_SINK exactly once; failures — e.g. unauthenticated players —
+   * are swallowed silently. A small '+XP recorded' note appears when the
+   * report lands.
+   */
+  private reportResult(session: PerilSession, humanWon: boolean): void {
+    const report = getServices(this)?.reportResult;
+    if (!report || session.resultReported) return;
+    session.resultReported = true;
+    const score = Math.max(0, session.engine.score(session.humanId));
+    report({ score, won: humanWon })
+      .then(() => {
+        if (!this.scene.isActive(SCENE_KEYS.results)) return;
+        this.add
+          .text(GAME_WIDTH / 2, 580, '+XP recorded', {
+            fontFamily: UI_FONT,
+            fontSize: '20px',
+            color: hexString(COLORS.correctGreen),
+          })
+          .setOrigin(0.5)
+          .setDepth(30);
+      })
+      .catch(() => undefined);
   }
 }

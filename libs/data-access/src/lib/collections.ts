@@ -12,6 +12,8 @@ import {
   leaderboard,
   member,
   module as moduleSchema,
+  perilMatch,
+  perilMatchEvent,
   tenant,
   xpEvent,
 } from '@forge/shared';
@@ -28,6 +30,8 @@ import type {
   LeaderboardPeriod,
   Member,
   Module,
+  PerilMatch,
+  PerilMatchEvent,
   Tenant,
   XpEvent,
 } from '@forge/shared';
@@ -66,6 +70,8 @@ const b2cCustomerConverter = zodConverter(b2cCustomer);
 const xpEventConverter = zodConverter(xpEvent);
 const badgeAwardConverter = zodConverter(badgeAward);
 const gameResultConverter = zodConverter(gameResult);
+const perilMatchConverter = zodConverter(perilMatch);
+const perilMatchEventConverter = zodConverter(perilMatchEvent);
 
 /** /tenants */
 export function tenantsCol(db: Firestore): CollectionReference<Tenant> {
@@ -211,6 +217,43 @@ export function gameResultDoc(
   resultId: string,
 ): DocumentReference<GameResult> {
   return doc(gameResultsCol(db, tenantId), resultId);
+}
+
+/** /tenants/{tenantId}/matches — realtime PERIL! match docs (lobby + live). */
+export function matchesCol(db: Firestore, tenantId: string): CollectionReference<PerilMatch> {
+  return collection(db, 'tenants', tenantId, 'matches').withConverter(perilMatchConverter);
+}
+
+/** /tenants/{tenantId}/matches/{matchId} — auto-generated id when omitted. */
+export function matchDoc(
+  db: Firestore,
+  tenantId: string,
+  matchId?: string,
+): DocumentReference<PerilMatch> {
+  return matchId ? doc(matchesCol(db, tenantId), matchId) : doc(matchesCol(db, tenantId));
+}
+
+/** /tenants/{tenantId}/matches/{matchId}/events — append-only match event log. */
+export function matchEventsCol(
+  db: Firestore,
+  tenantId: string,
+  matchId: string,
+): CollectionReference<PerilMatchEvent> {
+  return collection(db, 'tenants', tenantId, 'matches', matchId, 'events').withConverter(
+    perilMatchEventConverter,
+  );
+}
+
+/** /tenants/{tenantId}/matches/{matchId}/events/{eventId} — auto id when omitted. */
+export function matchEventDoc(
+  db: Firestore,
+  tenantId: string,
+  matchId: string,
+  eventId?: string,
+): DocumentReference<PerilMatchEvent> {
+  return eventId
+    ? doc(matchEventsCol(db, tenantId, matchId), eventId)
+    : doc(matchEventsCol(db, tenantId, matchId));
 }
 
 /** /tenants/{tenantId}/badges */

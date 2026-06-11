@@ -48,7 +48,7 @@ Everything else depends on this; do it before any feature UI.
 
 Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, rules tests prove cross-tenant reads are denied.
 
-## Phase 2 — LMS core (B2B MVP — first sellable slice) ✅ DONE (journey e2e pending)
+## Phase 2 — LMS core (B2B MVP — first sellable slice) ✅ DONE
 
 - **`apps/admin`**: member management (invite → email → accept flow, statuses `invited/active/deactivated`), content upload to Storage (video first), publish workflow (`draft/published/archived`).
 - **Forge Studio** (started early, ahead of the backend): Articulate-Rise-style block course
@@ -65,7 +65,7 @@ Exit criteria: a user can sign in to a tenant subdomain, sees tenant branding, r
 
 Exit criteria: end-to-end author→learn→complete loop works on emulators and a staging Firebase project.
 
-## Phase 3 — Standards & content runtimes (`libs/standards`, `libs/games`) 🔨 IN PROGRESS (SCORM, xAPI/LRS, quiz engine done; cmi5 + game embed wrappers pending)
+## Phase 3 — Standards & content runtimes (`libs/standards`, `libs/games`) ✅ DONE (cmi5 launch wiring + Unity/Rive embed wrappers deferred to 4.1)
 
 - SCORM 1.2/2004 runtime adapter: API discovery shim in the player iframe, `cmi` state persisted per enrollment (schema field already exists), package upload/unzip pipeline (function) for admin.
 - cmi5/xAPI: statement builder using `XAPI_VERBS` + the tenant context extension; LRS endpoint as an HTTP function (or adapter to an external LRS) with statement storage and basic queries.
@@ -74,7 +74,7 @@ Exit criteria: end-to-end author→learn→complete loop works on emulators and 
 
 Exit criteria: a SCORM package and a quiz both drive enrollment completion; xAPI statements recorded with tenant scoping.
 
-## Phase 4 — Gamification (`libs/gamification`, `libs/games`)
+## Phase 4 — Gamification (`libs/gamification`, `libs/games`) ✅ DONE (4.1 follow-ups: transactional XP adapter, Functions match referee, windowed leaderboard XP, signed badge credentials)
 
 - XP/level engine: function triggers on module/course completion award `xpReward`, update member `xp`/`level`/`streakDays` transactionally.
 - Badges: admin badge CRUD, award on completion via `badgeRefs`, Open Badges 3.0 verifiable-credential issuing + public verification endpoint.

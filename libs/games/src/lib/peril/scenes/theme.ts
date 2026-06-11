@@ -6,9 +6,10 @@
 import Phaser from 'phaser';
 import { PerilAudio } from '../audio';
 import { ContestantState, formatMoney } from '../game-rules';
-import { OpponentAvatar } from '../opponent-provider';
+import { OpponentAvatar, Unsubscribe } from '../opponent-provider';
 import { PerilEngine } from '../game-rules';
 import { OpponentProvider, OpponentProfile } from '../opponent-provider';
+import type { FirestoreMatchProvider } from '../firestore-match-provider';
 
 export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
@@ -42,6 +43,7 @@ export const SCENE_KEYS = {
 export const REGISTRY_KEYS = {
   session: 'peril:session',
   audio: 'peril:audio',
+  services: 'peril:services',
 } as const;
 
 /** Cross-scene match state stashed in the game registry. */
@@ -51,10 +53,29 @@ export interface PerilSession {
   humanId: string;
   opponents: OpponentProfile[];
   avatars: Map<string, OpponentAvatar>;
+  /** Match seed for deterministic clue/option selection (realtime matches). */
+  seed?: number;
+  /** Set once the finished game has been reported to GAME_RESULT_SINK. */
+  resultReported?: boolean;
+}
+
+/**
+ * App-level services handed to the Phaser side by PerilComponent. Both are
+ * optional: absent in Studio previews, signed-out sessions, and tests.
+ */
+export interface PerilServices {
+  /** Builds a realtime provider; null when Firestore/auth are unavailable. */
+  createMatchProvider?: () => FirestoreMatchProvider | null;
+  /** Reports the finished game through GAME_RESULT_SINK. */
+  reportResult?: (result: { score: number; won: boolean }) => Promise<void>;
 }
 
 export function getSession(scene: Phaser.Scene): PerilSession {
   return scene.registry.get(REGISTRY_KEYS.session) as PerilSession;
+}
+
+export function getServices(scene: Phaser.Scene): PerilServices | null {
+  return (scene.registry.get(REGISTRY_KEYS.services) as PerilServices | undefined) ?? null;
 }
 
 export function getAudio(scene: Phaser.Scene): PerilAudio {
@@ -330,6 +351,78 @@ export function ensureSparkTexture(scene: Phaser.Scene): string {
     g.destroy();
   }
   return key;
+}
+
+// ---- Realtime match endings ------------------------------------------------------
+
+/**
+ * Watches a realtime session for the host abandoning the match. The active
+ * scene draws a "Host left — match ended" overlay and offers an AI rematch
+ * (back to the lobby, where the scan will seat the house bots). Returns an
+ * unsubscribe for the scene's shutdown hook.
+ */
+export function watchHostDeparture(scene: Phaser.Scene, session: PerilSession): Unsubscribe {
+  const unsubscribe = session.provider.onMatchEnded?.((reason) => {
+    if (reason !== 'host-left') return;
+    // Only the scene actually running draws the overlay (board may be paused
+    // underneath the clue scene).
+    if (!scene.scene.isActive(scene.scene.key)) return;
+
+    scene.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78)
+      .setDepth(900)
+      .setInteractive(); // swallow clicks beneath the overlay
+    scene.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70, 'HOST LEFT — MATCH ENDED', {
+        fontFamily: VALUE_FONT,
+        fontSize: '54px',
+        color: '#ffffff',
+        stroke: hexString(COLORS.wrongRed),
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(901);
+    scene.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 - 14,
+        'Your scores are safe with us. Care for a rematch?',
+        {
+          fontFamily: UI_FONT,
+          fontSize: '22px',
+          color: '#aab4ff',
+        },
+      )
+      .setOrigin(0.5)
+      .setDepth(901);
+    makeTextButton(
+      scene,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 70,
+      380,
+      66,
+      'REMATCH VS THE HOUSE',
+      () => {
+        getAudio(scene).click();
+        session.provider.leave();
+        scene.registry.remove(REGISTRY_KEYS.session);
+        const manager = scene.scene;
+        for (const key of [
+          SCENE_KEYS.clue,
+          SCENE_KEYS.final,
+          SCENE_KEYS.results,
+          SCENE_KEYS.board,
+        ]) {
+          if (key !== scene.scene.key && (manager.isActive(key) || manager.isPaused(key))) {
+            manager.stop(key);
+          }
+        }
+        manager.start(SCENE_KEYS.lobby);
+      },
+      { fontSize: 28 },
+    ).container.setDepth(902);
+  });
+  return unsubscribe ?? (() => undefined);
 }
 
 /** Full-stage backdrop with subtle vignette. */

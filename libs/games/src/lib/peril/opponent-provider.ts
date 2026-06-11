@@ -62,6 +62,13 @@ export type OpponentEvent =
       amount: number;
     }
   | {
+      /** A remote opponent in control of the board picked a cell. */
+      type: 'select';
+      opponentId: string;
+      categoryIndex: number;
+      clueIndex: number;
+    }
+  | {
       /** An opponent left the match. */
       type: 'leave';
       opponentId: string;
@@ -69,6 +76,13 @@ export type OpponentEvent =
 
 export type OpponentEventListener = (event: OpponentEvent) => void;
 export type Unsubscribe = () => void;
+
+/** Host-published snapshot of the authoritative game state (see 'state' events). */
+export type HostStateListener = (state: Record<string, unknown>) => void;
+
+/** Why a realtime match ended outside the normal flow. */
+export type MatchEndReason = 'host-left' | 'finished';
+export type MatchEndListener = (reason: MatchEndReason) => void;
 
 export interface OpponentProvider {
   /**
@@ -106,4 +120,40 @@ export interface OpponentProvider {
 
   /** Leave the match and release resources. */
   leave(): void;
+
+  // ---- Optional realtime hooks ------------------------------------------------
+  //
+  // Networked providers relay LOCAL player actions to the other clients and
+  // surface host-authoritative state. Local AI providers leave these
+  // undefined; scenes call them with optional chaining.
+
+  /** True for networked providers (remote humans behind the opponent ids). */
+  readonly isRealtime?: boolean;
+
+  /** The local player buzzed `latencyMs` after the window opened. */
+  sendLocalBuzz?(latencyMs: number): void;
+
+  /** The local player locked in a response option. */
+  sendLocalAnswer?(optionIndex: number, thinkMs: number): void;
+
+  /** The local player locked in a wager. */
+  sendLocalWager?(kind: 'daily-double' | 'final', amount: number): void;
+
+  /** The local player (in control) selected a board cell. */
+  sendLocalSelect?(categoryIndex: number, clueIndex: number): void;
+
+  /** Host only: publish an authoritative state snapshot (throttled ≥250ms). */
+  publishState?(state: Record<string, unknown>): void;
+
+  /** Guests: receive host-published state snapshots. */
+  onHostState?(listener: HostStateListener): Unsubscribe;
+
+  /** Notified when the realtime match ends abnormally (e.g. host left). */
+  onMatchEnded?(listener: MatchEndListener): Unsubscribe;
+
+  /** Host only: flip the match to 'playing' once the lobby countdown ends. */
+  markStarted?(): void;
+
+  /** Host only: flip the match to 'finished' at the natural end of the game. */
+  completeMatch?(): void;
 }

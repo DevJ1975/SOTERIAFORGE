@@ -27,7 +27,7 @@ import {
   AiOpponentProvider,
   createHouseBots,
 } from './ai-opponents';
-import { OpponentEvent } from './opponent-provider';
+import { OpponentEvent, OpponentProvider } from './opponent-provider';
 import { FirestoreMatchProvider } from './firestore-match-provider';
 
 const SEATS = [
@@ -460,31 +460,41 @@ describe('AiOpponentProvider', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Firestore skeleton (Phase 4)
+// Firestore realtime provider (Phase 4) — signed-out degradation.
+// The full protocol suite lives in firestore-match-provider.spec.ts.
 // ---------------------------------------------------------------------------
 
-describe('FirestoreMatchProvider (Phase 4 skeleton)', () => {
-  it('rejects joinLobby until Phase 4 backend integration lands', async () => {
+describe('FirestoreMatchProvider (signed out / no Firestore)', () => {
+  it('resolves joinLobby immediately with zero opponents (the AI path) and never throws', async () => {
     const provider = new FirestoreMatchProvider();
-    await expect(provider.joinLobby(4000)).rejects.toThrow(
-      'Realtime matches arrive with Phase 4 backend integration',
-    );
+    await expect(provider.joinLobby(4000)).resolves.toEqual([]);
   });
 
-  it('throws from every realtime method', () => {
-    const provider = new FirestoreMatchProvider();
-    expect(() => provider.subscribe(() => undefined)).toThrow(/Phase 4/);
-    expect(() =>
-      provider.openBuzzers({
-        value: 0,
-        roundTopValue: 0,
-        optionCount: 4,
-        correctOptionIndex: 0,
-        lockedOutIds: [],
-      }),
-    ).toThrow(/Phase 4/);
-    expect(() => provider.closeBuzzers()).toThrow(/Phase 4/);
-    expect(() => provider.requestWager('x', 'final', 0, 0)).toThrow(/Phase 4/);
-    expect(() => provider.leave()).toThrow(/Phase 4/);
+  it('tolerates every realtime method without a match', () => {
+    // Typed as the scene-facing interface, exactly as the scenes consume it.
+    const provider: OpponentProvider = new FirestoreMatchProvider();
+    expect(provider.isRealtime).toBe(true);
+    const unsubscribe = provider.subscribe(() => undefined);
+    const ctx = {
+      value: 0,
+      roundTopValue: 0,
+      optionCount: 4,
+      correctOptionIndex: 0,
+      lockedOutIds: [],
+    };
+    expect(() => provider.openBuzzers(ctx)).not.toThrow();
+    expect(() => provider.closeBuzzers()).not.toThrow();
+    expect(() => provider.requestAnswer('x', ctx)).not.toThrow();
+    expect(() => provider.requestWager('x', 'final', 0, 0)).not.toThrow();
+    expect(() => provider.sendLocalBuzz?.(120)).not.toThrow();
+    expect(() => provider.sendLocalAnswer?.(1, 800)).not.toThrow();
+    expect(() => provider.sendLocalWager?.('final', 100)).not.toThrow();
+    expect(() => provider.sendLocalSelect?.(0, 0)).not.toThrow();
+    expect(() => provider.publishState?.({ phase: 'board' })).not.toThrow();
+    expect(() => provider.markStarted?.()).not.toThrow();
+    expect(() => provider.completeMatch?.()).not.toThrow();
+    expect(() => provider.cancelPending()).not.toThrow();
+    unsubscribe();
+    expect(() => provider.leave()).not.toThrow();
   });
 });

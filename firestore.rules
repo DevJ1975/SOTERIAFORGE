@@ -150,6 +150,37 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // PERIL! realtime matches: host-authoritative multiplayer sessions.
+      // Any tenant member may read (the lobby lists open matches). Creates
+      // must be self-hosted and start 'open'. Updates keep the host immutable
+      // (hostUid may never change); finer-grained join validation (e.g.
+      // players-array-only diffs) is client-tolerated in v1 — a
+      // server-authoritative Cloud Functions referee arrives with Phase 4.1.
+      match /matches/{matchId} {
+        allow read: if isSuperadmin() || inTenant(tenantId);
+        allow create: if signedIn()
+          && inTenant(tenantId)
+          && request.resource.data.hostUid == request.auth.uid
+          && request.resource.data.status == 'open';
+        allow update: if signedIn()
+          && inTenant(tenantId)
+          && request.resource.data.hostUid == resource.data.hostUid;
+        allow delete: if isSuperadmin()
+          || (inTenant(tenantId) && request.auth.uid == resource.data.hostUid);
+
+        // Match events (buzz/answer/wager/select + host 'state' snapshots):
+        // an append-only log. Players may only write events as themselves
+        // (uid must match the caller); nothing in the log is ever edited or
+        // deleted by clients.
+        match /events/{eventId} {
+          allow read: if isSuperadmin() || inTenant(tenantId);
+          allow create: if signedIn()
+            && inTenant(tenantId)
+            && request.resource.data.uid == request.auth.uid;
+          allow update, delete: if false;
+        }
+      }
+
       // xAPI statements (the per-tenant LRS store): readable by superadmin
       // and in-tenant authoring roles only — learners may not read the
       // firehose. All writes go through the recordStatements Cloud Function

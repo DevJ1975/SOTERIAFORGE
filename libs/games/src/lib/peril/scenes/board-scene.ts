@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { CellRef, formatMoney } from '../game-rules';
+import { OpponentEvent, Unsubscribe } from '../opponent-provider';
 import {
   COLORS,
   GAME_HEIGHT,
@@ -17,6 +18,7 @@ import {
   SCENE_KEYS,
   UI_FONT,
   VALUE_FONT,
+  watchHostDeparture,
 } from './theme';
 import { ClueSceneData } from './clue-scene';
 
@@ -59,8 +61,20 @@ export class BoardScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.nearBlack);
 
     this.events.on('peril:clue-done', this.onClueDone, this);
+
+    // Realtime matches: remote selections, host-authoritative score
+    // reconciliation, and the host-left overlay.
+    const unsubs: Unsubscribe[] = [];
+    if (session.provider.isRealtime) {
+      unsubs.push(session.provider.subscribe((e) => this.onRemoteEvent(e)));
+      const unsubState = session.provider.onHostState?.((state) => this.applyHostState(state));
+      if (unsubState) unsubs.push(unsubState);
+      unsubs.push(watchHostDeparture(this, session));
+    }
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.events.off('peril:clue-done', this.onClueDone, this);
+      unsubs.forEach((unsub) => unsub());
     });
 
     // Podiums.
@@ -243,6 +257,9 @@ export class BoardScene extends Phaser.Scene {
     if (controller.isHuman) {
       this.controlBanner.setText('YOU control the board — pick a clue!');
       this.enableTileInput();
+    } else if (session.provider.isRealtime) {
+      // A remote human controls the board; their 'select' event drives us.
+      this.controlBanner.setText(`${controller.name} is choosing…`);
     } else {
       this.controlBanner.setText(`${controller.name} is choosing…`);
       const available = session.engine.availableCells();
@@ -259,6 +276,42 @@ export class BoardScene extends Phaser.Scene {
     }
   }
 
+  /** Remote human in control picked a cell. */
+  private onRemoteEvent(e: OpponentEvent): void {
+    if (e.type !== 'select' || !this.selecting) return;
+    const session = getSession(this);
+    if (e.opponentId !== session.engine.controlId) return;
+    const ref: CellRef = { categoryIndex: e.categoryIndex, clueIndex: e.clueIndex };
+    if (
+      ref.categoryIndex < 0 ||
+      ref.categoryIndex > 5 ||
+      ref.clueIndex < 0 ||
+      ref.clueIndex > 4 ||
+      !session.engine.isCellAvailable(ref)
+    ) {
+      return;
+    }
+    const cat = session.engine.categoriesForRound(session.engine.round)[ref.categoryIndex];
+    const value = session.engine.getCell(ref).value;
+    const controller = session.engine.contestant(session.engine.controlId);
+    this.controlBanner.setText(`${controller.name} selects ${cat.name} for ${formatMoney(value)}`);
+    this.selectTile(ref);
+  }
+
+  /** Guests: reconcile scores against the host's authoritative snapshot. */
+  private applyHostState(state: Record<string, unknown>): void {
+    const session = getSession(this);
+    const scores = state['scores'];
+    if (!scores || typeof scores !== 'object') return;
+    for (const contestant of session.engine.contestants) {
+      const value = (scores as Record<string, unknown>)[contestant.id];
+      if (typeof value === 'number' && Number.isInteger(value) && value !== contestant.score) {
+        contestant.score = value;
+        this.podiums.get(contestant.id)?.rollScoreTo(this, value);
+      }
+    }
+  }
+
   private enableTileInput(): void {
     const session = getSession(this);
     this.tiles.forEach((tile) => {
@@ -267,8 +320,10 @@ export class BoardScene extends Phaser.Scene {
       tile.rect.on('pointerover', () => tile.rect.setFillStyle(COLORS.boardBlueDark));
       tile.rect.on('pointerout', () => tile.rect.setFillStyle(COLORS.boardBlue));
       tile.rect.on('pointerdown', () => {
-        if (!this.selecting) return;
+        if (!this.selecting || !session.engine.isCellAvailable(tile.ref)) return;
         getAudio(this).click();
+        // Tell remote clients which cell the local player picked.
+        session.provider.sendLocalSelect?.(tile.ref.categoryIndex, tile.ref.clueIndex);
         this.selectTile(tile.ref);
       });
     });
@@ -345,6 +400,15 @@ export class BoardScene extends Phaser.Scene {
     }
     session.engine.contestants.forEach((c) => {
       this.podiums.get(c.id)?.rollScoreTo(this, c.score);
+    });
+
+    // Hosts publish the authoritative state after every resolved clue
+    // (no-op for guests and local AI matches).
+    session.provider.publishState?.({
+      phase: 'board',
+      round: session.engine.round,
+      controlId: session.engine.controlId,
+      scores: Object.fromEntries(session.engine.contestants.map((c) => [c.id, c.score])),
     });
 
     this.time.delayedCall(420, () => {

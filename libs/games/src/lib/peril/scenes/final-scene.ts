@@ -6,7 +6,8 @@
 
 import Phaser from 'phaser';
 import { buildClueOptions, FINAL_PERIL } from '../peril-data';
-import { ContestantState, formatMoney } from '../game-rules';
+import { ContestantState, createSeededRng, formatMoney } from '../game-rules';
+import { finalOptionSeed } from '../match-protocol';
 import { OpponentEvent, Unsubscribe } from '../opponent-provider';
 import {
   COLORS,
@@ -23,6 +24,7 @@ import {
   TextButton,
   UI_FONT,
   VALUE_FONT,
+  watchHostDeparture,
 } from './theme';
 
 const THINK_MS = 30000;
@@ -55,8 +57,10 @@ export class FinalScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.boardBlue);
 
     this.unsubscribe = session.provider.subscribe((e) => this.onOpponentEvent(e));
+    const unsubHostLeft = watchHostDeparture(this, session);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe?.();
+      unsubHostLeft();
       getAudio(this).stopThinkMusic();
       session.provider.cancelPending();
     });
@@ -202,6 +206,8 @@ export class FinalScene extends Phaser.Scene {
       () => {
         audio.click();
         this.wagers.set(human.id, wager);
+        // Relay the local wager to remote clients (realtime matches only).
+        session.provider.sendLocalWager?.('final', wager);
         [prompt, amount, range].forEach((o) => o.destroy());
         widgets.forEach((w) => w.container.destroy());
         lock.container.destroy();
@@ -226,7 +232,11 @@ export class FinalScene extends Phaser.Scene {
   private beginThinking(): void {
     const session = getSession(this);
     const audio = getAudio(this);
-    const shuffled = buildClueOptions(FINAL_PERIL.clue);
+    // Shared match seed keeps the Final option layout identical on every
+    // client of a realtime match; AI matches stay random.
+    const optionRng =
+      session.seed !== undefined ? createSeededRng(finalOptionSeed(session.seed)) : Math.random;
+    const shuffled = buildClueOptions(FINAL_PERIL.clue, optionRng);
     this.options = shuffled.options;
     this.correctIndex = shuffled.correctIndex;
 
@@ -269,6 +279,8 @@ export class FinalScene extends Phaser.Scene {
           if (!humanPlays || this.humanLocked) return;
           this.humanLocked = true;
           this.answers.set(getSession(this).humanId, i);
+          // Relay the locked-in Final response to remote clients.
+          getSession(this).provider.sendLocalAnswer?.(i, 0);
           btn.background.setFillStyle(COLORS.boardBlue);
           btn.background.setStrokeStyle(4, COLORS.goldBright, 1);
           this.statusText.setText('Response locked in!');
@@ -348,5 +360,11 @@ export class FinalScene extends Phaser.Scene {
     this.podiums
       .get(finalist.id)
       ?.setHighlight(true, correct ? COLORS.correctGreen : COLORS.wrongRed);
+
+    // Hosts publish the authoritative scores after every Final reveal.
+    session.provider.publishState?.({
+      phase: 'final',
+      scores: Object.fromEntries(session.engine.contestants.map((c) => [c.id, c.score])),
+    });
   }
 }

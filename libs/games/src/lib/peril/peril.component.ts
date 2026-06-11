@@ -2,6 +2,11 @@
  * Angular standalone wrapper for the PERIL! Phaser game.
  * The Phaser game is created outside the NgZone so its 60fps loop never
  * triggers change detection, and destroyed cleanly with the component.
+ *
+ * The component also bridges app-level services to the Phaser side (via the
+ * game registry): a realtime match provider factory (Firestore + the
+ * signed-in principal) and the GAME_RESULT_SINK reporter. All of them are
+ * optional — Studio previews and signed-out sessions degrade to local AI.
  */
 
 import {
@@ -16,8 +21,18 @@ import {
   inject,
 } from '@angular/core';
 import Phaser from 'phaser';
+import { PrincipalStore } from '@forge/auth';
+import { FIRESTORE } from '@forge/data-access';
+import { GAME_RESULT_SINK } from '../game-result';
 import { PerilAudio } from './audio';
-import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_KEYS } from './scenes/theme';
+import { createFirestoreMatchTransport, FirestoreMatchProvider } from './firestore-match-provider';
+import {
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  PerilServices,
+  PerilSession,
+  REGISTRY_KEYS,
+} from './scenes/theme';
 import { LobbyScene } from './scenes/lobby-scene';
 import { BoardScene } from './scenes/board-scene';
 import { ClueScene } from './scenes/clue-scene';
@@ -106,6 +121,9 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
   private audio: PerilAudio | null = null;
   private readonly zone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly firestore = inject(FIRESTORE, { optional: true });
+  private readonly principal = inject(PrincipalStore, { optional: true });
+  private readonly resultSink = inject(GAME_RESULT_SINK, { optional: true });
 
   ngAfterViewInit(): void {
     this.zone.runOutsideAngular(() => {
@@ -123,7 +141,35 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
         scene: [LobbyScene, BoardScene, ClueScene, FinalScene, ResultsScene],
       });
       this.game.registry.set(REGISTRY_KEYS.audio, this.audio);
+      this.game.registry.set(REGISTRY_KEYS.services, this.buildServices());
     });
+  }
+
+  /** App services handed to the Phaser scenes through the game registry. */
+  private buildServices(): PerilServices {
+    const services: PerilServices = {
+      createMatchProvider: () => {
+        const db = this.firestore;
+        const uid = this.principal?.uid();
+        const tenantId = this.principal?.tenantId();
+        if (!db || !uid || !tenantId) return null; // signed out / no Firestore → AI path
+        return new FirestoreMatchProvider({
+          transport: createFirestoreMatchTransport(db, tenantId),
+          principal: {
+            uid,
+            tenantId,
+            displayName: this.principal?.displayName() ?? 'Player',
+          },
+        });
+      },
+    };
+    const sink = this.resultSink;
+    if (sink) {
+      services.reportResult = async ({ score, won }) => {
+        await sink.report({ game: 'peril', score, won });
+      };
+    }
+    return services;
   }
 
   toggleMute(): void {
@@ -134,6 +180,10 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.zone.runOutsideAngular(() => {
+      // Realtime matches: hosts mark the match abandoned on the way out
+      // (beforeunload covers hard exits; this covers SPA navigation).
+      const session = this.game?.registry.get(REGISTRY_KEYS.session) as PerilSession | undefined;
+      session?.provider.leave();
       this.audio?.dispose();
       this.audio = null;
       this.game?.destroy(true);

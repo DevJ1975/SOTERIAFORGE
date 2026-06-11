@@ -108,6 +108,64 @@ export const gameResult = z.object({
 });
 export type GameResult = z.infer<typeof gameResult>;
 
+// ---- PERIL! realtime matches ---------------------------------------------------
+
+/** Lifecycle of a realtime PERIL! match. */
+export const PERIL_MATCH_STATUSES = ['open', 'playing', 'finished', 'abandoned'] as const;
+export type PerilMatchStatus = (typeof PERIL_MATCH_STATUSES)[number];
+
+/** A PERIL! stage seats at most three contestants. */
+export const PERIL_MATCH_MAX_PLAYERS = 3;
+
+/** One seated (human) contestant in a realtime match. */
+export const perilMatchPlayer = z.object({
+  uid,
+  displayName: z.string().min(1).max(200),
+  joinedAt: isoDateTime,
+});
+export type PerilMatchPlayer = z.infer<typeof perilMatchPlayer>;
+
+/**
+ * A realtime PERIL! match (lobby + live session), host-authoritative.
+ * /tenants/{tenantId}/matches/{matchId}
+ *
+ * `seed` drives deterministic clue selection (Daily Double placement, option
+ * shuffles) so every client renders the identical board.
+ */
+export const perilMatch = z.object({
+  id: docId,
+  tenantId,
+  hostUid: uid,
+  status: z.enum(PERIL_MATCH_STATUSES),
+  createdAt: isoDateTime,
+  players: z.array(perilMatchPlayer).max(PERIL_MATCH_MAX_PLAYERS),
+  seed: z.number().int(),
+  updatedAt: isoDateTime,
+});
+export type PerilMatch = z.infer<typeof perilMatch>;
+
+/**
+ * Kinds of match events. Players append buzz/answer/wager/select events for
+ * their own actions; 'state' events are host-published snapshots of the
+ * authoritative game state.
+ */
+export const PERIL_MATCH_EVENT_TYPES = ['buzz', 'answer', 'wager', 'select', 'state'] as const;
+export type PerilMatchEventType = (typeof PERIL_MATCH_EVENT_TYPES)[number];
+
+/**
+ * One append-only match event.
+ * /tenants/{tenantId}/matches/{matchId}/events/{eventId}
+ */
+export const perilMatchEvent = z.object({
+  id: docId,
+  matchId: docId,
+  uid,
+  at: isoDateTime,
+  type: z.enum(PERIL_MATCH_EVENT_TYPES),
+  payload: z.record(z.string(), z.unknown()),
+});
+export type PerilMatchEvent = z.infer<typeof perilMatchEvent>;
+
 // ---- Level curve -------------------------------------------------------------
 //
 // Triangular curve: reaching level n costs a cumulative 100·(n−1)·n/2 XP, so

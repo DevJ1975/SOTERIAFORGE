@@ -6,7 +6,14 @@
 
 import Phaser from 'phaser';
 import { buildClueOptions, PerilClue } from '../peril-data';
-import { BuzzerWindow, CellRef, formatMoney, THINK_WINDOW_MS } from '../game-rules';
+import {
+  BuzzerWindow,
+  CellRef,
+  createSeededRng,
+  formatMoney,
+  THINK_WINDOW_MS,
+} from '../game-rules';
+import { clueOptionSeed } from '../match-protocol';
 import { ClueContext, OpponentEvent, Unsubscribe } from '../opponent-provider';
 import {
   COLORS,
@@ -21,6 +28,7 @@ import {
   TextButton,
   UI_FONT,
   VALUE_FONT,
+  watchHostDeparture,
 } from './theme';
 
 export interface ClueSceneData {
@@ -54,6 +62,8 @@ export class ClueScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text;
   private miniScores = new Map<string, Phaser.GameObjects.Text>();
   private lockoutFlash!: Phaser.GameObjects.Rectangle;
+  private buzzOpenedAt = 0;
+  private answerStartedAt = 0;
 
   constructor() {
     super(SCENE_KEYS.clue);
@@ -74,7 +84,15 @@ export class ClueScene extends Phaser.Scene {
   create(): void {
     const session = getSession(this);
     const audio = getAudio(this);
-    const shuffled = buildClueOptions(this.params.clue);
+    // Realtime matches shuffle options from the shared match seed so every
+    // client renders the identical layout; AI matches stay random.
+    const optionRng =
+      session.seed !== undefined
+        ? createSeededRng(
+            clueOptionSeed(session.seed, this.params.ref.categoryIndex, this.params.ref.clueIndex),
+          )
+        : Math.random;
+    const shuffled = buildClueOptions(this.params.clue, optionRng);
     this.options = shuffled.options;
     this.correctIndex = shuffled.correctIndex;
     this.stake = this.params.value;
@@ -87,8 +105,10 @@ export class ClueScene extends Phaser.Scene {
       .setDepth(60);
 
     this.unsubscribe = session.provider.subscribe((e) => this.onOpponentEvent(e));
+    const unsubHostLeft = watchHostDeparture(this, session);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe?.();
+      unsubHostLeft();
       session.provider.cancelPending();
     });
 
@@ -306,6 +326,8 @@ export class ClueScene extends Phaser.Scene {
         [title, amount, range].forEach((o) => o.destroy());
         widgets.forEach((w) => w.container.destroy());
         confirm.container.destroy();
+        // Relay the local wager to remote clients (realtime matches only).
+        session.provider.sendLocalWager?.('daily-double', wager);
         this.acceptWager(wager);
       },
       { fontSize: 30 },
@@ -313,7 +335,6 @@ export class ClueScene extends Phaser.Scene {
   }
 
   private acceptWager(wager: number): void {
-    const session = getSession(this);
     this.stake = wager;
     const header = this.children.getByName('chrome-header') as Phaser.GameObjects.Text | null;
     header?.setText(`${this.params.categoryName}  —  WAGER ${formatMoney(wager)}`);
@@ -376,6 +397,7 @@ export class ClueScene extends Phaser.Scene {
     this.answererId = null;
     this.highlightAnswerer(null);
     this.buzzer.open();
+    this.buzzOpenedAt = this.time.now;
     this.statusText.setText('BUZZ IN!');
     this.buzzHint.setText('Press SPACE to buzz');
     this.tweens.add({ targets: this.statusText, scale: 1.12, yoyo: true, duration: 140 });
@@ -394,6 +416,7 @@ export class ClueScene extends Phaser.Scene {
     this.answererId = null;
     this.highlightAnswerer(null);
     this.buzzer.reopen();
+    this.buzzOpenedAt = this.time.now;
     this.statusText.setText('BUZZ IN!');
     this.buzzHint.setText(
       this.buzzer.isExcluded(session.humanId)
@@ -424,6 +447,8 @@ export class ClueScene extends Phaser.Scene {
     const result = this.buzzer.attempt(session.humanId, this.time.now);
     const audio = getAudio(this);
     if (result === 'win') {
+      // Relay the local buzz to remote clients (realtime matches only).
+      session.provider.sendLocalBuzz?.(Math.max(0, this.time.now - this.buzzOpenedAt));
       this.onBuzzWon(session.humanId);
     } else if (result === 'too-early') {
       // Authentic 250ms early-buzz lockout with a flash.
@@ -483,6 +508,7 @@ export class ClueScene extends Phaser.Scene {
     const session = getSession(this);
     this.phase = 'answer';
     this.answererId = id;
+    this.answerStartedAt = this.time.now;
     this.highlightAnswerer(id);
     const contestant = session.engine.contestant(id);
     if (contestant.isHuman) {
@@ -503,6 +529,8 @@ export class ClueScene extends Phaser.Scene {
   private humanAnswer(index: number): void {
     const session = getSession(this);
     if (this.phase !== 'answer' || this.answererId !== session.humanId) return;
+    // Relay the local answer to remote clients (realtime matches only).
+    session.provider.sendLocalAnswer?.(index, Math.max(0, this.time.now - this.answerStartedAt));
     this.resolveAnswer(session.humanId, index);
   }
 
