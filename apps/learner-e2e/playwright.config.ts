@@ -6,63 +6,70 @@ import { workspaceRoot } from '@nx/devkit';
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
-
-/**
- * See https://playwright.dev/docs/test-configuration.
+ * Phase 2 exit-criteria journey: an instructor authors and publishes a course
+ * in the admin app, then a learner takes it in the learner app — all against
+ * the local Firebase emulators.
+ *
+ * Lifecycle (single command: `npx nx e2e learner-e2e`):
+ *  - globalSetup boots the auth+firestore emulators (reusing already-running
+ *    ones) and idempotently seeds users/claims/tenant/member docs.
+ *  - webServer starts BOTH apps: admin on :4201 and learner on :4200.
+ *  - globalTeardown stops the emulators, but only if this run started them.
  */
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  globalSetup: './src/global-setup',
+  globalTeardown: './src/global-teardown',
+  // The journey is one serial story across two apps: a single worker, no parallelism.
+  fullyParallel: false,
+  workers: 1,
+  // Network-y steps (emulator round-trips, lazy route chunks) get generous budgets.
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
+  // Same report folder as the Nx preset, but never auto-serve it: the preset
+  // default ('on-failure') would block `nx e2e` forever after a failure.
+  reporter: [
+    ['list'],
+    [
+      'html',
+      { outputFolder: '../../dist/.playwright/apps/learner-e2e/playwright-report', open: 'never' },
+    ],
+  ],
   use: {
     baseURL,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npx nx run learner:serve',
-    url: 'http://localhost:4200',
-    reuseExistingServer: true,
-    cwd: workspaceRoot,
-  },
+  /*
+   * Both apps are started before the tests (and reused when already up).
+   *
+   * serve-static (production build + file server) instead of `nx serve`: the
+   * Vite dev-server's dependency prebundler emits TWO copies of the Firestore
+   * SDK (one inlined into @angular/fire/firestore, one as the firebase/firestore
+   * entry imported by the workspace libs), so every Firestore call fails with
+   * "Expected first argument to collection() to be ... FirebaseFirestore".
+   * The real esbuild production bundle has a single SDK copy and works.
+   */
+  webServer: [
+    {
+      command: 'npx nx serve-static admin --port 4201',
+      url: 'http://localhost:4201',
+      reuseExistingServer: true,
+      timeout: 300_000,
+      cwd: workspaceRoot,
+    },
+    {
+      command: 'npx nx serve-static learner --port 4200',
+      url: 'http://localhost:4200',
+      reuseExistingServer: true,
+      timeout: 300_000,
+      cwd: workspaceRoot,
+    },
+  ],
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Uncomment for mobile browsers support
-    /* {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    }, */
-
-    // Uncomment for branded browsers
-    /* {
-      name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    } */
   ],
 });

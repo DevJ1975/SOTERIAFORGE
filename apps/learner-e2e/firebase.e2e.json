@@ -1,0 +1,22 @@
+{
+  "_comment": "E2E-only emulator config (workspace firebase.json stays untouched): same auth/firestore ports and rules, but explicit IPv4 hosts and no Emulator UI — this environment has no IPv6, and the UI's ::1 port check would otherwise abort startup.",
+  "_comment2": "The rules/indexes below are copies of the canonical workspace files, refreshed into .emulators/ by global-setup on every run (the CLI rejects paths outside the config's directory).",
+  "firestore": {
+    "rules": ".emulators/firestore.rules",
+    "indexes": ".emulators/firestore.indexes.json"
+  },
+  "emulators": {
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

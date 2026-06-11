@@ -42,7 +42,7 @@
     "@angular/ssr": "~20.0.0",
     "@ngrx/signals": "~20.0.0",
     "@primeuix/themes": "^1.2.5",
-    "firebase": "~11.6.0",
+    "firebase": "~11.10.0",
     "firebase-admin": "~13.4.0",
     "firebase-functions": "~6.3.0",
     "phaser": "~3.90.0",
