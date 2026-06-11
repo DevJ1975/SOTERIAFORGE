@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Derive affected base/head SHAs
+        uses: nrwl/nx-set-shas@v4
+
+      - run: npx nx format:check
+
+      - run: npx nx affected -t lint test build --parallel=3
+
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - run: npm ci
+
+      - name: Firestore security rules tests (emulator)
+        run: >-
+          npx firebase emulators:exec --only firestore --project demo-rules-test
+          "npx nx test data-access --testPathPattern=rules --skip-nx-cache"

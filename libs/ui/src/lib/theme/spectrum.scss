@@ -1,0 +1,144 @@
+/*
+ * Soteria Forge brand tokens on the Adobe Spectrum design system.
+ * Spectrum supplies the materials and component structure (via ForgePreset /
+ * PrimeNG); the Soteria Forge brand supplies color (ember & charcoal) and
+ * type (Oswald display + Barlow Semi Condensed UI — both sans-serif).
+ * Components consume the --forge-* aliases only.
+ */
+
+:root {
+  /* Soteria Forge brand palette */
+  --sf-ember: #e8551f;
+  --sf-ember-hover: #d8451a;
+  --sf-ember-hot: #ff7a3d;
+  --sf-spark: #ffb552;
+  --sf-charcoal: #1b1e23;
+  --sf-header: #15171b;
+  --sf-ink: #1a1d22;
+  --sf-steel: #3a4048;
+  --sf-cast: #f6f1e9;
+  --sf-surface: #f6f5f6;
+  --sf-page: #e9e8ea;
+  --sf-hairline: #dddcde;
+  --sf-muted: #8a929c;
+  --sf-grad-ember: linear-gradient(150deg, #f69a3c, #d8451a);
+
+  /* Spectrum semantic colors retained for status communication */
+  --spectrum-red-600: #d7373f;
+  --spectrum-green-600: #268e6c;
+  --spectrum-orange-600: #da7b11;
+
+  /* Forge aliases consumed by apps, libs, and games */
+  --forge-accent: var(--sf-ember);
+  --forge-accent-hover: var(--sf-ember-hover);
+  --forge-accent-down: #c33d15;
+  --forge-surface: #ffffff;
+  --forge-surface-dim: var(--sf-surface);
+  --forge-background: var(--sf-page);
+  --forge-border: var(--sf-hairline);
+  --forge-text: var(--sf-ink);
+  --forge-text-subtle: var(--sf-muted);
+  --forge-negative: var(--spectrum-red-600);
+  --forge-positive: var(--spectrum-green-600);
+  --forge-notice: var(--spectrum-orange-600);
+  --forge-radius: 8px;
+  --forge-radius-small: 4px;
+  --forge-font: 'Barlow Semi Condensed', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --forge-font-display: 'Oswald', system-ui, sans-serif;
+  --forge-shadow-emphasized: 0 1px 4px rgb(0 0 0 / 0.15);
+  --forge-shadow-elevated: 0 2px 16px rgb(0 0 0 / 0.15);
+  --forge-focus-ring: 0 0 0 2px var(--forge-surface), 0 0 0 4px var(--forge-accent);
+}
+
+html {
+  box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  font-family: var(--forge-font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--forge-text);
+  background: var(--forge-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--sf-ember);
+  color: #fff;
+}
+
+/* Display headings: Oswald, safety-signage feel */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--forge-font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--forge-text);
+  margin: 0 0 0.5em;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 23px;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+a {
+  color: var(--forge-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--forge-accent-hover);
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--forge-focus-ring);
+  border-radius: var(--forge-radius-small);
+}
+
+/* Layout utilities (Spectrum materials, brand colors) */
+.forge-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.forge-card {
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  padding: 20px 24px;
+  box-shadow: var(--forge-shadow-emphasized);
+}
+
+/* Brand tagline treatment */
+.forge-tagline {
+  font-family: var(--forge-font);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--sf-muted);
+}

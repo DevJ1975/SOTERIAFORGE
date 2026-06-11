@@ -1,0 +1,80 @@
+<div class="forge-page">
+  <header class="studio-header">
+    <div>
+      <h1 class="studio-title">Forge <span class="ember">Studio</span></h1>
+      <p class="studio-sub">Block-based course authoring — build, preview, publish.</p>
+    </div>
+    <p-button label="New course" icon="pi pi-plus" (onClick)="createCourse()" />
+  </header>
+
+  @if (loading()) {
+    <div class="state-card">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Loading courses…</p>
+    </div>
+  } @else if (courses().length === 0) {
+    <div class="state-card">
+      <i class="pi pi-sparkles"></i>
+      <h2>No courses yet</h2>
+      <p>Forge your first course — add lessons, drop in blocks, and preview as you go.</p>
+      <p-button label="Create your first course" icon="pi pi-plus" (onClick)="createCourse()" />
+    </div>
+  } @else {
+    <div class="course-grid">
+      @for (course of courses(); track course.id) {
+        <article
+          class="course-card"
+          role="button"
+          tabindex="0"
+          (click)="open(course)"
+          (keydown.enter)="open(course)"
+        >
+          <div class="card-top">
+            <span
+              class="status-chip"
+              [class.published]="course.status === 'published'"
+              [class.archived]="course.status === 'archived'"
+            >
+              {{ course.status }}
+            </span>
+            <span class="card-actions">
+              <button
+                type="button"
+                class="card-act"
+                (click)="duplicate(course, $event)"
+                pTooltip="Duplicate course"
+                tooltipPosition="top"
+              >
+                <i class="pi pi-clone"></i>
+              </button>
+              <button
+                type="button"
+                class="card-act danger"
+                (click)="confirmDelete(course, $event)"
+                pTooltip="Delete course"
+                tooltipPosition="top"
+              >
+                <i class="pi pi-trash"></i>
+              </button>
+            </span>
+          </div>
+          <h3 class="card-title">{{ course.title }}</h3>
+          @if (course.description) {
+            <p class="card-desc">{{ excerpt(course.description) }}</p>
+          } @else {
+            <p class="card-desc subtle">No description yet — add one in the builder.</p>
+          }
+          <div class="card-meta">
+            <span><i class="pi pi-book"></i> {{ course.lessons.length }} lessons</span>
+            <span><i class="pi pi-th-large"></i> {{ blockCount(course) }} blocks</span>
+            <span class="updated">
+              <i class="pi pi-clock"></i> {{ course.updatedAt | date: 'MMM d, HH:mm' }}
+            </span>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+<p-confirmdialog [style]="{ maxWidth: '420px' }" />

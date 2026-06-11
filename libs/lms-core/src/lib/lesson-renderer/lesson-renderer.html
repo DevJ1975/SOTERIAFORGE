@@ -1,0 +1,227 @@
+<article class="lesson">
+  @for (b of lesson().blocks; track b.id) {
+    @switch (b.kind) {
+      @case ('heading') {
+        @switch (b.level) {
+          @case (1) {
+            <h1 class="block-heading">{{ b.text }}</h1>
+          }
+          @case (2) {
+            <h2 class="block-heading">{{ b.text }}</h2>
+          }
+          @case (3) {
+            <h3 class="block-heading">{{ b.text }}</h3>
+          }
+        }
+      }
+      @case ('paragraph') {
+        <p class="block-paragraph" [innerHTML]="html(b.html)"></p>
+      }
+      @case ('image') {
+        <figure class="block-image" [class]="'layout-' + b.layout">
+          @if (b.url) {
+            <img [src]="b.url" [alt]="b.alt" loading="lazy" />
+          } @else {
+            <div class="media-placeholder">Image pending — add a URL in the inspector.</div>
+          }
+          @if (b.caption) {
+            <figcaption>{{ b.caption }}</figcaption>
+          }
+        </figure>
+      }
+      @case ('video') {
+        <figure class="block-video">
+          @if (b.url) {
+            @if (videoEmbedUrl(b.url); as embed) {
+              <div class="video-frame">
+                <iframe
+                  [src]="embed"
+                  title="Lesson video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            } @else {
+              <video controls [src]="b.url" preload="metadata"></video>
+            }
+          } @else {
+            <div class="media-placeholder">Video pending — add a URL in the inspector.</div>
+          }
+          @if (b.caption) {
+            <figcaption>{{ b.caption }}</figcaption>
+          }
+        </figure>
+      }
+      @case ('bulletList') {
+        <ul class="block-list">
+          @for (item of b.items; track $index) {
+            <li>{{ item }}</li>
+          }
+        </ul>
+      }
+      @case ('numberedList') {
+        <ol class="block-list">
+          @for (item of b.items; track $index) {
+            <li>{{ item }}</li>
+          }
+        </ol>
+      }
+      @case ('quote') {
+        <blockquote class="block-quote">
+          <p>{{ b.text }}</p>
+          @if (b.attribution) {
+            <cite>— {{ b.attribution }}</cite>
+          }
+        </blockquote>
+      }
+      @case ('callout') {
+        <aside class="block-callout" [class]="'tone-' + b.tone">
+          @if (b.title) {
+            <strong class="callout-title">{{ b.title }}</strong>
+          }
+          <div class="callout-body" [innerHTML]="html(b.html)"></div>
+        </aside>
+      }
+      @case ('divider') {
+        @if (b.style === 'line') {
+          <hr class="block-divider" />
+        } @else {
+          <div class="block-spacer" aria-hidden="true"></div>
+        }
+      }
+      @case ('button') {
+        <div class="block-button-wrap">
+          <a
+            class="block-button"
+            [class.primary]="b.style === 'primary'"
+            [class.ghost]="b.style === 'ghost'"
+            [href]="b.url || '#'"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ b.label }}</a
+          >
+        </div>
+      }
+      @case ('embed') {
+        @if (embedUrl(b.url); as src) {
+          <div class="block-embed">
+            <iframe
+              [src]="src"
+              [style.height.px]="b.height"
+              title="Embedded content"
+              sandbox="allow-scripts allow-forms allow-popups"
+              loading="lazy"
+            ></iframe>
+          </div>
+        } @else {
+          <div class="media-placeholder">Embed pending — add an https URL in the inspector.</div>
+        }
+      }
+      @case ('accordion') {
+        <div class="block-accordion">
+          @for (item of b.items; track item.id) {
+            <div class="acc-item" [class.open]="isPanelOpen(b, item.id)">
+              <button
+                type="button"
+                class="acc-header"
+                (click)="togglePanel(b, item.id)"
+                [attr.aria-expanded]="isPanelOpen(b, item.id)"
+              >
+                <span>{{ item.title }}</span>
+                <span class="acc-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="acc-body">
+                <div class="acc-body-inner" [innerHTML]="html(item.html)"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+      @case ('tabs') {
+        <div class="block-tabs">
+          <div class="tab-bar" role="tablist">
+            @for (item of b.items; track item.id) {
+              <button
+                type="button"
+                role="tab"
+                class="tab-button"
+                [class.active]="activeTab(b) === item.id"
+                [attr.aria-selected]="activeTab(b) === item.id"
+                (click)="selectTab(b, item.id)"
+              >
+                {{ item.title }}
+              </button>
+            }
+          </div>
+          @for (item of b.items; track item.id) {
+            @if (activeTab(b) === item.id) {
+              <div class="tab-panel" role="tabpanel" [innerHTML]="html(item.html)"></div>
+            }
+          }
+        </div>
+      }
+      @case ('flashcards') {
+        <div class="block-flashcards">
+          @for (card of b.cards; track card.id) {
+            <button
+              type="button"
+              class="flashcard"
+              [class.flipped]="isFlipped(b, card.id)"
+              (click)="flipCard(b, card.id)"
+            >
+              <span class="flashcard-inner">
+                <span class="flashcard-face front">{{ card.front }}</span>
+                <span class="flashcard-face back">{{ card.back }}</span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+      @case ('knowledgeCheck') {
+        <div class="block-kc">
+          <span class="kc-label">Knowledge check</span>
+          <p class="kc-question">{{ b.question }}</p>
+          <div class="kc-options">
+            @for (option of b.options; track option.id) {
+              <button
+                type="button"
+                class="kc-option"
+                [class.selected]="isSelected(b, option.id)"
+                [class.correct]="kcState(b).result !== null && option.correct"
+                [class.incorrect]="
+                  kcState(b).result !== null && isSelected(b, option.id) && !option.correct
+                "
+                [disabled]="kcState(b).result !== null"
+                (click)="selectOption(b, option.id)"
+              >
+                <span class="kc-marker" [class.round]="b.type !== 'multi_select'"></span>
+                <span class="kc-option-text">{{ option.text }}</span>
+              </button>
+            }
+          </div>
+          @if (kcState(b).result === null) {
+            <button
+              type="button"
+              class="kc-check"
+              [disabled]="kcState(b).selected.length === 0"
+              (click)="checkAnswer(b)"
+            >
+              Check answer
+            </button>
+          } @else {
+            <div
+              class="kc-feedback"
+              [class.ok]="kcState(b).result === 'correct'"
+              [class.nope]="kcState(b).result === 'incorrect'"
+            >
+              {{ kcState(b).result === 'correct' ? b.feedbackCorrect : b.feedbackIncorrect }}
+            </div>
+            <button type="button" class="kc-retry" (click)="resetCheck(b)">Try again</button>
+          }
+        </div>
+      }
+    }
+  } @empty {
+    <p class="lesson-empty">This lesson has no content yet.</p>
+  }
+</article>
