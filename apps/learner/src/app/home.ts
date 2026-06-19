@@ -31,7 +31,11 @@ import { ButtonModule } from 'primeng/button';
             Walk the ATL ramp in first person. Spot the OSHA and ramp-safety violations before the
             push-back window closes — every miss becomes an incident report.
           </p>
-          <p-button label="Start your shift" routerLink="/games/hazard-hunter" [queryParams]="{ level: 3 }" />
+          <p-button
+            label="Start your shift"
+            routerLink="/games/hazard-hunter"
+            [queryParams]="{ level: 3 }"
+          />
         </article>
 
         <article class="forge-card game-card">
@@ -43,7 +47,11 @@ import { ButtonModule } from 'primeng/button';
             The workplace-safety game show, airport edition. Buzz in across two rounds of aviation
             safety categories and a Final PERIL wager.
           </p>
-          <p-button label="Take the podium" routerLink="/games/peril" [queryParams]="{ board: 'airport' }" />
+          <p-button
+            label="Take the podium"
+            routerLink="/games/peril"
+            [queryParams]="{ board: 'airport' }"
+          />
         </article>
       </div>
     </div>

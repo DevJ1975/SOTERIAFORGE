@@ -1,20 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { PrincipalStore } from '@forge/auth';
 import {
+  CourseCatalogService,
   CourseContentService,
   EnrollmentService,
+  ForgeLessonRenderer,
   ProgressService,
 } from '@forge/lms-core';
-import { ForgeLessonRenderer } from '@forge/lms-core';
 import { courseCompletionXp, levelForXp, levelProgress } from '@forge/gamification';
-import type { Course, CourseDraft, LessonDraft } from '@forge/shared';
-import { CourseCatalogService } from '@forge/lms-core';
+import type { Course, CourseDraft, Enrollment, LessonDraft } from '@forge/shared';
 
 interface CompletionProjection {
   awardedXp: number;
@@ -105,8 +104,8 @@ interface CompletionProjection {
               <strong>{{ p.level }}</strong> ({{ projectedPctLabel() }} to next).
             </p>
             <p class="fine-print">
-              XP shown is a projection. Live XP, levels, and badges are awarded by the platform
-              when the rewards service runs (Phase 4).
+              XP shown is a projection. Live XP, levels, and badges are awarded by the platform when
+              the rewards service runs (Phase 4).
             </p>
             <p-button label="Back to My Learning" routerLink="/my-learning" />
           </div>
@@ -249,7 +248,7 @@ export class Player {
   protected readonly loading = signal(true);
   protected readonly content = signal<CourseDraft | undefined>(undefined);
   protected readonly course = signal<Course | undefined>(undefined);
-  protected readonly enrollment = signal<import('@forge/shared').Enrollment | undefined>(undefined);
+  protected readonly enrollment = signal<Enrollment | undefined>(undefined);
   protected readonly activeIndex = signal(0);
   private readonly completed = signal<Set<string>>(new Set());
   protected readonly projection = signal<CompletionProjection | undefined>(undefined);

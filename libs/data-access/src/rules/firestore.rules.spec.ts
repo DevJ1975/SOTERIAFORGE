@@ -360,9 +360,7 @@ maybe('firestore.rules', () => {
           updatedAt: '2024-01-01T00:00:00.000Z',
         }),
       );
-      await assertFails(
-        updateDoc(doc(acmeAdmin(), CONTENT_PATH), { title: 'Hacked' }),
-      );
+      await assertFails(updateDoc(doc(acmeAdmin(), CONTENT_PATH), { title: 'Hacked' }));
     });
   });
 

@@ -4,12 +4,7 @@ import { getDoc, getDocs } from 'firebase/firestore';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { PrincipalStore } from '@forge/auth';
-import {
-  badgesCol,
-  FIRESTORE,
-  leaderboardDoc,
-  memberDoc,
-} from '@forge/data-access';
+import { badgesCol, FIRESTORE, leaderboardDoc, memberDoc } from '@forge/data-access';
 import { EnrollmentService, type EnrolledCourse } from '@forge/lms-core';
 import { BadgeWall, LeaderboardTable, StreakChip, XpBar } from '@forge/gamification';
 import type { Badge, Leaderboard, Member } from '@forge/shared';
@@ -86,7 +81,10 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
 
       <section>
         <h2>All-time leaderboard</h2>
-        <forge-leaderboard-table [entries]="leaderboardEntries()" [currentUid]="uid() ?? undefined" />
+        <forge-leaderboard-table
+          [entries]="leaderboardEntries()"
+          [currentUid]="uid() ?? undefined"
+        />
       </section>
     </div>
   `,

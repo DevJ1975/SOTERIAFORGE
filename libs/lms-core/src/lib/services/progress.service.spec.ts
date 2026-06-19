@@ -42,13 +42,7 @@ describe('ProgressService', () => {
   });
 
   it('marks complete when every lesson is done', async () => {
-    const result = await service.setLessonProgress(
-      'atl-airport',
-      'c1',
-      'u1',
-      ['l1', 'l2'],
-      2,
-    );
+    const result = await service.setLessonProgress('atl-airport', 'c1', 'u1', ['l1', 'l2'], 2);
     expect(result.progressPct).toBe(100);
     expect(result.completed).toBe(true);
   });
