@@ -10,6 +10,7 @@ import {
   leaderboard,
   member,
   module as moduleSchema,
+  progressEvent,
   tenant,
 } from '@forge/shared';
 import type {
@@ -23,6 +24,7 @@ import type {
   LeaderboardPeriod,
   Member,
   Module,
+  ProgressEvent,
   Tenant,
 } from '@forge/shared';
 import { zodConverter } from './converters';
@@ -52,6 +54,7 @@ const memberConverter = zodConverter(member);
 const courseConverter = zodConverter(course);
 const moduleConverter = zodConverter(moduleSchema);
 const enrollmentConverter = zodConverter(enrollment);
+const progressEventConverter = zodConverter(progressEvent);
 const badgeConverter = zodConverter(badge);
 const leaderboardConverter = zodConverter(leaderboard);
 const catalogProductConverter = zodConverter(catalogProduct);
@@ -159,6 +162,42 @@ export function enrollmentDoc(
   uid: string,
 ): DocumentReference<Enrollment> {
   return doc(enrollmentsCol(db, tenantId, courseId), uid);
+}
+
+/**
+ * /tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events —
+ * append-only progress events keyed by their own `idempotencyKey` document id.
+ * A replay re-writes the same doc id ⇒ collapses (the idempotency property the
+ * sync-storm must prove). The enrollment doc is a server-derived projection of
+ * these events, advanced under a monotonic `progressVersion` guard.
+ */
+export function enrollmentEventsCol(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+  uid: string,
+): CollectionReference<ProgressEvent> {
+  return collection(
+    db,
+    'tenants',
+    tenantId,
+    'courses',
+    courseId,
+    'enrollments',
+    uid,
+    'events',
+  ).withConverter(progressEventConverter);
+}
+
+/** /tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events/{idempotencyKey} */
+export function enrollmentEventDoc(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+  uid: string,
+  idempotencyKey: string,
+): DocumentReference<ProgressEvent> {
+  return doc(enrollmentEventsCol(db, tenantId, courseId, uid), idempotencyKey);
 }
 
 /** /tenants/{tenantId}/badges */

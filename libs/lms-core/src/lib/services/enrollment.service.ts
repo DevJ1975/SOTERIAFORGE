@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { getDoc, setDoc } from 'firebase/firestore';
+import { getDoc, runTransaction } from 'firebase/firestore';
 import { enrollmentDoc, FIRESTORE } from '@forge/data-access';
 import type { Course, Enrollment } from '@forge/shared';
 import { CourseCatalogService } from './course-catalog.service';
@@ -20,8 +20,12 @@ export class EnrollmentService {
   private readonly catalog = inject(CourseCatalogService);
 
   /**
-   * Idempotent upsert: creates the learner's enrollment if absent, otherwise
-   * returns the existing one untouched (preserving progress).
+   * Idempotent create-if-absent: creates the learner's enrollment if absent,
+   * otherwise returns the existing one untouched (preserving progress).
+   *
+   * The read-then-create runs inside a `runTransaction` so two parallel enrolls
+   * (the shift-change thundering herd) cannot both create — the loser reads the
+   * winner's doc inside the same transaction and returns it untouched.
    *
    * `email` is accepted per the service contract but the audit fields record
    * the actor's `uid` (the audit convention everywhere else); `email` is a
@@ -34,24 +38,27 @@ export class EnrollmentService {
     email: string,
   ): Promise<Enrollment> {
     void email;
-    const existing = await this.getEnrollment(tenantId, courseId, uid);
-    if (existing) return existing;
+    const ref = enrollmentDoc(this.db, tenantId, courseId, uid);
+    return runTransaction(this.db, async (tx) => {
+      const snapshot = await tx.get(ref);
+      if (snapshot.exists()) return snapshot.data();
 
-    const now = new Date().toISOString();
-    const enrollment: Enrollment = {
-      uid,
-      courseId,
-      tenantId,
-      progressPct: 0,
-      completed: false,
-      lastActivityAt: now,
-      createdAt: now,
-      createdBy: uid,
-      updatedAt: now,
-      updatedBy: uid,
-    };
-    await setDoc(enrollmentDoc(this.db, tenantId, courseId, uid), enrollment);
-    return enrollment;
+      const now = new Date().toISOString();
+      const enrollment: Enrollment = {
+        uid,
+        courseId,
+        tenantId,
+        progressPct: 0,
+        completed: false,
+        lastActivityAt: now,
+        createdAt: now,
+        createdBy: uid,
+        updatedAt: now,
+        updatedBy: uid,
+      };
+      tx.set(ref, enrollment);
+      return enrollment;
+    });
   }
 
   /** The learner's enrollment in a course, or undefined if not enrolled. */
