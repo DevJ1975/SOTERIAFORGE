@@ -5,7 +5,7 @@
  */
 
 import Phaser from 'phaser';
-import { buildClueOptions, FINAL_PERIL } from '../peril-data';
+import { buildClueOptions } from '../peril-data';
 import { ContestantState, formatMoney } from '../game-rules';
 import { OpponentEvent, Unsubscribe } from '../opponent-provider';
 import {

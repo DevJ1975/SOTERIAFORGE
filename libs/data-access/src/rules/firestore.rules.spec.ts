@@ -111,6 +111,16 @@ maybe('firestore.rules', () => {
         contentType: 'video',
         ...AUDIT,
       });
+      // Rich player content (CourseDraft) at content/draft.
+      await setDoc(doc(db, 'tenants/acme/courses/pub-1/content/draft'), {
+        id: 'pub-1',
+        title: 'Published course',
+        description: 'Player content',
+        status: 'published',
+        lessons: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      });
       // Enrollments.
       await setDoc(doc(db, 'tenants/acme/courses/pub-1/enrollments/learner-1'), {
         uid: 'learner-1',
@@ -320,6 +330,38 @@ maybe('firestore.rules', () => {
           contentType: 'video',
           ...AUDIT,
         }),
+      );
+    });
+  });
+
+  describe('/tenants/{tenantId}/courses/{courseId}/content/{contentId}', () => {
+    const CONTENT_PATH = 'tenants/acme/courses/pub-1/content/draft';
+
+    it('allows a tenant member to read the player content draft', async () => {
+      await assertSucceeds(getDoc(doc(acmeLearner(), CONTENT_PATH)));
+    });
+
+    it('allows superadmin to read player content in any tenant', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), CONTENT_PATH)));
+    });
+
+    it('denies a cross-tenant user reading the player content draft', async () => {
+      await assertFails(getDoc(doc(globexLearner(), CONTENT_PATH)));
+    });
+
+    it('denies content writes for everyone (Cloud Functions/seed only)', async () => {
+      await assertFails(
+        setDoc(doc(acmeInstructor(), CONTENT_PATH), {
+          id: 'pub-1',
+          title: 'Hacked',
+          status: 'published',
+          lessons: [],
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(acmeAdmin(), CONTENT_PATH), { title: 'Hacked' }),
       );
     });
   });

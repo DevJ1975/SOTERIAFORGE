@@ -71,6 +71,15 @@ service cloud.firestore {
           allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
         }
 
+        // Rich player content (CourseDraft at content/draft): any tenant member
+        // (or superadmin) may read; writes are Cloud-Functions/seed only. Note
+        // this is deliberately not published-gated — content is only reachable
+        // once the learner has the parent course's published metadata.
+        match /content/{contentId} {
+          allow read: if isSuperadmin() || inTenant(tenantId);
+          allow write: if false;
+        }
+
         // Enrollments: keyed by the enrollee's uid. The enrollee may read and
         // upsert their own enrollment (progress, scores, cmi state) within
         // their own tenant only; authoring roles and superadmin may read.

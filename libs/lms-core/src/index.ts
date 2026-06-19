@@ -3,3 +3,7 @@ export * from './lib/history';
 export * from './lib/sanitize-html';
 export * from './lib/course-repository';
 export * from './lib/lesson-renderer/lesson-renderer';
+export * from './lib/services/course-catalog.service';
+export * from './lib/services/course-content.service';
+export * from './lib/services/enrollment.service';
+export * from './lib/services/progress.service';

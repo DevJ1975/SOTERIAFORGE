@@ -5,6 +5,7 @@ import {
   badge,
   catalogProduct,
   course,
+  courseDraft,
   enrollment,
   leaderboard,
   member,
@@ -16,6 +17,7 @@ import type {
   Badge,
   CatalogProduct,
   Course,
+  CourseDraft,
   Enrollment,
   Leaderboard,
   LeaderboardPeriod,
@@ -54,6 +56,10 @@ const badgeConverter = zodConverter(badge);
 const leaderboardConverter = zodConverter(leaderboard);
 const catalogProductConverter = zodConverter(catalogProduct);
 const b2cCustomerConverter = zodConverter(b2cCustomer);
+const courseContentConverter = zodConverter(courseDraft);
+
+/** Fixed document id for a course's player content draft. */
+export const COURSE_CONTENT_DRAFT_ID = 'draft';
 
 /** /tenants */
 export function tenantsCol(db: Firestore): CollectionReference<Tenant> {
@@ -108,6 +114,30 @@ export function moduleDoc(
   moduleId: string,
 ): DocumentReference<Module> {
   return doc(modulesCol(db, tenantId, courseId), moduleId);
+}
+
+/**
+ * /tenants/{tenantId}/courses/{courseId}/content — rich authoring content
+ * (CourseDraft) consumed by the learner player. The content doc's
+ * `CourseDraft.id` MUST equal its parent `courseId`.
+ */
+export function courseContentCol(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+): CollectionReference<CourseDraft> {
+  return collection(db, 'tenants', tenantId, 'courses', courseId, 'content').withConverter(
+    courseContentConverter,
+  );
+}
+
+/** /tenants/{tenantId}/courses/{courseId}/content/draft */
+export function courseContentDoc(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+): DocumentReference<CourseDraft> {
+  return doc(courseContentCol(db, tenantId, courseId), COURSE_CONTENT_DRAFT_ID);
 }
 
 /** /tenants/{tenantId}/courses/{courseId}/enrollments */

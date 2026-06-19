@@ -6,12 +6,12 @@
  */
 
 import {
-  FINAL_PERIL,
+  DEFAULT_BOARD,
+  FinalPeril,
+  PerilBoard,
   PerilCategory,
   PerilClue,
-  ROUND_ONE_CATEGORIES,
   ROUND_ONE_VALUES,
-  ROUND_TWO_CATEGORIES,
   ROUND_TWO_VALUES,
   RoundId,
 } from './peril-data';
@@ -63,6 +63,8 @@ export interface WagerBounds {
 
 export class PerilEngine {
   readonly contestants: ContestantState[];
+  /** The clue board in play (OSHA by default; aviation via ?board=airport). */
+  readonly board: PerilBoard;
   round: Exclude<RoundId, 'final'> = 'round1';
   /** Contestant id currently in control of the board. */
   controlId: string;
@@ -72,13 +74,18 @@ export class PerilEngine {
   private cells: BoardCell[][] = [];
   private readonly rng: () => number;
 
-  constructor(seats: ContestantSeat[], rng: () => number = Math.random) {
+  constructor(
+    seats: ContestantSeat[],
+    rng: () => number = Math.random,
+    board: PerilBoard = DEFAULT_BOARD,
+  ) {
     if (seats.length < 2) {
       throw new Error('PERIL! needs at least two contestants.');
     }
     this.contestants = seats.map((s) => ({ ...s, score: 0 }));
     this.controlId = this.contestants[0].id;
     this.rng = rng;
+    this.board = board;
     this.startRound('round1');
   }
 
@@ -100,7 +107,7 @@ export class PerilEngine {
   }
 
   categoriesForRound(round: Exclude<RoundId, 'final'>): PerilCategory[] {
-    return round === 'round1' ? ROUND_ONE_CATEGORIES : ROUND_TWO_CATEGORIES;
+    return round === 'round1' ? this.board.roundOne : this.board.roundTwo;
   }
 
   get roundTopValue(): number {
@@ -225,8 +232,16 @@ export class PerilEngine {
     return Math.min(max, Math.max(min, Math.round(wager)));
   }
 
+  finalPeril(): FinalPeril {
+    return this.board.final;
+  }
+
   finalClue(): PerilClue {
-    return FINAL_PERIL.clue;
+    return this.board.final.clue;
+  }
+
+  finalCategory(): string {
+    return this.board.final.category;
   }
 
   // ---- Internals -------------------------------------------------------------
