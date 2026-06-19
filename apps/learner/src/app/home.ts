@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { PwaInstall } from './pwa/pwa-install';
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ButtonModule],
+  imports: [RouterLink, ButtonModule, PwaInstall],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="forge-page">
@@ -17,6 +18,7 @@ import { ButtonModule } from 'primeng/button';
         <div class="hero-actions">
           <p-button label="Browse courses" routerLink="/courses" />
           <p-button label="My Learning" routerLink="/my-learning" severity="secondary" />
+          <app-pwa-install />
         </div>
       </section>
 

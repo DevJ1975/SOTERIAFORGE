@@ -1,0 +1,36 @@
+{
+  "name": "Soteria FORGE",
+  "short_name": "FORGE",
+  "description": "Workplace safety training — courses, Safety Arcade games, and offline learning for deskless teams.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#1b1e23",
+  "theme_color": "#1b1e23",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "business"],
+  "icons": [
+    {
+      "src": "brand/app-icons/app-icon-charcoal-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "brand/app-icons/app-icon-charcoal-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "brand/app-icons/app-icon-ember-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
