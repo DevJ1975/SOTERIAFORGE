@@ -88,7 +88,9 @@ the same localhost guard). Export anything new from `libs/auth`.
 @Injectable({ providedIn: 'root' })
 class VideoAssetService {
   uploadVideo(
-    tenantId: string, courseId: string, file: File,
+    tenantId: string,
+    courseId: string,
+    file: File,
     onProgress?: (pct: number) => void, // 0..1
   ): Promise<{ storagePath: string; url: string; sizeBytes: number; mimeType: string }>;
   getDownloadUrl(storagePath: string): Promise<string>;
@@ -96,10 +98,18 @@ class VideoAssetService {
 }
 
 // Platform-agnostic offline port (NO Capacitor import in lms-core)
-interface UploadedVideoRef { storagePath?: string; url: string; mimeType?: string; sizeBytes?: number; }
-interface ResolvedVideoSource { src: string; offline: boolean; }
+interface UploadedVideoRef {
+  storagePath?: string;
+  url: string;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+interface ResolvedVideoSource {
+  src: string;
+  offline: boolean;
+}
 interface OfflineVideoPort {
-  supported(): boolean;                                   // durable offline available (native)
+  supported(): boolean; // durable offline available (native)
   resolve(ref: UploadedVideoRef): Promise<ResolvedVideoSource>; // local file if downloaded, else remote
   isDownloaded(storagePath: string): Promise<boolean>;
   download(ref: UploadedVideoRef, onProgress?: (pct: number) => void): Promise<void>;
@@ -122,7 +132,7 @@ unchanged. Keep it accessible (labels, progress `aria-valuenow`).
   `.gitignore`; document `npx cap add android` / `npx cap add ios` + `npm run cap:sync`.
 - `apps/learner`: a `CapacitorOfflineVideoAdapter implements OfflineVideoPort`:
   - `@capacitor/network` for online state; `@capacitor/preferences` for the `storagePath → { localUri,
-    sizeBytes }` index; `@capacitor/filesystem` to download (fetch the resolved download URL → write
+sizeBytes }` index; `@capacitor/filesystem` to download (fetch the resolved download URL → write
     to `Directory.Data`) and `Capacitor.convertFileSrc(localUri)` for playback.
   - `supported()` = `Capacitor.isNativePlatform()`. On **web**: `supported()=false`, `download()`
     rejects with a friendly "offline available in the installed app" error, `resolve()` returns the
