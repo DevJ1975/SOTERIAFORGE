@@ -1,0 +1,23 @@
+# Soteria Forge — gitleaks configuration.
+#
+# Extends the full default gitleaks ruleset (all real secret detectors stay
+# active). The allowlist below covers ONLY non-secret, high-entropy *identifier*
+# fixtures that the default `generic-api-key` heuristic false-positives on:
+#   - idempotencyKey / lastEventKey values in the progress schema tests, and
+#   - the load-test harness, which generates idempotency keys (matching
+#     /^[A-Za-z0-9_-]{8,200}$/) and uses Firebase EMULATOR fake API keys.
+# These are identifiers/test data, not credentials. Scanning is unchanged for
+# all other paths.
+
+title = "Soteria Forge gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Non-secret idempotency-key and emulator fixtures (tests + load-test harness)"
+paths = [
+  '''libs/shared/src/lib/schemas/progress\.spec\.ts''',
+  '''libs/lms-core/src/lib/services/.*\.spec\.ts''',
+  '''tools/load-test/.*''',
+]
