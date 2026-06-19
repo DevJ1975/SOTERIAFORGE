@@ -339,7 +339,7 @@ const ATL_RAMP_HAZARDS: HazardDef[] = [
     position: [-12.6, 0, 3],
     rotationY: Math.PI / 2,
     incident:
-      "The 400-Hz ground-power cable has been dragged over the apron edge so often the jacket is worn through to the conductor. In a rain shower the puddle around the GPU head goes live; the agent unplugging it takes a shock hand-to-hand across 115 volts at high current. Cardiac monitoring, deep palm burns, 3 weeks lost time.",
+      'The 400-Hz ground-power cable has been dragged over the apron edge so often the jacket is worn through to the conductor. In a rain shower the puddle around the GPU head goes live; the agent unplugging it takes a shock hand-to-hand across 115 volts at high current. Cardiac monitoring, deep palm burns, 3 weeks lost time.',
     oshaRef: '29 CFR 1910.305',
     oshaTitle: 'Wiring methods, components, and equipment for general use',
   },
@@ -383,7 +383,7 @@ const ATL_RAMP_HAZARDS: HazardDef[] = [
     position: [12.6, 0, 5],
     rotationY: -Math.PI / 2,
     incident:
-      "A high-pressure oxygen cylinder for the cabin servicing cart stands free against the gate column, no chain, no cap. A loaded belt loader clips it and the valve shears on the concrete — 1,800 PSI of pure oxygen turns the bottle into a missile and feeds any nearby spark into a flash fire. Oxygen cylinders must be capped, secured upright, and kept clear of grease and fuel.",
+      'A high-pressure oxygen cylinder for the cabin servicing cart stands free against the gate column, no chain, no cap. A loaded belt loader clips it and the valve shears on the concrete — 1,800 PSI of pure oxygen turns the bottle into a missile and feeds any nearby spark into a flash fire. Oxygen cylinders must be capped, secured upright, and kept clear of grease and fuel.',
     oshaRef: '29 CFR 1910.101',
     oshaTitle: 'Compressed gases — general requirements',
   },

@@ -102,7 +102,7 @@ export class FinalScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScale(0.2);
     const category = this.add
-      .text(GAME_WIDTH / 2, 360, `THE CATEGORY:  ${FINAL_PERIL.category}`, {
+      .text(GAME_WIDTH / 2, 360, `THE CATEGORY:  ${getSession(this).engine.finalCategory()}`, {
         fontFamily: UI_FONT,
         fontSize: '32px',
         fontStyle: 'bold',
@@ -226,11 +226,12 @@ export class FinalScene extends Phaser.Scene {
   private beginThinking(): void {
     const session = getSession(this);
     const audio = getAudio(this);
-    const shuffled = buildClueOptions(FINAL_PERIL.clue);
+    const finalClue = session.engine.finalClue();
+    const shuffled = buildClueOptions(finalClue);
     this.options = shuffled.options;
     this.correctIndex = shuffled.correctIndex;
 
-    const clueText = makeClueText(this, GAME_WIDTH / 2, 270, FINAL_PERIL.clue.clue, 30, 1100);
+    const clueText = makeClueText(this, GAME_WIDTH / 2, 270, finalClue.clue, 30, 1100);
     clueText.setAlpha(0);
     this.tweens.add({ targets: clueText, alpha: 1, duration: 450 });
     audio.reveal();

@@ -52,7 +52,30 @@ describe('hazard-data integrity', () => {
   it('looks levels up by id', () => {
     expect(getLevel(1)?.name).toBe('WAREHOUSE');
     expect(getLevel(2)?.name).toBe('TOOL SHOP');
+    expect(getLevel(3)?.name).toBe('ATL RAMP');
     expect(getLevel(99)).toBeUndefined();
+  });
+
+  it('includes the ATL RAMP shift with airport hazards', () => {
+    const atl = getLevel(3);
+    expect(atl?.shiftLabel).toBe('SHIFT 3 — HARTSFIELD RAMP');
+    expect(atl?.hazards.length).toBeGreaterThanOrEqual(11);
+    // Every ATL hazard reuses an archetype that also appears in earlier shifts.
+    const earlierKinds = new Set(
+      [...(getLevel(1)?.hazards ?? []), ...(getLevel(2)?.hazards ?? [])].map((h) => h.kind),
+    );
+    for (const h of atl?.hazards ?? []) {
+      expect(earlierKinds.has(h.kind)).toBe(true);
+    }
+  });
+
+  it('keeps every hazard inside its room half-extents', () => {
+    for (const level of LEVELS) {
+      for (const h of level.hazards) {
+        expect(Math.abs(h.position[0])).toBeLessThanOrEqual(level.roomHalfWidth);
+        expect(Math.abs(h.position[2])).toBeLessThanOrEqual(level.roomHalfDepth);
+      }
+    }
   });
 });
 

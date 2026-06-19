@@ -34,10 +34,7 @@ interface CatalogCard {
         <div class="card-grid">
           @for (card of cards(); track card.course.id) {
             <article class="forge-card course-card">
-              <div
-                class="cover"
-                [style.background-image]="card.course.coverImageUrl ? 'url(' + card.course.coverImageUrl + ')' : null"
-              >
+              <div class="cover" aria-hidden="true">
                 @if (card.course.xpReward) {
                   <span class="xp-pill">{{ card.course.xpReward }} XP</span>
                 }
@@ -99,10 +96,11 @@ interface CatalogCard {
     }
     .cover {
       height: 132px;
-      background:
-        linear-gradient(135deg, var(--forge-accent), var(--forge-accent-2, var(--forge-accent-hover)));
-      background-size: cover;
-      background-position: center;
+      background: linear-gradient(
+        135deg,
+        var(--forge-accent),
+        var(--forge-accent-2, var(--forge-accent-hover))
+      );
       position: relative;
     }
     .xp-pill {

@@ -786,11 +786,7 @@ export const AIRPORT_ROUND_ONE_CATEGORIES: PerilCategory[] = [
         value: r1[0],
         clue: 'On the apron this high-visibility garment, usually yellow or orange, makes the ramp agent visible to drivers and flight crews.',
         correctResponse: 'What is a safety vest?',
-        distractors: [
-          'What is a flight jacket?',
-          'What is a rain poncho?',
-          'What is a lab coat?',
-        ],
+        distractors: ['What is a flight jacket?', 'What is a rain poncho?', 'What is a lab coat?'],
         explanation:
           'High-visibility apparel meeting ANSI/ISEA 107 is standard ramp PPE so workers stand out against aircraft, vehicles, and night operations.',
       },
@@ -826,11 +822,7 @@ export const AIRPORT_ROUND_ONE_CATEGORIES: PerilCategory[] = [
         value: r1[4],
         clue: 'Ramp noise from jet engines and APUs regularly exceeds OSHA’s 90-dBA limit, so crews must wear this kind of PPE.',
         correctResponse: 'What is hearing protection?',
-        distractors: [
-          'What is a respirator?',
-          'What is a face shield?',
-          'What is a knee pad?',
-        ],
+        distractors: ['What is a respirator?', 'What is a face shield?', 'What is a knee pad?'],
         explanation:
           'Apron noise commonly tops 120 dBA near engines; OSHA 1910.95 requires hearing protection and a conservation program at sustained high exposures.',
       },
@@ -851,11 +843,7 @@ export const AIRPORT_ROUND_ONE_CATEGORIES: PerilCategory[] = [
         value: r1[1],
         clue: 'Before fuel flows, the truck and aircraft are connected by this conductive wire to equalize charge and prevent a static spark.',
         correctResponse: 'What is a bonding cable?',
-        distractors: [
-          'What is a tow bar?',
-          'What is a headset cord?',
-          'What is a tie-down strap?',
-        ],
+        distractors: ['What is a tow bar?', 'What is a headset cord?', 'What is a tie-down strap?'],
         explanation:
           'Bonding equalizes electrical potential between the fueler and aircraft so a static discharge cannot ignite fuel vapor during transfer.',
       },
@@ -1026,11 +1014,7 @@ export const AIRPORT_ROUND_ONE_CATEGORIES: PerilCategory[] = [
         value: r1[1],
         clue: 'A pinch point between the moving bridge cab and the fuselage can crush a hand, so operators keep clear of these danger areas.',
         correctResponse: 'What are pinch points?',
-        distractors: [
-          'What are blind spots?',
-          'What are hot zones?',
-          'What are choke points?',
-        ],
+        distractors: ['What are blind spots?', 'What are hot zones?', 'What are choke points?'],
         explanation:
           'Moving the bridge creates crush and pinch hazards between the cab, canopy, and aircraft skin; only trained operators should drive it.',
       },
@@ -1050,11 +1034,7 @@ export const AIRPORT_ROUND_ONE_CATEGORIES: PerilCategory[] = [
         value: r1[3],
         clue: 'Opening a heavy aircraft cabin door against air-pressure or wind, crews guard against this kind of strain to the back and shoulders.',
         correctResponse: 'What is a musculoskeletal injury?',
-        distractors: [
-          'What is a chemical burn?',
-          'What is frostbite?',
-          'What is hearing loss?',
-        ],
+        distractors: ['What is a chemical burn?', 'What is frostbite?', 'What is hearing loss?'],
         explanation:
           'Door operation and baggage handling drive ramp musculoskeletal disorders; proper technique and team lifts reduce sprains and strains.',
       },
@@ -1098,11 +1078,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[2],
         clue: 'The clock that starts when anti-ice fluid is applied and counts down its protection is called this two-word time.',
         correctResponse: 'What is holdover time?',
-        distractors: [
-          'What is block time?',
-          'What is turnaround time?',
-          'What is dwell time?',
-        ],
+        distractors: ['What is block time?', 'What is turnaround time?', 'What is dwell time?'],
         explanation:
           'Holdover time estimates how long anti-ice fluid keeps the wing clean for the conditions; exceed it and the aircraft must be treated again.',
       },
@@ -1135,11 +1111,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[0],
         clue: 'The inclined conveyor that carries bags up to the cargo hold door is this piece of GSE.',
         correctResponse: 'What is a belt loader?',
-        distractors: [
-          'What is a forklift?',
-          'What is a cherry picker?',
-          'What is a pallet jack?',
-        ],
+        distractors: ['What is a forklift?', 'What is a cherry picker?', 'What is a pallet jack?'],
         explanation:
           'Belt loaders feed bags into the hold; their exposed belt-and-pulley drive is a serious nip-point hazard if the guard is missing.',
       },
@@ -1249,11 +1221,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[1],
         clue: 'Working a summer ramp on black asphalt near jet exhaust, crews guard against this rising-core-temperature illness.',
         correctResponse: 'What is heat stress?',
-        distractors: [
-          'What is hypothermia?',
-          'What is altitude sickness?',
-          'What is the bends?',
-        ],
+        distractors: ['What is hypothermia?', 'What is altitude sickness?', 'What is the bends?'],
         explanation:
           'Radiant heat from pavement and exhaust drives heat illness; water, rest, shade, and acclimatization are the core controls.',
       },
@@ -1261,11 +1229,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[2],
         clue: 'In winter ramp ops, exposed skin and slick surfaces bring the twin risks of frostbite and this whole-body cold emergency.',
         correctResponse: 'What is hypothermia?',
-        distractors: [
-          'What is heat stroke?',
-          'What is dehydration?',
-          'What is sunburn?',
-        ],
+        distractors: ['What is heat stroke?', 'What is dehydration?', 'What is sunburn?'],
         explanation:
           'Cold de-ice work risks frostbite and hypothermia; insulated, water-resistant PPE and rotation limits keep crews safe.',
       },
@@ -1285,11 +1249,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[4],
         clue: 'The hot blast of air and gases behind a running engine, which can hurl loose gear and people, is called this.',
         correctResponse: 'What is jet blast?',
-        distractors: [
-          'What is wake turbulence?',
-          'What is wind shear?',
-          'What is a microburst?',
-        ],
+        distractors: ['What is wake turbulence?', 'What is wind shear?', 'What is a microburst?'],
         explanation:
           'Jet blast behind a powered-up engine can exceed hurricane force at break-away thrust; the danger area must be kept clear of crew and equipment.',
       },
@@ -1314,11 +1274,7 @@ export const AIRPORT_ROUND_TWO_CATEGORIES: PerilCategory[] = [
         value: r2[1],
         clue: 'Drivers on the airfield use this pilots’ alphabet — Alpha, Bravo, Charlie — to read out taxiway and gate letters clearly.',
         correctResponse: 'What is the phonetic alphabet?',
-        distractors: [
-          'What is Morse code?',
-          'What is semaphore?',
-          'What is the Greek alphabet?',
-        ],
+        distractors: ['What is Morse code?', 'What is semaphore?', 'What is the Greek alphabet?'],
         explanation:
           'The ICAO phonetic alphabet prevents misheard letters over the radio when reading taxiways, gates, and aircraft registrations.',
       },

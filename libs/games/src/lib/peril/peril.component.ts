@@ -10,6 +10,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   NgZone,
   OnDestroy,
   ViewChild,
@@ -17,6 +18,7 @@ import {
 } from '@angular/core';
 import Phaser from 'phaser';
 import { PerilAudio } from './audio';
+import { resolveBoard } from './peril-data';
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_KEYS } from './scenes/theme';
 import { LobbyScene } from './scenes/lobby-scene';
 import { BoardScene } from './scenes/board-scene';
@@ -100,6 +102,12 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
   @ViewChild('gameHost', { static: true })
   private gameHost!: ElementRef<HTMLDivElement>;
 
+  /**
+   * Optional explicit board id ('osha' | 'airport'). When omitted, the board
+   * is read from the `?board=` route query parameter (default = 'osha').
+   */
+  @Input() board?: string;
+
   muted = false;
 
   private game: Phaser.Game | null = null;
@@ -108,6 +116,7 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
 
   ngAfterViewInit(): void {
+    const board = resolveBoard(this.board ?? this.readBoardFromUrl());
     this.zone.runOutsideAngular(() => {
       this.audio = new PerilAudio();
       this.game = new Phaser.Game({
@@ -123,7 +132,18 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
         scene: [LobbyScene, BoardScene, ClueScene, FinalScene, ResultsScene],
       });
       this.game.registry.set(REGISTRY_KEYS.audio, this.audio);
+      this.game.registry.set(REGISTRY_KEYS.board, board);
     });
+  }
+
+  /** Reads the `?board=` query param off the current URL, if present. */
+  private readBoardFromUrl(): string | null {
+    if (typeof window === 'undefined' || !window.location) return null;
+    try {
+      return new URLSearchParams(window.location.search).get('board');
+    } catch {
+      return null;
+    }
   }
 
   toggleMute(): void {
