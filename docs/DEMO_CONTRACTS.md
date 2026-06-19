@@ -69,20 +69,26 @@ existing data-access Firestore token (see `libs/data-access/src/lib/firestore.to
 
 ```ts
 class CourseCatalogService {
-  listPublished(tenantId: string): Promise<Course[]>;            // status === 'published'
+  listPublished(tenantId: string): Promise<Course[]>; // status === 'published'
   get(tenantId: string, courseId: string): Promise<Course | undefined>;
 }
 class CourseContentService {
   getContent(tenantId: string, courseId: string): Promise<CourseDraft | undefined>;
 }
 class EnrollmentService {
-  enroll(tenantId, courseId, uid, email): Promise<Enrollment>;  // idempotent upsert
+  enroll(tenantId, courseId, uid, email): Promise<Enrollment>; // idempotent upsert
   getEnrollment(tenantId, courseId, uid): Promise<Enrollment | undefined>;
   listMyEnrollments(tenantId, uid): Promise<{ course: Course; enrollment: Enrollment }[]>;
 }
 class ProgressService {
   // Writes the learner's OWN enrollment doc (allowed by rules). Computes progressPct.
-  setLessonProgress(tenantId, courseId, uid, completedLessonIds: string[], totalLessons: number): Promise<Enrollment>;
+  setLessonProgress(
+    tenantId,
+    courseId,
+    uid,
+    completedLessonIds: string[],
+    totalLessons: number,
+  ): Promise<Enrollment>;
   completeCourse(tenantId, courseId, uid, score?: number): Promise<Enrollment>; // completed=true, pct=100
 }
 ```
@@ -96,13 +102,16 @@ demo scope) — keep this honest in any UI copy/tooltips.
 ## 5. gamification API (Agent 2 implements; Agent 1 consumes via `@forge/gamification`)
 
 Pure functions (framework-free):
+
 ```ts
-function levelForXp(xp: number): number;            // monotonic; document the curve
-function xpForLevel(level: number): number;         // inverse threshold
+function levelForXp(xp: number): number; // monotonic; document the curve
+function xpForLevel(level: number): number; // inverse threshold
 function levelProgress(xp: number): { level: number; intoLevel: number; span: number; pct: number };
 function courseCompletionXp(course: { xpReward?: number }): number;
 ```
+
 Standalone Angular components (selectors prefixed `forge-`):
+
 - `XpBar` — `@Input() xp` → level chip + progress bar (uses `levelProgress`).
 - `BadgeWall` — `@Input() badges: Badge[]; @Input() earnedIds: string[]` → earned vs locked grid.
 - `LeaderboardTable` — `@Input() entries: Leaderboard['entries']; @Input() currentUid?` → ranked rows, highlight current user.
@@ -114,11 +123,13 @@ Use only `@forge/shared` types + `@forge/ui` tokens (never hardcode hex). Export
 ## 6. ATL brand (Agent 3 sets on the tenant doc; Agent 1 applies at runtime)
 
 `tenant.branding.colors` is a record of `--forge-*` CSS custom properties → values. ATL palette:
+
 ```
 --forge-accent:      #0B3D91   (aviation navy)
 --forge-accent-2:    #00A3A1   (jet-bridge teal)
 --forge-accent-fg:   #FFFFFF
 ```
+
 `tenant.branding.logoUrl` may be a placeholder. **Agent 1** applies branding on learner bootstrap by
 calling the existing `ForgeTheming.applyBranding()` (in `@forge/auth`) once the principal's tenant
 doc is loaded.
