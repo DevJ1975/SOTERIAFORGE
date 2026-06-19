@@ -3,6 +3,8 @@
  * adapters.ts (firebase-admin); tests use in-memory fakes (fakes.ts).
  */
 
+import type { AuditLogPort } from './audit-log';
+
 export interface CreateUserOptions {
   email: string;
   displayName?: string;
@@ -33,4 +35,9 @@ export interface DbPort {
 export interface CorePorts {
   auth: AuthPort;
   db: DbPort;
+  /**
+   * Append-only audit sink. Optional so existing tests/cores that don't care
+   * about auditing keep working; privileged cores write to it best-effort.
+   */
+  audit?: AuditLogPort;
 }

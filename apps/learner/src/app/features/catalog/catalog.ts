@@ -28,6 +28,12 @@ interface CatalogCard {
 
       @if (loading()) {
         <p class="muted">Loading courses…</p>
+      } @else if (error()) {
+        <div class="forge-card load-error">
+          <h2>Couldn't load courses</h2>
+          <p class="muted">We couldn't reach the catalog just now. Please try again.</p>
+          <p-button label="Retry" icon="pi pi-refresh" (onClick)="load()" />
+        </div>
       } @else if (cards().length === 0) {
         <p class="muted">No published courses are available yet.</p>
       } @else {
@@ -127,6 +133,7 @@ interface CatalogCard {
       margin: 0 0 12px;
       display: -webkit-box;
       -webkit-line-clamp: 3;
+      line-clamp: 3;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
@@ -145,6 +152,13 @@ interface CatalogCard {
       color: var(--forge-text-subtle);
       font-size: 0.85rem;
     }
+    .load-error {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px solid var(--forge-negative);
+    }
   `,
 })
 export class Catalog {
@@ -154,6 +168,7 @@ export class Catalog {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(true);
+  protected readonly error = signal(false);
   protected readonly enrolling = signal<string | null>(null);
   private readonly data = signal<CatalogCard[]>([]);
   protected readonly cards = computed(() => this.data());
@@ -162,7 +177,7 @@ export class Catalog {
     void this.load();
   }
 
-  private async load(): Promise<void> {
+  protected async load(): Promise<void> {
     const tenantId = this.principal.tenantId();
     const uid = this.principal.uid();
     if (!tenantId || !uid) {
@@ -170,6 +185,7 @@ export class Catalog {
       return;
     }
     this.loading.set(true);
+    this.error.set(false);
     try {
       const courses = await this.catalog.listPublished(tenantId);
       const cards = await Promise.all(
@@ -179,6 +195,8 @@ export class Catalog {
         })),
       );
       this.data.set(cards);
+    } catch {
+      this.error.set(true);
     } finally {
       this.loading.set(false);
     }

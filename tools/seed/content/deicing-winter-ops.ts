@@ -1,5 +1,6 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
+import { placeholderImage } from './placeholder';
 
 export const DEICING_COURSE_ID = 'atl-deicing-winter-ops';
 
@@ -16,7 +17,7 @@ export function buildDeicingCourse(): CourseDraft {
     title: 'Aircraft De-Icing & Winter Ramp Ops',
     description:
       'The clean-aircraft concept, Type I-IV fluids, holdover time, glycol and environmental hazards, fall protection at the de-ice bucket, and cold-stress controls for winter ramp operations.',
-    coverImageUrl: 'https://images.unsplash.com/photo-1548091559-58aa9b3f4231?w=1400&q=80',
+    coverImageUrl: placeholderImage('De-Icing & Winter Ramp Ops'),
     status: 'published',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,
@@ -46,7 +47,7 @@ export function buildDeicingCourse(): CourseDraft {
           {
             id: bid(id, 'l1', 'b4'),
             kind: 'image',
-            url: 'https://images.unsplash.com/photo-1610642372651-fe6e7bc209bb?w=1400&q=80',
+            url: placeholderImage('Spraying de-icing fluid'),
             alt: 'A commercial aircraft being sprayed with de-icing fluid on a winter ramp',
             caption: 'De-icing fluid removes frozen contamination before departure.',
             layout: 'full',

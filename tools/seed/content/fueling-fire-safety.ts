@@ -1,5 +1,6 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
+import { placeholderImage } from './placeholder';
 
 export const FUELING_COURSE_ID = 'atl-fueling-fire-safety';
 
@@ -15,7 +16,7 @@ export function buildFuelingCourse(): CourseDraft {
     title: 'Aviation Fueling Safety & Fire Prevention',
     description:
       'Jet A properties, the fire tetrahedron, bonding and static control, the 50-foot ignition rule, spill response, and ARFF coordination. Aligned with NFPA 407 and OSHA 29 CFR 1910.106.',
-    coverImageUrl: 'https://images.unsplash.com/photo-1556388158-158ea5ccacbd?w=1400&q=80',
+    coverImageUrl: placeholderImage('Fueling Safety & Fire Prevention'),
     status: 'published',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,
@@ -50,7 +51,7 @@ export function buildFuelingCourse(): CourseDraft {
           {
             id: bid(id, 'l1', 'b5'),
             kind: 'image',
-            url: 'https://images.unsplash.com/photo-1583912267550-d6c2ac3196c0?w=1400&q=80',
+            url: placeholderImage('Fuel servicing at the gate'),
             alt: 'A fuel truck servicing a commercial aircraft at the gate',
             caption: 'Fuel servicing: bonding, spill kits, and a clear ignition zone.',
             layout: 'full',

@@ -160,7 +160,7 @@ const MEDALS = ['🥇', '🥈', '🥉'] as const;
     .you {
       padding: 1px 8px;
       border-radius: 999px;
-      background: var(--forge-accent, #e8551f);
+      background: var(--forge-accent, #0b3d91);
       color: var(--forge-accent-fg, #fff);
       font-size: 10px;
       font-weight: 700;
@@ -169,15 +169,15 @@ const MEDALS = ['🥇', '🥈', '🥉'] as const;
     }
 
     .row.podium .rank-num {
-      color: var(--forge-accent, #e8551f);
+      color: var(--forge-accent, #0b3d91);
     }
 
     .row.current td {
-      background: color-mix(in srgb, var(--forge-accent, #e8551f) 10%, transparent);
+      background: color-mix(in srgb, var(--forge-accent, #0b3d91) 10%, transparent);
     }
 
     .row.current td:first-child {
-      box-shadow: inset 3px 0 0 var(--forge-accent, #e8551f);
+      box-shadow: inset 3px 0 0 var(--forge-accent, #0b3d91);
     }
   `,
 })

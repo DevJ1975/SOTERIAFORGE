@@ -30,16 +30,10 @@ import { levelProgress } from '../xp/xp';
       </div>
 
       <div class="xp-foot">
-        @if (progress().pct >= 1) {
-          <span class="max">Max level reached</span>
-        } @else {
-          <span class="into"
-            >{{ formatXp(progress().intoLevel) }} / {{ formatXp(progress().span) }}</span
-          >
-          <span class="next"
-            >{{ formatXp(remaining()) }} XP to level {{ progress().level + 1 }}</span
-          >
-        }
+        <span class="into"
+          >{{ formatXp(progress().intoLevel) }} / {{ formatXp(progress().span) }}</span
+        >
+        <span class="next">{{ formatXp(remaining()) }} XP to level {{ progress().level + 1 }}</span>
       </div>
     </div>
   `,
@@ -69,7 +63,7 @@ import { levelProgress } from '../xp/xp';
       gap: 5px;
       padding: 3px 10px;
       border-radius: 999px;
-      background: var(--forge-accent, #e8551f);
+      background: var(--forge-accent, #0b3d91);
       color: var(--forge-accent-fg, #fff);
       box-shadow: var(--forge-shadow-emphasized, 0 1px 4px rgb(0 0 0 / 0.15));
     }
@@ -108,11 +102,11 @@ import { levelProgress } from '../xp/xp';
     .fill {
       height: 100%;
       border-radius: inherit;
-      background: var(--forge-accent, #e8551f);
+      background: var(--forge-accent, #0b3d91);
       background-image: linear-gradient(
         90deg,
-        var(--forge-accent, #e8551f),
-        var(--forge-accent-2, var(--forge-accent-hover, #ff7a3d))
+        var(--forge-accent, #0b3d91),
+        var(--forge-accent-2, #00a3a1)
       );
       transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -130,12 +124,6 @@ import { levelProgress } from '../xp/xp';
       font-variant-numeric: tabular-nums;
       font-weight: 600;
       color: var(--forge-text, #1a1d22);
-    }
-
-    .max {
-      font-weight: 700;
-      color: var(--forge-accent, #e8551f);
-      letter-spacing: 0.02em;
     }
   `,
 })

@@ -16,12 +16,16 @@ merge writes mean you can re-run it safely.
 
 ## Prerequisites
 
-Start the Firebase emulators (Auth + Firestore at minimum):
+Start only the Auth + Firestore emulators — the seed needs nothing else, and
+limiting the scope avoids spinning up the Functions emulator (which requires a
+built `dist` and can stall on a fresh checkout):
 
 ```bash
-firebase emulators:start
-# or: npm run emulators
+firebase emulators:start --only auth,firestore
 ```
+
+Run order: start the emulators (above), then in a second terminal run the seed
+(`npm run seed`), then sign in to an app as a demo learner.
 
 By default the seed connects to:
 

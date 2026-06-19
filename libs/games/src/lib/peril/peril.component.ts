@@ -18,7 +18,7 @@ import {
 } from '@angular/core';
 import Phaser from 'phaser';
 import { PerilAudio } from './audio';
-import { resolveBoard } from './peril-data';
+import { DEFAULT_BOARD, resolveBoard } from './peril-data';
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_KEYS } from './scenes/theme';
 import { LobbyScene } from './scenes/lobby-scene';
 import { BoardScene } from './scenes/board-scene';
@@ -33,7 +33,7 @@ import { ResultsScene } from './scenes/results-scene';
   template: `
     <div class="peril-shell">
       <div class="peril-toolbar">
-        <span class="peril-title">PERIL! &mdash; The Workplace Safety Game Show</span>
+        <span class="peril-title">{{ title }}</span>
         <button
           type="button"
           class="peril-mute"
@@ -110,6 +110,13 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
 
   muted = false;
 
+  /**
+   * Toolbar headline. Built from the active board's label so the OSHA board
+   * reads "PERIL! — The Workplace Safety Game Show" (unchanged) and the airport
+   * board surfaces its "Aviation Ground Safety" label. Defaults to OSHA.
+   */
+  title = perilTitle(DEFAULT_BOARD.label);
+
   private game: Phaser.Game | null = null;
   private audio: PerilAudio | null = null;
   private readonly zone = inject(NgZone);
@@ -117,6 +124,8 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     const board = resolveBoard(this.board ?? this.readBoardFromUrl());
+    this.title = perilTitle(board.label);
+    this.cdr.markForCheck();
     this.zone.runOutsideAngular(() => {
       this.audio = new PerilAudio();
       this.game = new Phaser.Game({
@@ -160,4 +169,9 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
       this.game = null;
     });
   }
+}
+
+/** Builds the toolbar headline "PERIL! — The {label} Game Show" for a board. */
+function perilTitle(boardLabel: string): string {
+  return `PERIL! — The ${boardLabel} Game Show`;
 }

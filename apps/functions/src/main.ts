@@ -1,6 +1,6 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { createAuthAdapter, createDbAdapter, ensureApp } from './lib/adapters';
+import { createAuditLogAdapter, createAuthAdapter, createDbAdapter, ensureApp } from './lib/adapters';
 import { FunctionsDomainError } from './lib/errors';
 import { inviteMemberCore } from './lib/invite-member.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';
@@ -13,6 +13,7 @@ ensureApp();
 const deps: CorePorts = {
   auth: createAuthAdapter(),
   db: createDbAdapter(),
+  audit: createAuditLogAdapter(),
 };
 
 const CALLABLE_OPTS = { cors: true, region: 'us-central1' } as const;

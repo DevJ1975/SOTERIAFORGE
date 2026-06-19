@@ -318,9 +318,9 @@ const ATL_RAMP_HAZARDS: HazardDef[] = [
     position: [-8, 0, -7],
     rotationY: 0.6,
     incident:
-      'A ramp agent cuts behind a departing regional jet as it advances power to taxi out. The jet blast — well over 100 mph at break-away thrust — picks him off his feet and slams him into a baggage cart twenty feet away. Fractured collarbone, concussion, 7 weeks lost time. Blast danger areas behind running engines must be kept clear and marked.',
-    oshaRef: '29 CFR 1910.132',
-    oshaTitle: 'Personal protective equipment — general requirements',
+      'A ramp agent cuts behind a departing regional jet as it advances power to taxi out. The jet blast — well over 100 mph at break-away thrust — picks him off his feet and slams him into a baggage cart twenty feet away. Fractured collarbone, concussion, 7 weeks lost time. No OSHA standard names jet blast specifically, so this struck-by/thrown-by hazard falls under the General Duty Clause: blast danger areas behind running engines must be kept clear and marked.',
+    oshaRef: 'OSHA Sec. 5(a)(1)',
+    oshaTitle: 'General Duty Clause — recognized struck-by/thrown-by hazards',
   },
   {
     id: 'atl-fuel-spill',
@@ -372,9 +372,9 @@ const ATL_RAMP_HAZARDS: HazardDef[] = [
     position: [1.5, 0, -6.5],
     rotationY: 0.8,
     incident:
-      "In a faded gray hoodie with no ear protection, the new agent is invisible to the pushback driver's mirrors at dusk and deaf to the 130-decibel engine wash. He drifts into the pushback path and is clipped by the tow bar — and after a summer on the ramp without muffs, his audiogram already shows a standard threshold shift.",
-    oshaRef: '29 CFR 1910.95',
-    oshaTitle: 'Occupational noise exposure',
+      "In a faded gray hoodie with no high-visibility vest, the new agent is invisible to the pushback driver's mirrors at dusk. He drifts into the pushback path and is clipped by the tow bar — a struck-by injury the required hi-vis PPE exists to prevent. (Working that same wash of 130-decibel engine noise with no muffs, his audiogram has also begun to show a standard threshold shift.)",
+    oshaRef: '29 CFR 1910.132',
+    oshaTitle: 'Personal protective equipment — general requirements',
   },
   {
     id: 'atl-o2-cylinder',
@@ -419,7 +419,7 @@ const ATL_RAMP_HAZARDS: HazardDef[] = [
     oshaTitle: 'Portable fire extinguishers — general requirements',
   },
   {
-    id: 'atl-tow-bar-fall',
+    id: 'atl-apron-slip',
     name: 'Slip Hazard — Glycol & Fuel Sheen on the Apron',
     kind: 'wet-floor',
     position: [-3, 0, -2],

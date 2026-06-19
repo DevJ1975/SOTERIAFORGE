@@ -47,6 +47,11 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
         <h2>Enrolled courses</h2>
         @if (loading()) {
           <p class="muted">Loading…</p>
+        } @else if (error()) {
+          <div class="forge-card load-error">
+            <p class="muted">We couldn't load your learning dashboard. Please try again.</p>
+            <p-button label="Retry" icon="pi pi-refresh" (onClick)="load()" />
+          </div>
         } @else if (enrolled().length === 0) {
           <div class="forge-card empty">
             <p class="muted">You haven't enrolled in any courses yet.</p>
@@ -62,7 +67,11 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
                     <span class="badge-done">Completed</span>
                   }
                 </div>
-                <p-progressBar [value]="item.enrollment.progressPct" />
+                <p-progressBar
+                  [value]="item.enrollment.progressPct"
+                  [attr.aria-label]="item.course.title + ' progress'"
+                  [attr.aria-valuetext]="item.enrollment.progressPct + '% complete'"
+                />
                 <p-button
                   [label]="item.enrollment.completed ? 'Review' : 'Continue'"
                   severity="secondary"
@@ -137,7 +146,7 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
     }
     .badge-done {
       background: var(--forge-positive);
-      color: var(--forge-accent-fg, #fff);
+      color: var(--forge-accent-fg, var(--forge-surface));
       border-radius: var(--forge-radius-small);
       padding: 2px 8px;
       font-size: 0.75rem;
@@ -149,6 +158,13 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
       gap: 12px;
       align-items: flex-start;
     }
+    .load-error {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px solid var(--forge-negative);
+    }
   `,
 })
 export class MyLearning {
@@ -157,6 +173,7 @@ export class MyLearning {
   private readonly principal = inject(PrincipalStore);
 
   protected readonly loading = signal(true);
+  protected readonly error = signal(false);
   protected readonly uid = computed(() => this.principal.uid());
 
   private readonly enrolledData = signal<EnrolledCourse[]>([]);
@@ -176,7 +193,7 @@ export class MyLearning {
     void this.load();
   }
 
-  private async load(): Promise<void> {
+  protected async load(): Promise<void> {
     const tenantId = this.principal.tenantId();
     const uid = this.principal.uid();
     if (!tenantId || !uid) {
@@ -184,6 +201,7 @@ export class MyLearning {
       return;
     }
     this.loading.set(true);
+    this.error.set(false);
     try {
       const [enrolled, memberSnap, badgesSnap, leaderboardSnap] = await Promise.all([
         this.enrollments.listMyEnrollments(tenantId, uid),
@@ -191,18 +209,51 @@ export class MyLearning {
         getDocs(badgesCol(this.db, tenantId)),
         getDoc(leaderboardDoc(this.db, tenantId, 'allTime')),
       ]);
+      const member = memberSnap.exists() ? memberSnap.data() : undefined;
+      const badges = badgesSnap.docs.map((d) => d.data());
       this.enrolledData.set(enrolled);
-      this.member.set(memberSnap.exists() ? memberSnap.data() : undefined);
-      this.badgeList.set(badgesSnap.docs.map((d) => d.data()));
+      this.member.set(member);
+      this.badgeList.set(badges);
       this.leaderboard.set(leaderboardSnap.exists() ? leaderboardSnap.data() : undefined);
-      // Badges earned by completed enrollments (demo heuristic; real grants are
-      // written by the Phase-4 rewards Cloud Function).
-      const completedBadgeRefs = enrolled
-        .filter((e) => e.enrollment.completed)
-        .flatMap((e) => e.course.badgeRefs);
-      this.earned.set([...new Set(completedBadgeRefs)]);
+      this.earned.set(this.deriveEarnedBadges(enrolled, badges, member));
+    } catch {
+      this.error.set(true);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Demo heuristic for "which badges are earned" (real grants are written by the
+   * Phase-4 rewards Cloud Function):
+   *  - course badges: earned when an enrollment with that badge is completed;
+   *  - streak badges (id contains "streak"): earned once the member's
+   *    `streakDays` clears the threshold implied by the id (default 7).
+   * Kept deliberately simple and honest — no badge is shown earned without a
+   * concrete signal backing it.
+   */
+  private deriveEarnedBadges(
+    enrolled: EnrolledCourse[],
+    badges: Badge[],
+    member: Member | undefined,
+  ): string[] {
+    const earned = new Set<string>();
+    for (const e of enrolled) {
+      if (e.enrollment.completed) for (const ref of e.course.badgeRefs) earned.add(ref);
+    }
+    const streakDays = member?.streakDays ?? 0;
+    for (const badge of badges) {
+      if (badge.id.toLowerCase().includes('streak')) {
+        const threshold = this.streakThreshold(badge.id);
+        if (streakDays >= threshold) earned.add(badge.id);
+      }
+    }
+    return [...earned];
+  }
+
+  /** Pulls the leading number out of a streak badge id (e.g. `7-day-streak` -> 7); defaults to 7. */
+  private streakThreshold(badgeId: string): number {
+    const match = badgeId.match(/\d+/);
+    return match ? Number(match[0]) : 7;
   }
 }

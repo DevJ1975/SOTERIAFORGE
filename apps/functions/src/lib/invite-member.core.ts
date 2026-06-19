@@ -7,6 +7,7 @@ import {
   type MemberStatus,
   type Role,
 } from '@forge/shared';
+import { recordAuditEvent } from './audit-log';
 import { canManageRole, parseCaller } from './authz';
 import { FunctionsDomainError } from './errors';
 import type { CorePorts } from './ports';
@@ -90,6 +91,16 @@ export async function inviteMemberCore(
     ...(callerClaims?.uid ? { createdBy: callerClaims.uid } : {}),
   });
   await deps.db.setMember(input.tenantId, uid, memberDoc);
+
+  // Best-effort, non-fatal audit trail of the invitation.
+  await recordAuditEvent(deps.audit, {
+    actorUid: callerClaims?.uid,
+    actorRole: callerClaims?.role,
+    tenantId: input.tenantId,
+    action: 'inviteMember',
+    target: uid,
+    metadata: { role: input.role, email: input.email, reusedExistingUser: !!existing },
+  });
 
   return { uid, status: 'invited' };
 }

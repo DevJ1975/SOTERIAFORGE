@@ -116,4 +116,36 @@ describe('inviteMemberCore', () => {
       ),
     ).rejects.toMatchObject({ code: 'permission-denied' });
   });
+
+  it('writes a best-effort audit event recording the invitation', async () => {
+    const deps = makeFakes();
+    seedAcme(deps);
+    const result = await inviteMemberCore(deps, acmeAdminToken, {
+      email: 'new@acme.com',
+      role: 'instructor',
+      tenantId: 'acme',
+    });
+    expect(deps.audit.events).toHaveLength(1);
+    expect(deps.audit.events[0]).toMatchObject({
+      actorUid: 'admin-1',
+      actorRole: 'tenant_admin',
+      tenantId: 'acme',
+      action: 'inviteMember',
+      target: result.uid,
+      metadata: { role: 'instructor', email: 'new@acme.com', reusedExistingUser: false },
+    });
+  });
+
+  it('still invites when the audit write fails (non-fatal)', async () => {
+    const deps = makeFakes();
+    seedAcme(deps);
+    deps.audit.failNext = true;
+    const result = await inviteMemberCore(deps, acmeAdminToken, {
+      email: 'new@acme.com',
+      role: 'learner',
+      tenantId: 'acme',
+    });
+    expect(result.status).toBe('invited');
+    expect(deps.audit.events).toHaveLength(0);
+  });
 });

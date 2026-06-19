@@ -1,6 +1,7 @@
 import { getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import type { AuditLogPort } from './audit-log';
 import type { AuthPort, DbPort } from './ports';
 
 /** Module-level lazy admin app singleton. */
@@ -87,6 +88,20 @@ export function createDbAdapter(): DbPort {
 
     async setMember(tenantId, uid, data) {
       await memberRef(tenantId, uid).set(data, { merge: true });
+    },
+  };
+}
+
+/**
+ * AuditLogPort over firebase-admin/firestore. Appends to the top-level
+ * append-only `/auditLogs` collection with an auto-generated id. The Admin SDK
+ * bypasses security rules, so the `write: if false` rule applies to clients
+ * only — these writes succeed.
+ */
+export function createAuditLogAdapter(): AuditLogPort {
+  return {
+    async append(event) {
+      await db().collection('auditLogs').add(event);
     },
   };
 }

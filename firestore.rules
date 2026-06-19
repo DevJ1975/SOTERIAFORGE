@@ -133,6 +133,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // -----------------------------------------------------------------------
+    // Audit logs (SOC 2 CC7 / Confidentiality). Append-only: written
+    // exclusively by Cloud Functions via the Admin SDK (which bypasses rules),
+    // so `write: if false` means "no client writes, ever" — no creates,
+    // updates, or deletes from any client. This guarantees immutability from
+    // the client surface. Reads are restricted to superadmin, plus a
+    // tenant_admin scoped to audit events for their own tenant.
+    // -----------------------------------------------------------------------
+    match /auditLogs/{auditId} {
+      allow read: if isSuperadmin()
+        || (signedIn()
+          && role() == 'tenant_admin'
+          && resource.data.tenantId == request.auth.token.tenantId);
+      allow write: if false;
+    }
+
     // Everything not explicitly matched above is denied.
     match /{document=**} {
       allow read, write: if false;

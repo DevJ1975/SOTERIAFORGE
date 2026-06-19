@@ -31,8 +31,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       gap: 6px;
       padding: 4px 12px;
       border-radius: 999px;
-      background: color-mix(in srgb, var(--forge-accent, #e8551f) 12%, var(--forge-surface, #fff));
-      border: 1px solid color-mix(in srgb, var(--forge-accent, #e8551f) 35%, transparent);
+      background: color-mix(in srgb, var(--forge-accent, #0b3d91) 12%, var(--forge-surface, #fff));
+      border: 1px solid color-mix(in srgb, var(--forge-accent, #0b3d91) 35%, transparent);
       color: var(--forge-text, #1a1d22);
       box-shadow: var(--forge-shadow-emphasized, 0 1px 4px rgb(0 0 0 / 0.15));
     }

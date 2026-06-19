@@ -107,11 +107,13 @@ interface CompletionProjection {
                   [disabled]="activeIndex() === 0"
                   (onClick)="prev()"
                 />
-                @if (!isComplete(activeLesson()!.id)) {
+                @if (enrollment()?.completed) {
+                  <span class="completed-state">&#10003; Completed — Review</span>
+                } @else if (!isComplete(activeLesson()!.id)) {
                   <p-button label="Mark lesson done" (onClick)="markDone()" />
                 } @else if (!isLastLesson()) {
                   <p-button label="Next lesson" (onClick)="next()" />
-                } @else if (!enrollment()?.completed) {
+                } @else if (allLessonsDone()) {
                   <p-button label="Complete course" icon="pi pi-flag" (onClick)="complete()" />
                 }
               </footer>
@@ -120,16 +122,27 @@ interface CompletionProjection {
         </div>
 
         @if (projection(); as p) {
-          <div class="celebrate forge-card">
+          <div
+            #celebration
+            class="celebrate forge-card"
+            tabindex="-1"
+            role="status"
+            aria-live="polite"
+          >
             <span class="confetti" aria-hidden="true">&#127881;</span>
             <h2>Course complete!</h2>
-            <p class="muted">
-              You earned a projected <strong>{{ p.awardedXp }} XP</strong> — reaching level
-              <strong>{{ p.level }}</strong> ({{ projectedPctLabel() }} to next).
-            </p>
+            @if (p.level !== undefined) {
+              <p class="muted">
+                <strong>+{{ p.awardedXp }} XP</strong> &rarr; Level <strong>{{ p.level }}</strong>
+                ({{ projectedPctLabel() }} to next).
+              </p>
+            } @else {
+              <p class="muted"><strong>+{{ p.awardedXp }} XP</strong> earned.</p>
+            }
             <p class="fine-print">
-              XP shown is a projection. Live XP, levels, and badges are awarded by the platform when
-              the rewards service runs (Phase 4).
+              XP and level shown are a projection over your current total and are not yet saved.
+              Live XP, levels, and badges are awarded by the platform when the rewards service runs
+              (Phase 4).
             </p>
             <p-button label="Back to My Learning" routerLink="/my-learning" />
           </div>
@@ -237,6 +250,14 @@ interface CompletionProjection {
       padding-top: 16px;
       border-top: 1px solid var(--forge-border);
     }
+    .completed-state {
+      color: var(--forge-positive);
+      font-weight: 600;
+      align-self: center;
+    }
+    .error-card {
+      border: 1px solid var(--forge-negative);
+    }
     .celebrate {
       margin-top: 24px;
       text-align: center;
@@ -258,6 +279,7 @@ interface CompletionProjection {
 })
 export class Player {
   private readonly route = inject(ActivatedRoute);
+  private readonly db = inject(FIRESTORE);
   private readonly contentService = inject(CourseContentService);
   private readonly catalog = inject(CourseCatalogService);
   private readonly enrollments = inject(EnrollmentService);
@@ -269,12 +291,17 @@ export class Player {
     { initialValue: '' },
   );
 
+  private readonly celebration = viewChild<ElementRef<HTMLElement>>('celebration');
+
   protected readonly loading = signal(true);
+  protected readonly error = signal(false);
   protected readonly content = signal<CourseDraft | undefined>(undefined);
   protected readonly course = signal<Course | undefined>(undefined);
   protected readonly enrollment = signal<Enrollment | undefined>(undefined);
   protected readonly activeIndex = signal(0);
   private readonly completed = signal<Set<string>>(new Set());
+  /** The learner's current (seeded) XP baseline; undefined if the member doc can't load. */
+  private readonly memberXp = signal<number | undefined>(undefined);
   protected readonly projection = signal<CompletionProjection | undefined>(undefined);
 
   protected readonly lessons = computed<LessonDraft[]>(() => this.content()?.lessons ?? []);
@@ -284,16 +311,20 @@ export class Player {
     const total = this.lessons().length;
     return total > 0 ? Math.round((this.completed().size / total) * 100) : 0;
   });
+  /** Every lesson marked done — the gate for showing the "Complete course" CTA. */
+  protected readonly allLessonsDone = computed(
+    () => this.lessons().length > 0 && this.progressPct() === 100,
+  );
 
   private lastCourseId = '';
 
   constructor() {
-    // React to route changes (and the initial load) without effects-in-ctor lint noise.
-    queueMicrotask(() => void this.maybeLoad());
+    // Drive (re)loading off the route param so navigating course a -> course b
+    // reuses this component but still refetches instead of showing stale state.
+    effect(() => void this.maybeLoad(this.courseId()));
   }
 
-  private async maybeLoad(): Promise<void> {
-    const id = this.courseId();
+  private async maybeLoad(id: string): Promise<void> {
     if (!id || id === this.lastCourseId) return;
     this.lastCourseId = id;
     const tenantId = this.principal.tenantId();
@@ -303,22 +334,36 @@ export class Player {
       return;
     }
     this.loading.set(true);
+    this.error.set(false);
+    // Reset per-course view state so a reused component never shows stale data.
+    this.activeIndex.set(0);
+    this.completed.set(new Set());
+    this.projection.set(undefined);
     try {
-      const [content, course, enrollment] = await Promise.all([
+      const [content, course, enrollment, memberSnap] = await Promise.all([
         this.contentService.getContent(tenantId, id),
         this.catalog.get(tenantId, id),
         this.enrollments.getEnrollment(tenantId, id, uid),
+        getDoc(memberDoc(this.db, tenantId, uid)),
       ]);
       this.content.set(content);
       this.course.set(course);
       this.enrollment.set(enrollment);
+      this.memberXp.set(memberSnap.exists() ? memberSnap.data().xp : undefined);
       // Seed completion: if the enrollment is finished, treat all lessons done.
       if (enrollment?.completed && content) {
         this.completed.set(new Set(content.lessons.map((l) => l.id)));
       }
+    } catch {
+      this.error.set(true);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  protected retry(): void {
+    this.lastCourseId = '';
+    void this.maybeLoad(this.courseId());
   }
 
   protected isComplete(lessonId: string): boolean {
@@ -377,17 +422,27 @@ export class Player {
 
   private showCelebration(): void {
     const awardedXp = courseCompletionXp({ xpReward: this.course()?.xpReward });
-    // Projection over the (seeded) member baseline is out of scope here; we
-    // project from the course award alone to keep the demo honest.
-    const projectedXp = awardedXp;
-    const level = levelForXp(projectedXp);
-    const { pct } = levelProgress(projectedXp);
-    this.projection.set({ awardedXp, projectedXp, level, pct });
+    const baseline = this.memberXp();
+    if (baseline === undefined) {
+      // No member baseline available — show the award honestly without claiming
+      // an absolute level we can't compute.
+      this.projection.set({ awardedXp });
+    } else {
+      // Project over the learner's actual (seeded) XP so the level shown is
+      // honest, not the level the course award would imply in isolation.
+      const projectedXp = baseline + awardedXp;
+      const level = levelForXp(projectedXp);
+      const { pct } = levelProgress(projectedXp);
+      this.projection.set({ awardedXp, level, pct });
+    }
+    // Move focus to the celebration so screen readers (and keyboard users)
+    // land on the announced result.
+    queueMicrotask(() => this.celebration()?.nativeElement.focus());
   }
 
   protected projectedPctLabel(): string {
-    const p = this.projection();
-    if (!p) return '';
-    return `${Math.round(p.pct * 100)}%`;
+    const pct = this.projection()?.pct;
+    if (pct === undefined) return '';
+    return `${Math.round(pct * 100)}%`;
   }
 }

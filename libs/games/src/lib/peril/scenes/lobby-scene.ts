@@ -6,7 +6,7 @@
 import Phaser from 'phaser';
 import { AiOpponentProvider } from '../ai-opponents';
 import { PerilEngine } from '../game-rules';
-import { DEFAULT_BOARD, PerilBoard } from '../peril-data';
+import { boardSubtitle, DEFAULT_BOARD, PerilBoard } from '../peril-data';
 import { OpponentProfile } from '../opponent-provider';
 import {
   COLORS,
@@ -37,6 +37,8 @@ export class LobbyScene extends Phaser.Scene {
     drawStageBackdrop(this);
     ensureSparkTexture(this);
     const audio = getAudio(this);
+    const board =
+      (this.registry.get(REGISTRY_KEYS.board) as PerilBoard | undefined) ?? DEFAULT_BOARD;
 
     // Big title with staggered letter drop.
     const title = 'PERIL!';
@@ -63,7 +65,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     this.add
-      .text(GAME_WIDTH / 2, 238, 'THE WORKPLACE SAFETY GAME SHOW', {
+      .text(GAME_WIDTH / 2, 238, boardSubtitle(board), {
         fontFamily: UI_FONT,
         fontSize: '24px',
         color: hexString(COLORS.goldBright),

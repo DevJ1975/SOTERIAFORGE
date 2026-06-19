@@ -10,5 +10,8 @@ import { ForgeShell, ShellLink } from '@forge/ui';
 })
 export class App {
   protected readonly appName = 'Soteria FORGE Store';
-  protected readonly navLinks: ShellLink[] = [{ label: 'Home', path: '/' }];
+  protected readonly navLinks: ShellLink[] = [
+    { label: 'Home', path: '/' },
+    { label: 'Trust & Security', path: '/trust' },
+  ];
 }

@@ -12,7 +12,7 @@
  * it overwrites the same docs rather than creating duplicates.
  *
  * Prerequisites: the Firestore and Auth emulators must be running
- * (`firebase emulators:start`). See tools/seed/README.md.
+ * (`firebase emulators:start --only auth,firestore`). See tools/seed/README.md.
  *
  *   FIRESTORE_EMULATOR_HOST     default 127.0.0.1:8080
  *   FIREBASE_AUTH_EMULATOR_HOST default 127.0.0.1:9099
@@ -355,13 +355,15 @@ function buildCourseMeta(courseId: string): Course {
 }
 
 function buildEnrollment(row: SeedEnrollment): Enrollment {
+  // Omit `score` entirely when undefined: zod keeps explicit `undefined`
+  // optional keys, and firebase-admin throws on `undefined` Firestore values.
   return enrollmentSchema.parse({
     uid: row.uid,
     courseId: row.courseId,
     tenantId: TENANT_ID,
     progressPct: row.progressPct,
     completed: row.completed,
-    score: row.score,
+    ...(row.score !== undefined ? { score: row.score } : {}),
     lastActivityAt: row.lastActivityAt,
     createdAt: NOW,
     updatedAt: NOW,
@@ -511,6 +513,9 @@ async function main(): Promise<void> {
 
   const app = initializeApp({ projectId });
   const db = getFirestore(app);
+  // Belt-and-suspenders against `undefined` Firestore values (e.g. an
+  // in-progress enrollment with no `score`): drop undefined keys on write.
+  db.settings({ ignoreUndefinedProperties: true });
 
   await seedAuth(app);
   await seedFirestore(db);

@@ -1,3 +1,4 @@
+import type { AuditEvent, AuditLogPort } from './audit-log';
 import type { AuthPort, CreateUserOptions, DbPort } from './ports';
 
 /**
@@ -75,6 +76,20 @@ export class FakeDbPort implements DbPort {
   }
 }
 
-export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort } {
-  return { auth: new FakeAuthPort(), db: new FakeDbPort() };
+/** In-memory append-only audit sink. `failNext` simulates a write failure. */
+export class FakeAuditLogPort implements AuditLogPort {
+  readonly events: AuditEvent[] = [];
+  failNext = false;
+
+  async append(event: AuditEvent): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error('simulated audit write failure');
+    }
+    this.events.push(event);
+  }
+}
+
+export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort; audit: FakeAuditLogPort } {
+  return { auth: new FakeAuthPort(), db: new FakeDbPort(), audit: new FakeAuditLogPort() };
 }

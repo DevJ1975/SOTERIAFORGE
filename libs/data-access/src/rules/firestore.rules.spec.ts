@@ -158,6 +158,23 @@ maybe('firestore.rules', () => {
         entitlements: ['prod-1'],
         ...AUDIT,
       });
+      // Audit logs (server-written, append-only). A tenant-scoped event for
+      // acme and a global (superadmin-only) event with no tenantId.
+      await setDoc(doc(db, 'auditLogs/audit-acme-1'), {
+        actorUid: 'admin-1',
+        actorRole: 'tenant_admin',
+        tenantId: 'acme',
+        action: 'inviteMember',
+        target: 'learner-9',
+        timestamp: '2024-01-01T00:00:00.000Z',
+      });
+      await setDoc(doc(db, 'auditLogs/audit-global-1'), {
+        actorUid: 'root-1',
+        actorRole: 'superadmin',
+        action: 'provisionTenant',
+        target: 'newco',
+        timestamp: '2024-01-01T00:00:00.000Z',
+      });
     });
   });
 
@@ -483,6 +500,50 @@ maybe('firestore.rules', () => {
       await assertFails(
         updateDoc(doc(buyer(), 'b2c/store/customers/buyer-1'), { entitlements: ['prod-2'] }),
       );
+    });
+  });
+
+  describe('/auditLogs/{auditId}', () => {
+    const ACME_EVENT = 'auditLogs/audit-acme-1';
+    const GLOBAL_EVENT = 'auditLogs/audit-global-1';
+
+    it('allows superadmin to read any audit event', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), ACME_EVENT)));
+      await assertSucceeds(getDoc(doc(superadmin(), GLOBAL_EVENT)));
+    });
+
+    it('allows a tenant_admin to read audit events for their own tenant', async () => {
+      await assertSucceeds(getDoc(doc(acmeAdmin(), ACME_EVENT)));
+    });
+
+    it('denies a tenant_admin reading global (untenanted) audit events', async () => {
+      await assertFails(getDoc(doc(acmeAdmin(), GLOBAL_EVENT)));
+    });
+
+    it('denies a tenant_admin reading another tenant’s audit events', async () => {
+      await assertFails(
+        getDoc(doc(authedDb('globex-admin', { role: 'tenant_admin', tenantId: 'globex' }), ACME_EVENT)),
+      );
+    });
+
+    it('denies non-admin roles (learner, instructor) and anonymous reads', async () => {
+      await assertFails(getDoc(doc(acmeLearner(), ACME_EVENT)));
+      await assertFails(getDoc(doc(acmeInstructor(), ACME_EVENT)));
+      await assertFails(getDoc(doc(anonDb(), ACME_EVENT)));
+    });
+
+    it('denies all client writes, even by superadmin (Cloud Functions only)', async () => {
+      await assertFails(
+        setDoc(doc(superadmin(), 'auditLogs/audit-new'), {
+          actorUid: 'root-1',
+          actorRole: 'superadmin',
+          action: 'setUserRole',
+          target: 'x',
+          timestamp: '2024-01-01T00:00:00.000Z',
+        }),
+      );
+      await assertFails(updateDoc(doc(superadmin(), ACME_EVENT), { action: 'tampered' }));
+      await assertFails(deleteDoc(doc(acmeAdmin(), ACME_EVENT)));
     });
   });
 });

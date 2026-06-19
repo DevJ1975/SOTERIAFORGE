@@ -141,8 +141,8 @@ interface BadgeView {
     }
 
     .badge.earned .medallion {
-      border-color: var(--forge-accent, #e8551f);
-      background: var(--forge-accent, #e8551f);
+      border-color: var(--forge-accent, #0b3d91);
+      background: var(--forge-accent, #0b3d91);
       box-shadow: var(--forge-shadow-emphasized, 0 1px 4px rgb(0 0 0 / 0.15));
     }
 

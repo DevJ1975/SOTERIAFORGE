@@ -571,7 +571,7 @@ export const ROUND_TWO_CATEGORIES: PerilCategory[] = [
           'What is a corona discharge?',
         ],
         explanation:
-          'Arc flash temperatures can hit four times the surface of the sun; NFPA 70E requires boundaries and arc-rated clothing for exposed work.',
+          'Arc flash temperatures can reach roughly three to four times the surface of the sun; NFPA 70E requires boundaries and arc-rated clothing for exposed work.',
       },
       {
         value: r2[3],
@@ -1479,4 +1479,13 @@ export const DEFAULT_BOARD: PerilBoard = OSHA_BOARD;
 export function resolveBoard(boardId: string | null | undefined): PerilBoard {
   if (boardId === 'airport') return AIRPORT_BOARD;
   return DEFAULT_BOARD;
+}
+
+/**
+ * The "game-show" headline/subtitle for a board, derived from its `label`.
+ * The OSHA board reads "THE WORKPLACE SAFETY GAME SHOW" (unchanged); the
+ * airport board surfaces "THE AVIATION GROUND SAFETY GAME SHOW".
+ */
+export function boardSubtitle(board: PerilBoard): string {
+  return `THE ${board.label.toUpperCase()} GAME SHOW`;
 }

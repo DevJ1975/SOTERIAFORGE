@@ -1,5 +1,6 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
+import { placeholderImage } from './placeholder';
 
 export const JET_BRIDGE_COURSE_ID = 'atl-jet-bridge-door-ops';
 
@@ -16,7 +17,7 @@ export function buildJetBridgeCourse(): CourseDraft {
     title: 'Jet Bridge & Aircraft Door Operations',
     description:
       'Operating the passenger boarding bridge safely, managing crush and pinch points, fall protection at the cab, auto-leveling, and the heavy pressure-loaded cabin door. Aligned with OSHA 29 CFR 1910.',
-    coverImageUrl: 'https://images.unsplash.com/photo-1542296332-2e4473faf563?w=1400&q=80',
+    coverImageUrl: placeholderImage('Jet Bridge & Door Operations'),
     status: 'published',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,
@@ -39,7 +40,7 @@ export function buildJetBridgeCourse(): CourseDraft {
           {
             id: bid(id, 'l1', 'b3'),
             kind: 'image',
-            url: 'https://images.unsplash.com/photo-1559268950-2d7ceb2efa3a?w=1400&q=80',
+            url: placeholderImage('Bridge cab docked to the door'),
             alt: 'A jet bridge connected to the forward door of a commercial aircraft',
             caption: 'The bridge cab docks to the aircraft door sill.',
             layout: 'full',
