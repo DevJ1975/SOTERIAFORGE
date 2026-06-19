@@ -20,7 +20,9 @@ import { LESSON_IDS, PROGRESS_EVENT_KINDS } from './shapes.js';
  * Shape: `evt-{deviceHash}-{clientSeq}` — only [A-Za-z0-9_-], length 8..200.
  */
 export function idempotencyKeyFor(deviceId, clientSeq) {
-  const h = djb2(deviceId).toString(36).replace(/[^A-Za-z0-9]/g, '');
+  const h = djb2(deviceId)
+    .toString(36)
+    .replace(/[^A-Za-z0-9]/g, '');
   const padded = String(clientSeq).padStart(6, '0');
   const key = `evt-${h}-${padded}`;
   // Defensive: guarantee the frozen regex even for odd inputs.

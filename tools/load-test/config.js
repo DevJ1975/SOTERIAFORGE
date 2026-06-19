@@ -54,16 +54,16 @@ export const WEB_API_KEY = env('WEB_API_KEY', 'fake-emulator-key');
 // Base URLs. Emulator defaults map to firebase.json emulator ports:
 //   auth 9099, firestore 8080, functions 5001.
 // Identity Platform (GCIP) REST surface.
-export const AUTH_BASE_URL = env('AUTH_BASE_URL', 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1');
+export const AUTH_BASE_URL = env(
+  'AUTH_BASE_URL',
+  'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1',
+);
 
 // Firestore REST surface root (the per-document path is appended by lib/firestore.js).
 export const FIRESTORE_BASE_URL = env('FIRESTORE_BASE_URL', 'http://127.0.0.1:8080/v1');
 
 // Callable Cloud Functions root: `{root}/{project}/us-central1/{fn}`.
-export const FUNCTIONS_BASE_URL = env(
-  'FUNCTIONS_BASE_URL',
-  'http://127.0.0.1:5001',
-);
+export const FUNCTIONS_BASE_URL = env('FUNCTIONS_BASE_URL', 'http://127.0.0.1:5001');
 
 // Functions region (matches CALLABLE_OPTS in apps/functions/src/main.ts).
 export const FUNCTIONS_REGION = env('FUNCTIONS_REGION', 'us-central1');

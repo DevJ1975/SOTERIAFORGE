@@ -88,7 +88,13 @@ describe('ProgressSyncQueue', () => {
 
   it('persists the queue durably so a fresh instance still sees pending events', async () => {
     const first = makeQueue(new FakeProgress());
-    await first.enqueue({ uid: 'u1', tenantId: 'atl-airport', courseId: 'c1', kind: 'lesson_completed', lessonId: 'l1' });
+    await first.enqueue({
+      uid: 'u1',
+      tenantId: 'atl-airport',
+      courseId: 'c1',
+      kind: 'lesson_completed',
+      lessonId: 'l1',
+    });
     TestBed.resetTestingModule();
 
     const second = makeQueue(new FakeProgress());
@@ -149,7 +155,13 @@ describe('ProgressSyncQueue', () => {
     progress.setLessonProgress.mockRejectedValue(new Error('permission-denied'));
     const queue = makeQueue(progress);
 
-    await queue.enqueue({ uid: 'u1', tenantId: 'atl-airport', courseId: 'c1', kind: 'lesson_completed', lessonId: 'l1' });
+    await queue.enqueue({
+      uid: 'u1',
+      tenantId: 'atl-airport',
+      courseId: 'c1',
+      kind: 'lesson_completed',
+      lessonId: 'l1',
+    });
     const result = await queue.flush();
 
     expect(result.failed).toBe(1);
@@ -160,7 +172,12 @@ describe('ProgressSyncQueue', () => {
   it('routes course_completed events to completeCourse', async () => {
     const progress = new FakeProgress();
     const queue = makeQueue(progress);
-    await queue.enqueue({ uid: 'u1', tenantId: 'atl-airport', courseId: 'c1', kind: 'course_completed' });
+    await queue.enqueue({
+      uid: 'u1',
+      tenantId: 'atl-airport',
+      courseId: 'c1',
+      kind: 'course_completed',
+    });
     await queue.flush();
 
     expect(progress.completeCourse).toHaveBeenCalledTimes(1);
@@ -169,7 +186,13 @@ describe('ProgressSyncQueue', () => {
 
   it('clear empties the queue', async () => {
     const queue = makeQueue(new FakeProgress());
-    await queue.enqueue({ uid: 'u1', tenantId: 'atl-airport', courseId: 'c1', kind: 'lesson_completed', lessonId: 'l1' });
+    await queue.enqueue({
+      uid: 'u1',
+      tenantId: 'atl-airport',
+      courseId: 'c1',
+      kind: 'lesson_completed',
+      lessonId: 'l1',
+    });
     await queue.clear();
     expect(await queue.pending()).toBe(0);
   });

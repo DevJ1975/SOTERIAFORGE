@@ -25,7 +25,12 @@
     "cap:sync": "cap sync",
     "cap:copy": "cap copy",
     "cap:android": "cap run android",
-    "cap:ios": "cap run ios"
+    "cap:ios": "cap run ios",
+    "loadtest:login-storm": "k6 run tools/load-test/scenarios/login-storm.js",
+    "loadtest:content-pull": "k6 run tools/load-test/scenarios/content-pull.js",
+    "loadtest:sync-storm": "k6 run tools/load-test/scenarios/sync-storm.js",
+    "loadtest:soak": "k6 run tools/load-test/scenarios/soak.js",
+    "loadtest:reconcile": "tsx --tsconfig tools/load-test/tsconfig.json tools/load-test/reconcile.ts"
   },
   "workspaces": [
     "apps/*",

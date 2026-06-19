@@ -63,7 +63,17 @@ export class ProgressService {
     totalLessons: number,
     options: ProgressWriteOptions = {},
   ): Promise<Enrollment> {
-    return this.apply(tenantId, courseId, uid, totalLessons, 'lesson_completed', completedLessonIds, false, undefined, options);
+    return this.apply(
+      tenantId,
+      courseId,
+      uid,
+      totalLessons,
+      'lesson_completed',
+      completedLessonIds,
+      false,
+      undefined,
+      options,
+    );
   }
 
   /** Marks the course complete: `completed = true`, `progressPct = 100`. */
@@ -172,7 +182,9 @@ export class ProgressService {
         }
       } else {
         next.progressPct =
-          totalLessons > 0 ? Math.min(100, Math.round((completedList.length / totalLessons) * 100)) : 0;
+          totalLessons > 0
+            ? Math.min(100, Math.round((completedList.length / totalLessons) * 100))
+            : 0;
       }
 
       tx.set(ref, next);

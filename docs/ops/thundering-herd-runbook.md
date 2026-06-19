@@ -54,12 +54,12 @@ continuous shifts):
 Cold starts are the dominant tail-latency risk in a burst. Keep a warm floor on
 the hot functions so the first thousand requests do not pay init cost.
 
-| Knob                     | Where                                              | Starting point (validate by load test) |
-| ------------------------ | -------------------------------------------------- | --------------------------------------- |
-| `minInstances`           | `onCall` / write-path function options (Lane D)     | `5`–`20` on hot functions               |
-| `maxInstances`           | same                                                | bounded so a stampede can't fan out unboundedly (§4) |
-| `concurrency`            | per-instance concurrent requests (gen-2)            | tune up to flatten instance count       |
-| `memory` / `cpu`         | function resource class                            | size for the projection transaction     |
+| Knob             | Where                                           | Starting point (validate by load test)               |
+| ---------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `minInstances`   | `onCall` / write-path function options (Lane D) | `5`–`20` on hot functions                            |
+| `maxInstances`   | same                                            | bounded so a stampede can't fan out unboundedly (§4) |
+| `concurrency`    | per-instance concurrent requests (gen-2)        | tune up to flatten instance count                    |
+| `memory` / `cpu` | function resource class                         | size for the projection transaction                  |
 
 > **Not run here.** `minInstances` warm pools incur standing cost and only exist
 > on a deployed project; the emulator always cold-paths in-process. Set and verify

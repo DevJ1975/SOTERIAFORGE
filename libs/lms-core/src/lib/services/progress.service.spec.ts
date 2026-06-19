@@ -146,7 +146,7 @@ describe('ProgressService', () => {
     expect(stale.progressPct).toBe(50);
   });
 
-  it('two sequential writers (rising clientSeq) do not lose each other\'s lessons', async () => {
+  it("two sequential writers (rising clientSeq) do not lose each other's lessons", async () => {
     await service.setLessonProgress('atl-airport', 'c1', 'u1', ['l1'], 4, {
       idempotencyKey: 'evt-writer0a',
       deviceId: 'device-a',

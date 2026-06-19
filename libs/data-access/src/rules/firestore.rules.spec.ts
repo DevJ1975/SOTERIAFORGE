@@ -515,7 +515,10 @@ maybe('firestore.rules', () => {
     it('denies creating an event in another tenant', async () => {
       await assertFails(
         setDoc(
-          doc(globexLearner(), 'tenants/acme/courses/pub-1/enrollments/learner-1/events/evt-xtenant'),
+          doc(
+            globexLearner(),
+            'tenants/acme/courses/pub-1/enrollments/learner-1/events/evt-xtenant',
+          ),
           event('evt-xtenant'),
         ),
       );

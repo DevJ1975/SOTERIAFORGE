@@ -1,13 +1,7 @@
 import { effect, inject, Injectable } from '@angular/core';
 import { Preferences } from '@capacitor/preferences';
 import { ProgressService } from '@forge/lms-core';
-import {
-  deviceId,
-  emit,
-  type ProgressEvent,
-  staggerDelayMs,
-  withRetry,
-} from '@forge/shared';
+import { deviceId, emit, type ProgressEvent, staggerDelayMs, withRetry } from '@forge/shared';
 import { NetworkStatusService } from './network-status.service';
 
 /** Preferences key holding the ordered JSON array of queued {@link ProgressEvent}. */

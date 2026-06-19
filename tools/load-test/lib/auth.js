@@ -24,22 +24,20 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
  */
 export function signUp(email, password) {
   const url = `${AUTH_BASE_URL}/accounts:signUp?key=${WEB_API_KEY}`;
-  const res = http.post(
-    url,
-    JSON.stringify({ email, password, returnSecureToken: true }),
-    { headers: JSON_HEADERS, tags: { name: 'auth:signUp' } },
-  );
+  const res = http.post(url, JSON.stringify({ email, password, returnSecureToken: true }), {
+    headers: JSON_HEADERS,
+    tags: { name: 'auth:signUp' },
+  });
   return { status: res.status, body: safeJson(res) };
 }
 
 /** Sign in with email + password. Returns { status, body: { idToken, localId } }. */
 export function signInWithPassword(email, password) {
   const url = `${AUTH_BASE_URL}/accounts:signInWithPassword?key=${WEB_API_KEY}`;
-  const res = http.post(
-    url,
-    JSON.stringify({ email, password, returnSecureToken: true }),
-    { headers: JSON_HEADERS, tags: { name: 'auth:signInWithPassword' } },
-  );
+  const res = http.post(url, JSON.stringify({ email, password, returnSecureToken: true }), {
+    headers: JSON_HEADERS,
+    tags: { name: 'auth:signInWithPassword' },
+  });
   return { status: res.status, body: safeJson(res) };
 }
 

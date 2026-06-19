@@ -516,7 +516,13 @@ export class Player {
     // Optimistically mark the enrollment complete so the UX (celebration,
     // completed state) is immediate; the durable event carries the real write.
     this.enrollment.update((current) =>
-      this.optimisticEnrollment(current, { uid, courseId, tenantId, progressPct: 100, completed: true }),
+      this.optimisticEnrollment(current, {
+        uid,
+        courseId,
+        tenantId,
+        progressPct: 100,
+        completed: true,
+      }),
     );
     // Enqueue the course-completed event, then opportunistically flush. Offline,
     // it stays durably queued; we never throw to the UI, so the learner always

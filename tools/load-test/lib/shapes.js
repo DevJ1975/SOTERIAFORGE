@@ -8,11 +8,7 @@
 // drift there will surface in the reconciliation assertion).
 
 /** progressEvent.kind enum (libs/shared/src/lib/schemas/progress.ts). */
-export const PROGRESS_EVENT_KINDS = [
-  'lesson_completed',
-  'course_completed',
-  'score_recorded',
-];
+export const PROGRESS_EVENT_KINDS = ['lesson_completed', 'course_completed', 'score_recorded'];
 
 /** Default lesson id pool the synthetic events complete. */
 export const LESSON_IDS = ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];

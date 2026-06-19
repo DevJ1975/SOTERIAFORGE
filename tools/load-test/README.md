@@ -52,19 +52,19 @@ upsert. See `docs/HARDENING_CONTRACTS.md` §core model.
 
 ## Layout
 
-| File                       | Role                                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| `config.js`                | Base URLs + project/tenant/course from env (**emulator defaults**); one-change retarget. |
-| `lib/auth.js`              | GCIP emulator REST: `signUp` / `signInWithPassword` (:9099) → ID tokens.                  |
-| `lib/firestore.js`         | Firestore REST upsert of `events` at the contract path + enrollment reads (Bearer token).|
-| `lib/callable.js`          | Callable-function envelope POST (:5001) to exercise rate-limit / backpressure.            |
-| `lib/idempotency.js`       | Contract-valid key generation + duplicate / out-of-order **injectors**, plus the fold.   |
-| `lib/shapes.js`            | Plain-JS mirror of the `@forge/shared` progress constants (k6 can't import the TS lib).   |
-| `scenarios/login-storm.js` | Auth spike (10s) + 2-min ramp.                                                            |
-| `scenarios/content-pull.js`| Read-side herd: enrollment reads under rules.                                             |
-| `scenarios/sync-storm.js`  | **The proof:** each VU emits N events, injects M duplicates + out-of-order arrival.       |
-| `scenarios/soak.js`        | Low, steady, long-duration correctness soak (event + idempotent replay).                 |
-| `reconcile.ts`             | `tsx` + `firebase-admin`: folds events, asserts the projection, **exits non-zero** on mismatch. |
+| File                        | Role                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `config.js`                 | Base URLs + project/tenant/course from env (**emulator defaults**); one-change retarget.        |
+| `lib/auth.js`               | GCIP emulator REST: `signUp` / `signInWithPassword` (:9099) → ID tokens.                        |
+| `lib/firestore.js`          | Firestore REST upsert of `events` at the contract path + enrollment reads (Bearer token).       |
+| `lib/callable.js`           | Callable-function envelope POST (:5001) to exercise rate-limit / backpressure.                  |
+| `lib/idempotency.js`        | Contract-valid key generation + duplicate / out-of-order **injectors**, plus the fold.          |
+| `lib/shapes.js`             | Plain-JS mirror of the `@forge/shared` progress constants (k6 can't import the TS lib).         |
+| `scenarios/login-storm.js`  | Auth spike (10s) + 2-min ramp.                                                                  |
+| `scenarios/content-pull.js` | Read-side herd: enrollment reads under rules.                                                   |
+| `scenarios/sync-storm.js`   | **The proof:** each VU emits N events, injects M duplicates + out-of-order arrival.             |
+| `scenarios/soak.js`         | Low, steady, long-duration correctness soak (event + idempotent replay).                        |
+| `reconcile.ts`              | `tsx` + `firebase-admin`: folds events, asserts the projection, **exits non-zero** on mismatch. |
 
 ## 1. Install k6 (standalone Go binary — NOT npm)
 
@@ -176,13 +176,13 @@ the guard). Wire it into CI as the pass/fail gate after the sync-storm.
 
 This lane does not edit `package.json`. Requested `loadtest:*` script names:
 
-| Script                    | Command                                                                                 |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| `loadtest:login-storm`    | `k6 run tools/load-test/scenarios/login-storm.js`                                        |
-| `loadtest:content-pull`   | `k6 run tools/load-test/scenarios/content-pull.js`                                        |
-| `loadtest:sync-storm`     | `k6 run tools/load-test/scenarios/sync-storm.js`                                          |
-| `loadtest:soak`           | `k6 run tools/load-test/scenarios/soak.js`                                                |
-| `loadtest:reconcile`      | `tsx --tsconfig tools/load-test/tsconfig.json tools/load-test/reconcile.ts`               |
+| Script                  | Command                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `loadtest:login-storm`  | `k6 run tools/load-test/scenarios/login-storm.js`                           |
+| `loadtest:content-pull` | `k6 run tools/load-test/scenarios/content-pull.js`                          |
+| `loadtest:sync-storm`   | `k6 run tools/load-test/scenarios/sync-storm.js`                            |
+| `loadtest:soak`         | `k6 run tools/load-test/scenarios/soak.js`                                  |
+| `loadtest:reconcile`    | `tsx --tsconfig tools/load-test/tsconfig.json tools/load-test/reconcile.ts` |
 
 ## Retargeting to production
 

@@ -47,9 +47,9 @@ queue stores **events** (not enrollment patches) ⇒ reconnect flush is a pure i
      429/408/`too-many-requests`/`unavailable`/`deadline-exceeded`.
    - `withRetry<T>(fn: () => Promise<T>, opts?): Promise<T>`.
 6. **`@forge/shared` telemetry** (`libs/shared/src/lib/telemetry.ts`): `emit(name: string, fields?:
-   Record<string, unknown>): void` (no-op default sink).
+Record<string, unknown>): void` (no-op default sink).
 7. **`ProgressSyncQueue`** (learner, Lane C) API: `enqueue(event)`, `flush(): Promise<{synced:number;
-   failed:number}>`, `pending(): Promise<number>`, `clear(): Promise<void>`. Persists a monotonic
+failed:number}>`, `pending(): Promise<number>`, `clear(): Promise<void>`. Persists a monotonic
    per-device `clientSeq`. Backed by `@capacitor/preferences` (works web + native).
 8. **`progress.service.ts`** (Lane B) gains optional `idempotencyKey`/`deviceId`/`clientSeq` params
    on `setLessonProgress`/`completeCourse` (default-generated when omitted, so existing callers and
@@ -58,25 +58,27 @@ queue stores **events** (not enrollment patches) ⇒ reconnect flush is a pure i
 
 ## Ownership lanes (no cross-lane edits; no git; no package.json/.github — orchestrator owns those)
 
-| Lane | Owns |
-|---|---|
-| **A — Schema/contracts** | `libs/shared`: `schemas/primitives.ts` (idempotencyKey), `schemas/progress.ts` (new), `schemas/course.ts` (enrollment fields), `stagger.ts` (new), `telemetry.ts` (new), `src/index.ts` + specs |
-| **B — Write layer** | `libs/data-access/src/lib/collections.ts`; `libs/lms-core/src/lib/services/{progress,enrollment}.service.ts` (+ specs); `firestore.rules`; `libs/data-access/src/rules/firestore.rules.spec.ts`; `firestore.indexes.json` |
-| **C — Offline queue + stagger hooks** | `apps/learner/src/app/offline/progress-sync-queue.service.ts` (+ spec); `apps/learner/.../features/player/player.ts`; `libs/auth/src/lib/principal.store.ts` |
-| **D — Functions** | `apps/functions/src/main.ts`; `apps/functions/src/lib/{ports,adapters,errors}.ts`; new `rate-limit.core.ts`, `aggregate-progress.core.ts`, `logger.ts`, `retry.ts` (+ specs) |
-| **E — PWA/edge** | `apps/learner/ngsw-config.json` (new); `apps/learner/project.json`; `apps/learner/src/app/app.config.ts`; `firebase.json` (headers) |
-| **F — Load-test + docs** | `tools/load-test/**`; `docs/ops/**` (orchestrator adds the `loadtest:*` package.json scripts after F lands) |
+| Lane                                  | Owns                                                                                                                                                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A — Schema/contracts**              | `libs/shared`: `schemas/primitives.ts` (idempotencyKey), `schemas/progress.ts` (new), `schemas/course.ts` (enrollment fields), `stagger.ts` (new), `telemetry.ts` (new), `src/index.ts` + specs                           |
+| **B — Write layer**                   | `libs/data-access/src/lib/collections.ts`; `libs/lms-core/src/lib/services/{progress,enrollment}.service.ts` (+ specs); `firestore.rules`; `libs/data-access/src/rules/firestore.rules.spec.ts`; `firestore.indexes.json` |
+| **C — Offline queue + stagger hooks** | `apps/learner/src/app/offline/progress-sync-queue.service.ts` (+ spec); `apps/learner/.../features/player/player.ts`; `libs/auth/src/lib/principal.store.ts`                                                              |
+| **D — Functions**                     | `apps/functions/src/main.ts`; `apps/functions/src/lib/{ports,adapters,errors}.ts`; new `rate-limit.core.ts`, `aggregate-progress.core.ts`, `logger.ts`, `retry.ts` (+ specs)                                              |
+| **E — PWA/edge**                      | `apps/learner/ngsw-config.json` (new); `apps/learner/project.json`; `apps/learner/src/app/app.config.ts`; `firebase.json` (headers)                                                                                       |
+| **F — Load-test + docs**              | `tools/load-test/**`; `docs/ops/**` (orchestrator adds the `loadtest:*` package.json scripts after F lands)                                                                                                               |
 
 **Sequencing:** A → (B, E parallel) → C, D, F. C edits `principal.store.ts`; E edits `app.config.ts`
 — disjoint files. Wave-2 lanes import the real landed exports from Lane A.
 
 ## Honest not-run labels (Lane F docs must carry these)
+
 Real 6K prod load, DB/CDN autoscale, `minInstances` warm pools, `enforceAppCheck`, chaos on live
 infra, and Cloud Monitoring alerts/dashboards need a deployed production project — **not exercised
 here**. The emulator + k6 harness prove **correctness/idempotency** (zero-dup / zero-loss /
 reconciliation) and retarget to prod via env/base-URL.
 
 ## Conventions
+
 Zod shapes in `@forge/shared`; all Firestore I/O via data-access converters/helpers; deny-by-default
 rules + tests ship with new paths; design tokens only; Prettier (single quotes/width 100/trailing
 commas); nx module boundaries (`type:app`→feature/data-access/ui/util; `type:feature`→same;
