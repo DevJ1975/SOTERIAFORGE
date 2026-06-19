@@ -64,8 +64,8 @@ export async function setUserRoleCore(
 
   // Best-effort, non-fatal audit trail of the claim change.
   await recordAuditEvent(deps.audit, {
-    actorUid: callerClaims.uid,
-    actorRole: callerClaims.role,
+    actorUid: callerClaims?.uid,
+    actorRole: callerClaims?.role,
     tenantId: input.tenantId,
     action: 'setUserRole',
     target: input.uid,

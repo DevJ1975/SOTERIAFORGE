@@ -133,11 +133,13 @@ interface CompletionProjection {
             <h2>Course complete!</h2>
             @if (p.level !== undefined) {
               <p class="muted">
-                <strong>+{{ p.awardedXp }} XP</strong> &rarr; Level <strong>{{ p.level }}</strong>
-                ({{ projectedPctLabel() }} to next).
+                <strong>+{{ p.awardedXp }} XP</strong> &rarr; Level
+                <strong>{{ p.level }}</strong> ({{ projectedPctLabel() }} to next).
               </p>
             } @else {
-              <p class="muted"><strong>+{{ p.awardedXp }} XP</strong> earned.</p>
+              <p class="muted">
+                <strong>+{{ p.awardedXp }} XP</strong> earned.
+              </p>
             }
             <p class="fine-print">
               XP and level shown are a projection over your current total and are not yet saved.
