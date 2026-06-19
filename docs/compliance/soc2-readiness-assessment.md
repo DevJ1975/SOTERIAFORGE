@@ -9,7 +9,11 @@ This assessment maps the platform to the AICPA Trust Services Criteria (TSC), fo
 **Security / Common Criteria (CC1–CC9)** and adding **Availability (A)** and **Confidentiality
 (C)**. The Processing Integrity and Privacy categories are out of scope for this draft.
 
-Legend: **Implemented** / **Partial** / **Gap** / **Planned**.
+Legend: **Implemented** / **Implemented (design) — pending prod config + evidence** (the control
+design is present in code, but it is not yet independently tested for operating effectiveness and
+several such controls still need production configuration — a real Firebase project, a reCAPTCHA
+site key, deployed hosting, log retention — to take full effect) / **Partial** / **Gap** /
+**Planned**. None of these statuses implies attestation or auditor-tested operating effectiveness.
 
 A recurring, important caveat: the platform currently runs against the **Firebase emulator suite**
 with a demo project and **no provisioned production Firebase project** (`README.md`, `ROADMAP.md`
@@ -42,12 +46,14 @@ CC2 concerns internal/external communication of objectives and responsibilities.
 - **Current implementation:** Internal technical communication is strong: `README.md`,
   `ROADMAP.md`, `docs/`, and inline rule/function docblocks (e.g. the deny-by-default rationale in
   `firestore.rules`) communicate security expectations to engineers.
-- **Status:** **Partial.** Engineering communication exists; external commitments (terms,
-  security/trust page, customer-facing SLAs, status page) and a formal internal security-policy
-  acknowledgement process do not.
-- **Remediation:** Publish security/trust commitments to customers; add a policy
-  acknowledgement workflow; establish a channel for external parties to report security issues
-  (see Incident Response draft).
+- **Status:** **Partial — improving.** A customer-facing **Trust & Security page**
+  (`apps/storefront/src/app/trust.ts`) and a published **vulnerability disclosure process** with a
+  security contact (`SECURITY.md`) now exist (implemented in design; not yet exercised). Still
+  missing: customer-facing terms/SLAs, a status page, and a formal internal security-policy
+  acknowledgement process.
+- **Remediation:** Continue publishing security/trust commitments to customers; add a policy
+  acknowledgement workflow; exercise the external security-reporting channel now documented in
+  `SECURITY.md` (and the Incident Response draft).
 
 ## CC3 — Risk Assessment
 
@@ -65,12 +71,15 @@ CC2 concerns internal/external communication of objectives and responsibilities.
   controls on every PR (`nx format:check`; `nx affected -t lint test build`; emulator-backed
   Firestore rules tests via `@firebase/rules-unit-testing`). Rules tests live in
   `libs/data-access/src/rules/firestore.rules.spec.ts`.
-- **Status:** **Partial.** Automated verification of code controls is genuinely good, but there is
-  no monitoring of **operational** controls (no log review, no alerting, no internal control
-  audits, no vulnerability scanning of dependencies in CI).
-- **Remediation:** Add control monitoring: dependency/secret scanning in CI (Dependabot/CodeQL or
-  equivalent), log/alert review procedures once monitoring exists (CC7), and periodic access
-  reviews.
+- **Status:** **Partial.** Automated verification of code controls is genuinely good, and CI now
+  also runs **dependency and secret scanning** on every PR (`dependency-audit` =
+  `npm audit --audit-level=high`; `secret-scan` = gitleaks) plus weekly Dependabot updates
+  (`.github/dependabot.yml`) — these are **implemented in design** but have no operating-
+  effectiveness evidence yet. What is still missing is monitoring of **operational** controls (no
+  log review, no alerting, no internal control audits, no periodic access reviews).
+- **Remediation:** These CI scans now exist; next, add log/alert review procedures once monitoring
+  exists (CC7), periodic access reviews, and internal control self-audits. Consider adding CodeQL
+  and GitHub-native secret scanning / push protection.
 
 ## CC5 — Control Activities
 
@@ -110,8 +119,11 @@ This is the platform's strongest area and the core of the security story.
 - **Status:** **Implemented** (application layer). Client guards are convenience; the Firestore
   rules and Cloud Functions are the enforced boundary.
 - **Remediation / hardening:** Add **MFA** policy/enforcement (GCIP supports it; not configured —
-  Gap). Add **Firebase App Check** to bind clients to the app (Planned, Phase 8). Add periodic
-  **access reviews** of members and superadmins.
+  Gap). **Firebase App Check** is now wired (`libs/auth/src/lib/app-check.providers.ts`,
+  `provideForgeAppCheck`) but **demo-safe**: a complete no-op until a real reCAPTCHA v3 site key is
+  configured — so production enforcement (site key + a real project + console-side enforcement on
+  Firestore and callables) remains a gap. Add periodic **access reviews** of members and
+  superadmins.
 
 ### CC6.2 / CC6.3 — Provisioning, modification, and de-provisioning of access
 
@@ -131,11 +143,20 @@ This is the platform's strongest area and the core of the security story.
 
 - **Current implementation:** All client traffic is HTTPS/TLS terminated by Firebase Hosting and
   the Google front end (managed). Callable functions set `cors: true` and run in `us-central1`
-  (`apps/functions/src/main.ts`). Deny-by-default rules constrain the data boundary.
-- **Status:** **Partial.** Transport security is provided by the platform, but there is **no App
-  Check** (any client with the public config could call the SDK/functions until rules/authz deny
-  them) and **no rate limiting** on callables (Planned, Phase 8) — a DoS/abuse exposure.
-- **Remediation:** Enable App Check; add per-caller rate limiting/quotas on callables (Phase 8).
+  (`apps/functions/src/main.ts`). Deny-by-default rules constrain the data boundary. **HTTP
+  security headers** are now configured per app in `firebase.json` (`hosting[].headers`):
+  Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options /
+  `frame-ancestors 'self'`, Referrer-Policy, and a locked-down Permissions-Policy. **Firebase App
+  Check** is wired (`libs/auth/src/lib/app-check.providers.ts`).
+- **Status:** **Partial — improving.** The HTTP-header hardening and the App Check wiring are
+  **implemented in design** but not yet effective end-to-end: the headers only take effect on
+  **deployed** Firebase Hosting (not the local emulator) and have no operating-effectiveness
+  evidence, and App Check is a **no-op until a real reCAPTCHA site key + production project + console
+  enforcement** exist. There is still **no rate limiting** on callables (Planned, Phase 8) — a
+  DoS/abuse exposure.
+- **Remediation:** Provision a real Firebase project, configure the App Check site key and enforce
+  App Check on Firestore + callables; verify the deployed headers; add per-caller rate
+  limiting/quotas on callables (Phase 8).
 
 ### CC6.7 — Data in transit / restricting movement of information
 
@@ -143,44 +164,58 @@ This is the platform's strongest area and the core of the security story.
   cannot move across tenant boundaries: every collection helper is tenant-path-scoped
   (`libs/data-access/src/lib/collections.ts`) and rules forbid cross-tenant reads
   (`inTenant(tenantId)`), with the embedded `tenantId` spoof guard on writes
-  (`request.resource.data.tenantId == tenantId`).
+  (`request.resource.data.tenantId == tenantId`) — now extended to learner-owned **enrollments** so
+  a learner cannot stamp another tenant onto their own enrollment (`firestore.rules`; tested in
+  `libs/data-access/src/rules/firestore.rules.spec.ts`).
 - **Status:** **Implemented** for tenant isolation in transit and at the data layer.
 - **Remediation:** None at the app layer; add DLP/egress considerations if/when exports are built.
 
 ### CC6.8 — Prevention/detection of unauthorized software (integrity of code)
 
 - **Current implementation:** Change integrity via PR + CI (`.github/workflows/ci.yml`),
-  module-boundary enforcement, and `package-lock.json` pinning with `npm ci` in CI.
-- **Status:** **Partial.** Build reproducibility and boundary enforcement exist; there is **no
-  dependency vulnerability scanning, no secret scanning, and no artifact signing** in CI, and no
-  documented branch-protection/required-review configuration in-repo.
-- **Remediation:** Add Dependabot + CodeQL (or equivalent) and a secret scanner to CI; document
-  and enable branch protection with required reviews (P1, see backlog).
+  module-boundary enforcement, and `package-lock.json` pinning with `npm ci` in CI. CI now also
+  runs a **`dependency-audit`** job (`npm audit --audit-level=high`) and a **`secret-scan`** job
+  (gitleaks) on every PR, and **Dependabot** (`.github/dependabot.yml`) opens weekly npm /
+  GitHub-Actions update PRs.
+- **Status:** **Partial — improving.** The dependency-vulnerability and secret scanning are now
+  **implemented in design** (no operating-effectiveness evidence yet), but there is still **no
+  artifact signing** and **no documented branch-protection/required-review configuration** in-repo,
+  and no CodeQL.
+- **Remediation:** Document and enable branch protection with required reviews (P1, see backlog);
+  consider CodeQL and GitHub-native secret scanning / push protection; retain scan results as
+  evidence.
 
 ---
 
 ## CC7 — System Operations (monitoring, incident detection and response)
 
-- **Current implementation:** Cloud Functions emit `console.error` for unhandled errors
-  (`apps/functions/src/main.ts` `toHttpsError`), which would surface in Cloud Logging once a real
-  project exists. That is the extent of it.
-- **Status:** **Gap.** There is **no audit logging of security-relevant events** (role grants,
-  tenant provisioning, deactivations are not recorded to an immutable log), **no monitoring or
-  alerting** (Cloud Logging/Error Reporting, budget alerts are Planned, Phase 8), and **no
-  incident detection** tooling. The `auditable` schema (`libs/shared/.../primitives.ts`) only
-  stamps `createdAt/createdBy/updatedAt/updatedBy` on documents — it is metadata, not a tamper-
-  evident audit trail.
-- **Remediation (high priority):** Add structured, immutable audit logging for privileged
-  Functions actions; provision Cloud Logging/Error Reporting with alerting; adopt and test the
-  Incident Response Plan draft. See `remediation-backlog.md` P0/P1.
+- **Current implementation:** **Audit logging of privileged actions is now implemented in design.**
+  `setUserRole`, `inviteMember`, and `provisionTenant` write structured, best-effort, append-only
+  audit events (actor uid + role, tenant, action, target, server timestamp) to the `/auditLogs`
+  collection (`apps/functions/src/lib/audit-log.ts`, `ports.ts`, `adapters.ts`, wired in
+  `main.ts`). The collection is client-immutable in `firestore.rules`
+  (`match /auditLogs/{auditId}` is `write: if false`; reads restricted to superadmin plus a
+  `tenant_admin` scoped to its own tenant), exercised by `audit-log.spec.ts` and the rules tests.
+  Writes are deliberately non-fatal so an audit failure never rolls back the operation it records.
+  Separately, Cloud Functions still emit `console.error` for unhandled errors
+  (`apps/functions/src/main.ts` `toHttpsError`).
+- **Status:** **Partial.** The audit-logging control design is in code, but it is **not yet tested
+  for operating effectiveness** and needs a **production Firebase project plus log retention** to
+  be meaningful. There is still **no monitoring or alerting** (Cloud Logging/Error Reporting,
+  budget alerts are Planned, Phase 8) and **no incident detection** tooling, so CC7 overall remains
+  short of audit-ready.
+- **Remediation (high priority):** Provision a production project and define audit-log retention;
+  provision Cloud Logging/Error Reporting with alerting; adopt and test the Incident Response Plan
+  draft. See `remediation-backlog.md` P0/P1.
 
 ## CC8 — Change Management
 
 - **Current implementation:** Changes flow through Git/GitHub PRs gated by CI
   (`.github/workflows/ci.yml`): `nx format:check`, then `nx affected -t lint test build`, plus a
-  dedicated **rules** job running emulator-backed Firestore rules tests. A documented cross-cutting
-  rule requires security rules and their unit tests to land in the **same PR** as any new
-  collection (`ROADMAP.md`, `README.md`). `npm ci` installs from `package-lock.json` for
+  dedicated **rules** job running emulator-backed Firestore rules tests, plus additive
+  **`dependency-audit`** (npm audit) and **`secret-scan`** (gitleaks) security gates. A documented
+  cross-cutting rule requires security rules and their unit tests to land in the **same PR** as any
+  new collection (`ROADMAP.md`, `README.md`). `npm ci` installs from `package-lock.json` for
   reproducible builds.
 - **Status:** **Partial — strong technical pipeline.** What is missing as audit evidence: branch
   protection / required-reviewer configuration is not represented in-repo, there is no documented
@@ -232,30 +267,37 @@ This is the platform's strongest area and the core of the security story.
   model is sound, but there is **no formal data classification/retention policy, no secrets-
   management standard, and no documented disposal process.** Secrets handling for the planned
   Stripe webhook and AI-tutor proxy (server-side keys, per `ROADMAP.md`) is designed but not yet
-  implemented; there is no secret scanning to catch accidental commits.
+  implemented; a **gitleaks `secret-scan` CI job** (`.github/workflows/ci.yml`) now guards against
+  accidental credential commits (implemented in design; no operating-effectiveness evidence yet).
 - **Remediation:** Adopt the Data Retention & Classification and Information Security policy
-  drafts; standardize on Secret Manager for server secrets; add secret scanning to CI; define
-  retention windows and deletion procedures (especially for B2C/PII).
+  drafts; standardize on Secret Manager for server secrets; supplement the CI secret scan with
+  GitHub-native secret scanning / push protection; define retention windows and deletion procedures
+  (especially for B2C/PII).
 
 ---
 
 ## Summary of statuses
 
-| TSC area                        | Status                                                             |
-| ------------------------------- | ------------------------------------------------------------------ |
-| CC1 Control Environment         | Gap                                                                |
-| CC2 Communication & Information | Partial                                                            |
-| CC3 Risk Assessment             | Gap                                                                |
-| CC4 Monitoring of Controls      | Partial                                                            |
-| CC5 Control Activities          | Partial                                                            |
-| CC6 Logical & Physical Access   | **Implemented (app layer)** with App Check / MFA / rate-limit gaps |
-| CC7 System Operations           | Gap (logging/monitoring/IR)                                        |
-| CC8 Change Management           | Partial (strong CI; branch protection undocumented)                |
-| CC9 Risk Mitigation / Vendors   | Gap                                                                |
-| Availability                    | Gap / Planned (no prod, no backups/DR)                             |
-| Confidentiality                 | Partial (encryption inherited; policies/secrets gaps)              |
+| TSC area                        | Status                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| CC1 Control Environment         | Gap                                                                                                          |
+| CC2 Communication & Information | Partial (Trust page + SECURITY.md disclosure now in design)                                                  |
+| CC3 Risk Assessment             | Gap                                                                                                          |
+| CC4 Monitoring of Controls      | Partial (CI dependency/secret scanning now in design)                                                        |
+| CC5 Control Activities          | Partial                                                                                                      |
+| CC6 Logical & Physical Access   | **Implemented (app layer)**; App Check + HTTP headers in design (pending prod config); MFA / rate-limit gaps |
+| CC7 System Operations           | Partial (audit logging in design; monitoring/alerting/IR gaps)                                               |
+| CC8 Change Management           | Partial (strong CI incl. dependency/secret scans; branch protection undocumented)                            |
+| CC9 Risk Mitigation / Vendors   | Gap                                                                                                          |
+| Availability                    | Gap / Planned (no prod, no backups/DR)                                                                       |
+| Confidentiality                 | Partial (encryption inherited; policies/secrets gaps)                                                        |
 
 The strongest, genuinely-in-code areas are **CC6 (access/tenant isolation)** and the technical
-half of **CC8 (change pipeline)**. The largest gaps are operational and organizational: **CC7
-(logging/monitoring/IR)**, **Availability (production, backups, DR)**, **CC9 (vendor management)**,
-and the absence of adopted policies (**CC1**).
+half of **CC8 (change pipeline)**. Several controls recently moved from gaps to **implemented in
+design** — audit logging (CC7), Firebase App Check wiring and HTTP security headers (CC6.6), and CI
+dependency/secret scanning (CC4/CC8) — but these are control _designs_ in code, **not** tested for
+operating effectiveness, and several still need production configuration (a real Firebase project,
+a reCAPTCHA site key, deployed hosting, log retention) before they are effective. The largest
+remaining gaps are operational and organizational: **monitoring/alerting and IR (CC7)**,
+**Availability (production, backups, DR)**, **CC9 (vendor management)**, **enforced MFA**, **rate
+limiting**, and the absence of adopted policies (**CC1**).

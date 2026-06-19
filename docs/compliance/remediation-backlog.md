@@ -18,6 +18,43 @@ noted as _[Phase 8]_.
 
 ---
 
+## Recently implemented (design-level; pending production config + operating-effectiveness evidence)
+
+> These controls now have a **control design present in the codebase**. They are **not** yet tested
+> for operating effectiveness over an audit period, and several still need **production
+> configuration** to take effect. They are listed here (not as open work) but remain short of
+> audit-ready. None of this implies attestation.
+
+- **Audit logging for privileged actions (was P0-3, control LOG-1).** Done in code:
+  `apps/functions/src/lib/audit-log.ts` (+ `ports.ts`, `adapters.ts`, `fakes.ts`) writes
+  structured, best-effort, append-only events to `/auditLogs`, wired into `setUserRole`,
+  `inviteMember`, and `provisionTenant` (`main.ts`); `firestore.rules` makes the collection
+  client-immutable (`match /auditLogs/{auditId}`, `write: if false`, read superadmin + own-tenant
+  `tenant_admin`); tested in `audit-log.spec.ts` and `firestore.rules.spec.ts`. **Still open:** a
+  production project + audit-log retention, and operating-effectiveness evidence.
+- **CI dependency + secret scanning (was P1-4, controls SEC-2, VUL-1).** Done in code:
+  `.github/workflows/ci.yml` `dependency-audit` job (`npm audit --audit-level=high`) and
+  `secret-scan` job (gitleaks) run on every PR; `.github/dependabot.yml` opens weekly npm /
+  GitHub-Actions update PRs. **Still open:** CodeQL, GitHub-native secret scanning / push
+  protection, and retaining scan output as evidence.
+- **Firebase App Check wiring (part of P1-3, control BP-1).** Done in code:
+  `libs/auth/src/lib/app-check.providers.ts` (`provideForgeAppCheck`, reCAPTCHA v3) wired into
+  `provideForgeFirebase`, demo-safe (a no-op until a site key is configured). **Still open and
+  tracked below as P1-3:** production enforcement needs a real reCAPTCHA site key, a production
+  Firebase project, and console-side enforcement on Firestore + callables.
+- **HTTP security headers (control HDR-1).** Done in code: per-app CSP, HSTS,
+  X-Content-Type-Options, X-Frame-Options / `frame-ancestors`, Referrer-Policy, and
+  Permissions-Policy in `firebase.json` (`hosting[].headers`). **Still open:** these only take
+  effect on **deployed** Firebase Hosting, so verify them against a real deploy.
+- **Enrollment `tenantId` spoof guard (control TEN-3).** Done in code: `firestore.rules` now
+  requires `request.resource.data.tenantId == tenantId` on learner-owned enrollments (not just
+  courses/modules); tested in `firestore.rules.spec.ts`.
+- **Vulnerability disclosure process (control VD-1).** Done in code: `SECURITY.md` (root) documents
+  a private reporting channel, acknowledgement/triage SLAs, coordinated disclosure, and a
+  security-architecture overview. **Still open:** exercise the channel and retain handling evidence.
+
+---
+
 ## P0 — Foundational (do first)
 
 ### P0-1 — Provision real dev/staging/prod Firebase projects _[Phase 8]_
@@ -38,18 +75,14 @@ noted as _[Phase 8]_.
   document and **test** a restore.
 - **Area:** GCP project config (infra), documented in BC/DR policy.
 
-### P0-3 — Audit logging for privileged actions (control LOG-1)
+### P0-3 — Audit logging for privileged actions (control LOG-1) — _design implemented_
 
-- **Why:** Role grants, tenant provisioning, invites, and deactivations are not recorded to any
-  tamper-evident log. `auditable` (`libs/shared/src/lib/schemas/primitives.ts`) only stamps
-  create/update metadata.
-- **Change:** In each Function core (`set-user-role.core.ts`, `invite-member.core.ts`,
-  `provision-tenant.core.ts`, `member-claims-sync.core.ts`) write a structured, append-only audit
-  record (actor uid, action, target, tenant, timestamp, outcome) to an `/audit` collection
-  (Functions-write-only, superadmin-read-only in `firestore.rules`) and/or structured Cloud
-  Logging. Add a Zod schema in `libs/shared` and a rules block + rules test (same-PR rule).
-- **Area:** `apps/functions/src/lib/*.core.ts`, `libs/shared/src/lib/schemas/`, `firestore.rules`,
-  `libs/data-access/src/rules/firestore.rules.spec.ts`.
+- **Status:** **Implemented in design** (see "Recently implemented"): `audit-log.ts` writes
+  best-effort, append-only events to `/auditLogs` for `setUserRole` / `inviteMember` /
+  `provisionTenant`, made client-immutable in `firestore.rules` and covered by tests.
+- **Still open:** a production Firebase project + audit-log retention policy, and operating-
+  effectiveness evidence over an observation period. (The design is done; the production/evidence
+  side depends on P0-1.)
 
 ### P0-4 — Enable and document GitHub branch protection (control CM-4)
 
@@ -89,22 +122,25 @@ noted as _[Phase 8]_.
   `libs/auth` login flow (`libs/auth/src/lib/login/login.ts`, `principal.store.ts`).
 - **Area:** GCIP config + `libs/auth`.
 
-### P1-3 — Firebase App Check _[Phase 8]_ (control BP-1)
+### P1-3 — Firebase App Check: production enforcement _[Phase 8]_ (control BP-1)
 
-- **Why:** Without App Check, the public Firebase config lets any client call the SDK/callables
-  (rules/authz still deny unauthorized data, but it widens the attack surface — CC6.6).
-- **Change:** Register App Check (reCAPTCHA Enterprise / Play Integrity), add the provider in
-  `provideForgeFirebase` (`libs/auth/src/lib/firebase.providers.ts`), and enforce on Firestore +
-  callable functions.
-- **Area:** `libs/auth/src/lib/firebase.providers.ts`, `apps/functions/src/main.ts`, GCP config.
+- **Status:** **Wiring implemented in design** — `provideForgeAppCheck`
+  (`libs/auth/src/lib/app-check.providers.ts`) is in `provideForgeFirebase`, but demo-safe (a no-op
+  until a site key is configured), so nothing is enforced today.
+- **Still open:** Register App Check (reCAPTCHA v3) in the Firebase console, supply a real **site
+  key** to the browser, point at a **production Firebase project**, and **enforce** App Check on
+  Firestore + callable functions in the console.
+- **Area:** Firebase console + deploy-time injection of `__FORGE_APPCHECK_SITE_KEY__`;
+  `libs/auth/src/lib/app-check.providers.ts`, `apps/functions/src/main.ts`, GCP config.
 
-### P1-4 — CI security scanning (controls SEC-2, VUL-1)
+### P1-4 — CI security scanning (controls SEC-2, VUL-1) — _design implemented_
 
-- **Why:** No dependency vulnerability scanning and no secret scanning gate exist
-  (`.github/workflows/ci.yml`).
-- **Change:** Add Dependabot (or `npm audit`/Renovate) and CodeQL; add a secret scanner
-  (e.g. gitleaks) as a CI job; enable GitHub secret scanning + push protection.
-- **Area:** `.github/workflows/ci.yml`, `.github/dependabot.yml` (new).
+- **Status:** **Implemented in design** (see "Recently implemented"): `.github/workflows/ci.yml`
+  runs `dependency-audit` (`npm audit --audit-level=high`) and `secret-scan` (gitleaks) on every
+  PR, and `.github/dependabot.yml` opens weekly update PRs.
+- **Still open:** add CodeQL; enable GitHub-native secret scanning + push protection; retain scan
+  output as audit evidence.
+- **Area:** `.github/workflows/ci.yml`, `.github/dependabot.yml`, GitHub repo settings.
 
 ### P1-5 — Vendor management (control VM-1)
 
@@ -181,12 +217,11 @@ noted as _[Phase 8]_.
 These are low-effort relative to impact and are good first moves:
 
 - **P0-4 branch protection** — configuration only; no code. Immediately strengthens CM-4/CC8.
-- **P1-4 CI security scanning** — add `dependabot.yml`, a CodeQL workflow, and a gitleaks job;
-  enable GitHub secret scanning. Mostly config.
-- **P0-3 audit logging** — the Function cores are already small, pure, and well-tested; adding an
-  append-only audit write + schema + a rules block follows the existing same-PR rules pattern.
 - **P1-5 / P1-6 / P0-5 policy adoption** — the drafts exist; ratification is review + sign-off, not
   engineering.
+- _(Already done in design: P0-3 audit logging and P1-4 CI dependency/secret scanning — see
+  "Recently implemented." Their remaining work is production config + evidence, not the initial
+  build.)_
 
 The infrastructure-dependent items (P0-1 production, P0-2 backups, P1-1 monitoring, P1-3 App
 Check) require a real Firebase project first (P0-1 is the unlock for most of Availability and CC7).

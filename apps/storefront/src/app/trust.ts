@@ -3,8 +3,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 interface PostureRow {
   /** The capability or control being described. */
   control: string;
-  /** Honest status grounded in the codebase / readiness docs. */
-  status: 'Implemented' | 'In progress' | 'Roadmap';
+  /**
+   * Honest status grounded in the codebase / readiness docs.
+   * 'Implemented (design)' means the control design exists in code but is not
+   * yet independently tested for operating effectiveness and may still need
+   * production configuration — it never implies attestation.
+   */
+  status: 'Implemented' | 'Implemented (design)' | 'In progress' | 'Roadmap';
   /** Short, concrete evidence or context for the status. */
   detail: string;
 }
@@ -93,10 +98,12 @@ interface PostureRow {
             </p>
           </li>
           <li class="card">
-            <h3>Encryption in transit</h3>
+            <h3>Encryption in transit &amp; HTTP headers</h3>
             <p>
               All client traffic is served over TLS/HTTPS, terminated by Google-managed endpoints
-              (Firebase Hosting and the Google front end).
+              (Firebase Hosting and the Google front end). Hosting is configured to send a
+              Content-Security-Policy, HSTS, and related security headers; these take effect on
+              deployed hosting.
             </p>
           </li>
           <li class="card">
@@ -140,9 +147,10 @@ interface PostureRow {
           <li class="card">
             <h3>Dependency &amp; secret scanning</h3>
             <p>
-              Automated dependency-vulnerability and secret scanning in CI are
-              <strong>in progress</strong>. Today we rely on lockfile pinning and clean installs;
-              adding SCA and a secret scanner to the pipeline is a tracked remediation item.
+              CI runs automated dependency-vulnerability scanning (<code>npm audit</code>, high and
+              above) and a <code>gitleaks</code> secret scan on every pull request, with weekly
+              Dependabot updates. This control design is in place but is not yet evidenced for
+              operating effectiveness over time.
             </p>
           </li>
         </ul>
@@ -192,7 +200,9 @@ interface PostureRow {
         <p class="block-intro">
           An honest snapshot. &ldquo;Implemented&rdquo; means a control mechanism exists in our
           codebase today &mdash; it is not the same as an auditor attesting that it operates
-          effectively over time.
+          effectively over time. &ldquo;Implemented (design)&rdquo; means the control design is
+          present in code but is not yet independently tested for operating effectiveness and may
+          still need production configuration to take full effect.
         </p>
         <div class="table-wrap" role="region" aria-label="Control status table" tabindex="0">
           <table class="posture">
@@ -214,6 +224,7 @@ interface PostureRow {
                     <span
                       class="badge"
                       [class.badge-impl]="row.status === 'Implemented'"
+                      [class.badge-design]="row.status === 'Implemented (design)'"
                       [class.badge-progress]="row.status === 'In progress'"
                       [class.badge-roadmap]="row.status === 'Roadmap'"
                       >{{ row.status }}</span
@@ -594,6 +605,10 @@ interface PostureRow {
       color: var(--forge-positive);
     }
 
+    .badge-design {
+      color: var(--forge-accent);
+    }
+
     .badge-progress {
       color: var(--forge-notice);
     }
@@ -688,9 +703,9 @@ export class Trust {
     },
     {
       control: 'Dependency & secret scanning in CI',
-      status: 'In progress',
+      status: 'Implemented (design)',
       detail:
-        'Lockfile pinning and clean installs today; automated SCA and secret scanning are a tracked remediation item.',
+        'CI runs npm audit (high+) and a gitleaks secret scan on every PR, with weekly Dependabot updates; not yet evidenced for operating effectiveness.',
     },
     {
       control: 'Multi-factor authentication (MFA) enforcement',
@@ -711,20 +726,27 @@ export class Trust {
     },
     {
       control: 'Audit logging of security-relevant events',
-      status: 'Roadmap',
+      status: 'Implemented (design)',
       detail:
-        'Immutable audit logging of role grants, provisioning, and deactivations is planned (Phase 8).',
+        'Role grants, invites, and provisioning write best-effort, append-only events to an immutable, client-unwritable /auditLogs collection; needs a production project + retention.',
+    },
+    {
+      control: 'HTTP security headers',
+      status: 'Implemented (design)',
+      detail:
+        'Hosting sets CSP, HSTS, X-Content-Type-Options, X-Frame-Options/frame-ancestors, Referrer-Policy, and Permissions-Policy; these take effect on deployed hosting.',
+    },
+    {
+      control: 'Firebase App Check',
+      status: 'Implemented (design)',
+      detail:
+        'App Check (reCAPTCHA v3) is wired and demo-safe (a no-op without a site key); production enforcement needs a site key, a real project, and console-side enforcement.',
     },
     {
       control: 'Monitoring & alerting',
       status: 'Roadmap',
       detail:
         'Centralized logging, error reporting, and alerting are planned for the hardening phase.',
-    },
-    {
-      control: 'Firebase App Check',
-      status: 'Roadmap',
-      detail: 'Client attestation via App Check is planned (Phase 8); not yet wired into the apps.',
     },
     {
       control: 'Backups / Point-in-Time Recovery & DR',
