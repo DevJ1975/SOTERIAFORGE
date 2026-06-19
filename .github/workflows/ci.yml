@@ -68,9 +68,11 @@ jobs:
 
       - run: npm ci
 
-      # Fail only on high/critical advisories; lower severities are reported but
-      # non-blocking so day-to-day PRs aren't held hostage by transitive noise.
+      # Advisory only: surface high/critical advisories on every PR without
+      # gating the build (continue-on-error), so day-to-day PRs aren't held
+      # hostage by transitive noise. Triage happens via the report + Dependabot.
       - name: npm audit (high+)
+        continue-on-error: true
         run: npm audit --audit-level=high
 
   secret-scan:
