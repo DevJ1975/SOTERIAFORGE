@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from './logger';
 
 /**
  * Structured, append-only audit logging (SOC 2 CC7 / Confidentiality).
@@ -93,7 +94,11 @@ export async function recordAuditEvent(
   if (!port) return false;
   const event = buildAuditEvent(input, now);
   if (!event) {
-    console.error('Skipping malformed audit event', { action: input.action });
+    logger.warn('Skipping malformed audit event', {
+      function: 'recordAuditEvent',
+      action: input.action,
+      outcome: 'ignored',
+    });
     return false;
   }
   try {
@@ -101,7 +106,14 @@ export async function recordAuditEvent(
     return true;
   } catch (err) {
     // Non-fatal: log and carry on.
-    console.error('Best-effort audit log write failed', err);
+    logger.error('Best-effort audit log write failed', {
+      function: 'recordAuditEvent',
+      action: input.action,
+      actorUid: input.actorUid ?? undefined,
+      tenantId: input.tenantId ?? undefined,
+      outcome: 'error',
+      err,
+    });
     return false;
   }
 }

@@ -22,11 +22,11 @@ import {
   EnrollmentService,
   ForgeLessonRenderer,
   OFFLINE_VIDEO_PORT,
-  ProgressService,
 } from '@forge/lms-core';
 import { courseCompletionXp, levelForXp, levelProgress } from '@forge/gamification';
 import type { Course, CourseDraft, Enrollment, LessonDraft, VideoBlock } from '@forge/shared';
 import { NetworkStatusService } from '../../offline/network-status.service';
+import { ProgressSyncQueue } from '../../offline/progress-sync-queue.service';
 
 interface CompletionProjection {
   awardedXp: number;
@@ -352,12 +352,14 @@ export class Player {
   private readonly contentService = inject(CourseContentService);
   private readonly catalog = inject(CourseCatalogService);
   private readonly enrollments = inject(EnrollmentService);
-  private readonly progress = inject(ProgressService);
   private readonly principal = inject(PrincipalStore);
   // Optional so the player still works in the admin preview / tests where no
   // offline port is provided.
   private readonly offlinePort = inject(OFFLINE_VIDEO_PORT, { optional: true });
   private readonly network = inject(NetworkStatusService);
+  // Durable, replay-safe outbox: progress is enqueued (never lost offline) and
+  // flushed opportunistically. See ProgressSyncQueue.
+  private readonly queue = inject(ProgressSyncQueue);
 
   private readonly courseId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('courseId') ?? '')),
@@ -502,7 +504,7 @@ export class Player {
     const next = new Set(this.completed());
     next.add(lesson.id);
     this.completed.set(next);
-    await this.persistProgress(next);
+    await this.persistProgress(next, lesson.id);
     if (!this.isLastLesson()) this.next();
   }
 
@@ -511,23 +513,59 @@ export class Player {
     const uid = this.principal.uid();
     if (!tenantId || !uid) return;
     const courseId = this.courseId();
-    const enrollment = await this.progress.completeCourse(tenantId, courseId, uid);
-    this.enrollment.set(enrollment);
+    // Optimistically mark the enrollment complete so the UX (celebration,
+    // completed state) is immediate; the durable event carries the real write.
+    this.enrollment.update((current) =>
+      this.optimisticEnrollment(current, { uid, courseId, tenantId, progressPct: 100, completed: true }),
+    );
+    // Enqueue the course-completed event, then opportunistically flush. Offline,
+    // it stays durably queued; we never throw to the UI, so the learner always
+    // sees their completion celebration.
+    await this.queue.enqueue({ uid, tenantId, courseId, kind: 'course_completed' });
+    void this.queue.flush();
     this.showCelebration();
   }
 
-  private async persistProgress(completed: Set<string>): Promise<void> {
+  private async persistProgress(completed: Set<string>, lessonId: string): Promise<void> {
     const tenantId = this.principal.tenantId();
     const uid = this.principal.uid();
     if (!tenantId || !uid) return;
-    const enrollment = await this.progress.setLessonProgress(
-      tenantId,
-      this.courseId(),
-      uid,
-      [...completed],
-      this.lessons().length,
+    const courseId = this.courseId();
+    // Optimistically advance local progress so the UI updates instantly, even
+    // offline. Never auto-completes — that's reserved for complete().
+    const total = this.lessons().length;
+    const progressPct = total > 0 ? Math.min(100, Math.round((completed.size / total) * 100)) : 0;
+    this.enrollment.update((current) =>
+      this.optimisticEnrollment(current, { uid, courseId, tenantId, progressPct }),
     );
-    this.enrollment.set(enrollment);
+    // Append a durable lesson-completed event; flush opportunistically. Offline
+    // it stays queued (no lost progress) and never throws to the UI.
+    await this.queue.enqueue({ uid, tenantId, courseId, kind: 'lesson_completed', lessonId });
+    void this.queue.flush();
+  }
+
+  /**
+   * Merge an optimistic patch onto the current enrollment, synthesising a
+   * complete `Enrollment` (with sane defaults) when none has loaded yet. This
+   * keeps the player UX instant while the durable queue performs the real,
+   * server-derived write asynchronously.
+   */
+  private optimisticEnrollment(
+    current: Enrollment | undefined,
+    patch: Partial<Enrollment> & Pick<Enrollment, 'uid' | 'courseId' | 'tenantId'>,
+  ): Enrollment {
+    const base: Enrollment = current ?? {
+      uid: patch.uid,
+      courseId: patch.courseId,
+      tenantId: patch.tenantId,
+      progressPct: 0,
+      completed: false,
+      progressVersion: 0,
+      completedLessonIds: [],
+      attemptCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+    return { ...base, ...patch };
   }
 
   private showCelebration(): void {

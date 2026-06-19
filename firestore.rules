@@ -96,6 +96,23 @@ service cloud.firestore {
             // learner cannot stamp another tenant onto their own enrollment.
             && request.resource.data.tenantId == tenantId;
           allow delete: if false;
+
+          // Append-only progress events keyed by their own idempotencyKey. The
+          // enrollee appends their own events; authoring roles and superadmin
+          // may read. create AND update are both allowed so an idempotent
+          // replay re-writing the identical doc id succeeds (it collapses).
+          match /events/{eventId} {
+            allow read: if isSuperadmin()
+              || (inTenant(tenantId) && isAuthoring())
+              || (signedIn() && request.auth.uid == enrolleeUid);
+            allow create, update: if signedIn()
+              && request.auth.uid == enrolleeUid
+              && inTenant(tenantId)
+              && request.resource.data.uid == enrolleeUid
+              // The key IS the document id: rules enforce data.idempotencyKey == eventId.
+              && request.resource.data.idempotencyKey == eventId;
+            allow delete: if false;
+          }
         }
       }
 

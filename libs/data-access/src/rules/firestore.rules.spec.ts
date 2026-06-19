@@ -452,6 +452,84 @@ maybe('firestore.rules', () => {
     });
   });
 
+  describe('/tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events/{eventId}', () => {
+    const EVENTS_PATH = 'tenants/acme/courses/pub-1/enrollments/learner-1/events';
+
+    /** A well-formed progress event whose idempotencyKey equals the doc id. */
+    const event = (idempotencyKey: string, overrides: Record<string, unknown> = {}) => ({
+      idempotencyKey,
+      uid: 'learner-1',
+      tenantId: 'acme',
+      courseId: 'pub-1',
+      kind: 'lesson_completed',
+      lessonId: 'l1',
+      clientSeq: 1,
+      occurredAt: '2024-01-01T00:00:00.000Z',
+      deviceId: 'device-a',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      ...overrides,
+    });
+
+    it('allows the enrollee to create an event whose id == idempotencyKey', async () => {
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-aaaaaaaa`), event('evt-aaaaaaaa')),
+      );
+    });
+
+    it('denies creating an event whose id != idempotencyKey', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-bbbbbbbb`), event('evt-mismatch')),
+      );
+    });
+
+    it('allows an idempotent replay (same id, same data) to re-write the event', async () => {
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-replay01`), event('evt-replay01')),
+      );
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-replay01`), event('evt-replay01')),
+      );
+    });
+
+    it('allows authoring roles and superadmin to read events', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-readable`), event('evt-readable'));
+      });
+      await assertSucceeds(getDoc(doc(acmeInstructor(), `${EVENTS_PATH}/evt-readable`)));
+      await assertSucceeds(getDoc(doc(superadmin(), `${EVENTS_PATH}/evt-readable`)));
+      await assertSucceeds(getDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-readable`)));
+    });
+
+    it("denies another learner reading or writing someone else's events", async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-private`), event('evt-private'));
+      });
+      await assertFails(getDoc(doc(acmeLearner2(), `${EVENTS_PATH}/evt-private`)));
+      await assertFails(
+        setDoc(doc(acmeLearner2(), `${EVENTS_PATH}/evt-intruder`), event('evt-intruder')),
+      );
+    });
+
+    it('denies creating an event in another tenant', async () => {
+      await assertFails(
+        setDoc(
+          doc(globexLearner(), 'tenants/acme/courses/pub-1/enrollments/learner-1/events/evt-xtenant'),
+          event('evt-xtenant'),
+        ),
+      );
+    });
+
+    it('denies event deletes, even by the enrollee', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-nodelete`), event('evt-nodelete'));
+      });
+      await assertFails(deleteDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-nodelete`)));
+    });
+  });
+
   describe('/tenants/{tenantId}/badges and /leaderboard', () => {
     it('allows tenant members to read badges and leaderboard, denies outsiders', async () => {
       await assertSucceeds(getDoc(doc(acmeLearner(), 'tenants/acme/badges/badge-1')));

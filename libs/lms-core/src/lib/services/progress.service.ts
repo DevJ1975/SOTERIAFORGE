@@ -183,7 +183,11 @@ export class ProgressService {
 
 /** A fresh, path-safe idempotency key (>= 8 chars) when a caller omits one. */
 function defaultIdempotencyKey(): string {
-  return `evt-${crypto.randomUUID()}`;
+  const uuid =
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `evt-${uuid}`;
 }
 
 /**

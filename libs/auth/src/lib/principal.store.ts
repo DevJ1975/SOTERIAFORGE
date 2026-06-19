@@ -8,10 +8,27 @@ import {
   User,
 } from '@angular/fire/auth';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { AUTHORING_ROLES, CustomClaims, Role } from '@forge/shared';
+import {
+  AUTHORING_ROLES,
+  CustomClaims,
+  deviceId,
+  emit,
+  Role,
+  staggerDelayMs,
+  withRetry,
+} from '@forge/shared';
 import { parseClaims } from './claims';
 
 export type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
+
+/**
+ * Window (ms) over which devices spread their sign-in attempt. At a shift change
+ * the whole fleet would otherwise hit Firebase Auth simultaneously; staggering
+ * by {@link deviceId} fans those attempts out across the window.
+ */
+const LOGIN_WINDOW_MS = 10_000;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface PrincipalState {
   status: AuthStatus;
@@ -101,7 +118,19 @@ export const PrincipalStore = signalStore(
       },
 
       async signIn(email: string, password: string): Promise<void> {
-        await signInWithEmailAndPassword(requireAuth(), email, password);
+        const auth = requireAuth();
+        // Stagger the attempt so a shift-change burst fans out across the window
+        // instead of arriving at Firebase Auth together.
+        await sleep(staggerDelayMs(deviceId(), LOGIN_WINDOW_MS));
+        let attempt = 0;
+        emit('login_attempt');
+        await withRetry(() => {
+          if (attempt > 0) {
+            emit('login_retry', { attempt });
+          }
+          attempt++;
+          return signInWithEmailAndPassword(auth, email, password);
+        });
       },
 
       /** Emulator/dev convenience: create an email/password test account. */
