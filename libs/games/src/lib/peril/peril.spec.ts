@@ -4,9 +4,14 @@
  */
 
 import {
+  AIRPORT_BOARD,
   buildClueOptions,
+  DEFAULT_BOARD,
   FINAL_PERIL,
+  OSHA_BOARD,
+  PerilBoard,
   PerilCategory,
+  resolveBoard,
   ROUND_ONE_CATEGORIES,
   ROUND_ONE_VALUES,
   ROUND_TWO_CATEGORIES,
@@ -120,6 +125,69 @@ describe('peril-data', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Board registry + airport (aviation) board integrity
+// ---------------------------------------------------------------------------
+
+describe('peril boards', () => {
+  const everyBoard: PerilBoard[] = [OSHA_BOARD, AIRPORT_BOARD];
+
+  it('defaults to the OSHA board and resolves ?board= values', () => {
+    expect(DEFAULT_BOARD).toBe(OSHA_BOARD);
+    expect(resolveBoard('airport')).toBe(AIRPORT_BOARD);
+    expect(resolveBoard('osha')).toBe(OSHA_BOARD);
+    expect(resolveBoard(null)).toBe(OSHA_BOARD);
+    expect(resolveBoard(undefined)).toBe(OSHA_BOARD);
+    expect(resolveBoard('bogus')).toBe(OSHA_BOARD);
+  });
+
+  it('wires the OSHA board to the original exported categories', () => {
+    expect(OSHA_BOARD.roundOne).toBe(ROUND_ONE_CATEGORIES);
+    expect(OSHA_BOARD.roundTwo).toBe(ROUND_TWO_CATEGORIES);
+    expect(OSHA_BOARD.final).toBe(FINAL_PERIL);
+  });
+
+  it('gives every board 6 categories per round and 5 tiered clues each', () => {
+    for (const board of everyBoard) {
+      expect(board.roundOne).toHaveLength(6);
+      expect(board.roundTwo).toHaveLength(6);
+      for (const cat of board.roundOne) {
+        expect(cat.clues.map((c) => c.value)).toEqual([...ROUND_ONE_VALUES]);
+      }
+      for (const cat of board.roundTwo) {
+        expect(cat.clues.map((c) => c.value)).toEqual([...ROUND_TWO_VALUES]);
+      }
+    }
+  });
+
+  it('gives every clue on every board 4 distinct question-form options', () => {
+    for (const board of everyBoard) {
+      const allClues = [...board.roundOne, ...board.roundTwo]
+        .flatMap((c) => c.clues)
+        .concat(board.final.clue);
+      for (const clue of allClues) {
+        expect(clue.distractors).toHaveLength(3);
+        const options = [clue.correctResponse, ...clue.distractors];
+        expect(new Set(options).size).toBe(4);
+        for (const option of options) {
+          expect(option).toMatch(/^(What|Who|Where|When|Why|How)\b/);
+          expect(option.endsWith('?')).toBe(true);
+        }
+        expect((clue.explanation ?? '').length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('makes every airport clue text unique with a nonempty final category', () => {
+    const texts = [...AIRPORT_BOARD.roundOne, ...AIRPORT_BOARD.roundTwo]
+      .flatMap((c) => c.clues.map((q) => q.clue))
+      .concat(AIRPORT_BOARD.final.clue.clue);
+    expect(texts).toHaveLength(61);
+    expect(new Set(texts).size).toBe(61);
+    expect(AIRPORT_BOARD.final.category.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Game rules
 // ---------------------------------------------------------------------------
 
@@ -154,6 +222,20 @@ describe('PerilEngine scoring and control', () => {
     expect(engine.nextRound()).toBe('round2');
     engine.startRound('round2');
     expect(engine.nextRound()).toBe('final');
+  });
+
+  it('defaults to the OSHA board but plays the airport board when supplied', () => {
+    const oshaEngine = newEngine();
+    expect(oshaEngine.board).toBe(OSHA_BOARD);
+    expect(oshaEngine.categoriesForRound('round1')).toBe(ROUND_ONE_CATEGORIES);
+    expect(oshaEngine.finalClue()).toBe(FINAL_PERIL.clue);
+
+    const airportEngine = new PerilEngine(SEATS, createSeededRng(42), AIRPORT_BOARD);
+    expect(airportEngine.board).toBe(AIRPORT_BOARD);
+    expect(airportEngine.categoriesForRound('round1')).toBe(AIRPORT_BOARD.roundOne);
+    expect(airportEngine.categoriesForRound('round2')).toBe(AIRPORT_BOARD.roundTwo);
+    expect(airportEngine.finalClue()).toBe(AIRPORT_BOARD.final.clue);
+    expect(airportEngine.finalCategory()).toBe(AIRPORT_BOARD.final.category);
   });
 
   it('tracks cell usage to round completion', () => {

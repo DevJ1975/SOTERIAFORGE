@@ -31,6 +31,10 @@ firebase-export-*/
 # Vercel
 .vercel
 
+# Capacitor — generated native projects (regenerate with `npx cap add android|ios`)
+/android/
+/ios/
+
 # Environment & secrets — NEVER commit
 .env
 .env.*

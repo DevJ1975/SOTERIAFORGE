@@ -6,8 +6,10 @@ import type {
   KnowledgeCheckBlock,
   LessonDraft,
   TabsBlock,
+  VideoBlock,
 } from '@forge/shared';
 import { sanitizeHtml } from '../sanitize-html';
+import { OFFLINE_VIDEO_PORT, type UploadedVideoRef } from '../services/offline-video.port';
 
 interface KnowledgeCheckState {
   selected: string[];
@@ -15,6 +17,28 @@ interface KnowledgeCheckState {
 }
 
 const EMPTY_KC_STATE: KnowledgeCheckState = { selected: [], result: null };
+
+/** Per-uploaded-video UI state tracked by the renderer. */
+interface VideoState {
+  /** Playable src (local file if downloaded, otherwise the remote URL). */
+  src: string;
+  /** True when `src` is a durable on-device copy. */
+  offline: boolean;
+  /** True while a download is in flight. */
+  downloading: boolean;
+  /** Download progress as a 0..1 fraction. */
+  progress: number;
+  /** A user-facing error from the last download attempt, if any. */
+  error: string | null;
+}
+
+const EMPTY_VIDEO_STATE: VideoState = {
+  src: '',
+  offline: false,
+  downloading: false,
+  progress: 0,
+  error: null,
+};
 
 /**
  * Renders a Forge Studio lesson read-only but fully interactive: accordions
@@ -34,8 +58,14 @@ export class ForgeLessonRenderer {
   readonly lesson = input.required<LessonDraft>();
 
   private readonly domSanitizer = inject(DomSanitizer);
+  /** Optional: durable offline-video adapter (native learner app provides it). */
+  private readonly offlineVideo = inject(OFFLINE_VIDEO_PORT, { optional: true });
   private readonly htmlCache = new Map<string, SafeHtml>();
   private readonly resourceCache = new Map<string, SafeResourceUrl>();
+
+  /** blockId → resolved/uploaded video state. */
+  protected readonly videoStates = signal<Record<string, VideoState>>({});
+  private readonly resolvingVideos = new Set<string>();
 
   /** `${blockId}:${itemId}` → expanded */
   protected readonly openPanels = signal<Record<string, boolean>>({});
@@ -79,6 +109,96 @@ export class ForgeLessonRenderer {
       this.resourceCache.set(url, safe);
     }
     return safe;
+  }
+
+  // ---- Uploaded (offline-capable) video ------------------------------------
+
+  /** A video block is an uploaded/offline-capable asset iff `storagePath` is set. */
+  protected isUploadedVideo(block: VideoBlock): boolean {
+    return !!block.storagePath;
+  }
+
+  /** Whether durable offline controls should be shown for uploaded videos. */
+  protected offlineSupported(): boolean {
+    return !!this.offlineVideo?.supported();
+  }
+
+  /** Current UI state for an uploaded video, resolving its src lazily on first read. */
+  protected videoState(block: VideoBlock): VideoState {
+    const existing = this.videoStates()[block.id];
+    if (existing) return existing;
+    // Kick off resolution off the render path (signal writes are illegal during
+    // change detection), and serve the remote url as the immediate fallback.
+    this.resolveVideo(block);
+    return { ...EMPTY_VIDEO_STATE, src: block.url };
+  }
+
+  /** Resolve the playable src via the port (or fall back to the block url). */
+  private resolveVideo(block: VideoBlock): void {
+    if (this.resolvingVideos.has(block.id)) return;
+    this.resolvingVideos.add(block.id);
+
+    const port = this.offlineVideo;
+    if (!port) {
+      // No port (e.g. admin preview): play the remote url directly. Defer the
+      // signal write to a microtask so it never runs during template rendering.
+      queueMicrotask(() => this.patchVideoState(block.id, { src: block.url, offline: false }));
+      return;
+    }
+
+    port
+      .resolve(this.videoRef(block))
+      .then((resolved) => this.patchVideoState(block.id, resolved))
+      .catch(() => this.patchVideoState(block.id, { src: block.url, offline: false }));
+  }
+
+  protected downloadVideo(block: VideoBlock): void {
+    const port = this.offlineVideo;
+    if (!port) return;
+    this.patchVideoState(block.id, { downloading: true, progress: 0, error: null });
+    port
+      .download(this.videoRef(block), (pct) => this.patchVideoState(block.id, { progress: pct }))
+      .then(() => port.resolve(this.videoRef(block)))
+      .then((resolved) =>
+        this.patchVideoState(block.id, { ...resolved, downloading: false, progress: 1 }),
+      )
+      .catch((error: unknown) =>
+        this.patchVideoState(block.id, {
+          downloading: false,
+          error: error instanceof Error ? error.message : 'Download failed.',
+        }),
+      );
+  }
+
+  protected removeVideo(block: VideoBlock): void {
+    const port = this.offlineVideo;
+    if (!port || !block.storagePath) return;
+    const storagePath = block.storagePath;
+    port
+      .remove(storagePath)
+      .then(() => port.resolve(this.videoRef(block)))
+      .then((resolved) => this.patchVideoState(block.id, { ...resolved, error: null }))
+      .catch((error: unknown) =>
+        this.patchVideoState(block.id, {
+          error: error instanceof Error ? error.message : 'Remove failed.',
+        }),
+      );
+  }
+
+  private videoRef(block: VideoBlock): UploadedVideoRef {
+    return {
+      storagePath: block.storagePath,
+      url: block.url,
+      mimeType: block.mimeType,
+      sizeBytes: block.sizeBytes,
+    };
+  }
+
+  private patchVideoState(blockId: string, patch: Partial<VideoState>): void {
+    this.videoStates.update((state) => ({
+      ...state,
+      [blockId]: { ...(state[blockId] ?? EMPTY_VIDEO_STATE), ...patch },
+    }));
   }
 
   // ---- Accordion -----------------------------------------------------------

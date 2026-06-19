@@ -75,16 +75,111 @@
     }
     @case ('video') {
       <div class="field">
-        <label for="insp-vid-url">Video URL</label>
-        <input
-          pInputText
-          id="insp-vid-url"
-          [value]="sel.url"
-          placeholder="YouTube, Vimeo, or direct file URL"
-          (change)="patchInput(sel.id, 'url', $event, 'Set video URL')"
-        />
-        <small>YouTube and Vimeo links become players automatically.</small>
+        <span class="field-label" id="insp-vid-source-label">Video source</span>
+        <div class="seg" role="tablist" aria-labelledby="insp-vid-source-label">
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="videoSource() === 'upload'"
+            [class.on]="videoSource() === 'upload'"
+            (click)="setVideoSource('upload')"
+          >
+            Upload a video
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="videoSource() === 'embed'"
+            [class.on]="videoSource() === 'embed'"
+            (click)="setVideoSource('embed')"
+          >
+            Embed a URL
+          </button>
+        </div>
       </div>
+
+      @if (videoSource() === 'upload') {
+        @if (asVideo(sel).storagePath; as storagePath) {
+          <div class="field">
+            <span class="field-label">Uploaded video</span>
+            <div class="vid-uploaded" role="status">
+              <i class="pi pi-check-circle" aria-hidden="true"></i>
+              <span class="vid-uploaded-meta">
+                Stored for offline playback
+                @if (formatBytes(asVideo(sel).sizeBytes); as size) {
+                  <span class="vid-uploaded-size"> · {{ size }}</span>
+                }
+              </span>
+            </div>
+            <button type="button" class="vid-clear" (click)="clearUpload(sel.id)">
+              <i class="pi pi-trash" aria-hidden="true"></i> Replace / remove
+            </button>
+          </div>
+        } @else {
+          <div class="field">
+            <span class="field-label">Upload a video</span>
+            <input
+              #vidFile
+              type="file"
+              accept="video/*"
+              class="vid-file-input"
+              id="insp-vid-file"
+              aria-describedby="insp-vid-upload-hint"
+              [disabled]="!canUpload() || uploadStatus() === 'uploading'"
+              (change)="onVideoFile(sel.id, $event)"
+            />
+            <button
+              type="button"
+              class="vid-upload-btn"
+              [disabled]="!canUpload() || uploadStatus() === 'uploading'"
+              (click)="vidFile.click()"
+            >
+              <i class="pi pi-upload" aria-hidden="true"></i>
+              {{ uploadStatus() === 'uploading' ? 'Uploading…' : 'Choose a video file' }}
+            </button>
+            @if (uploadStatus() === 'uploading') {
+              <div
+                class="vid-progress"
+                role="progressbar"
+                aria-label="Video upload progress"
+                [attr.aria-valuenow]="uploadPct()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div class="vid-progress-bar" [style.width.%]="uploadPct()"></div>
+              </div>
+              <small aria-live="polite">
+                Uploading {{ uploadingName() }} — {{ uploadPct() }}%
+              </small>
+            } @else if (uploadStatus() === 'error') {
+              <small class="vid-error" role="alert">{{ uploadError() }}</small>
+            } @else if (!canUpload()) {
+              <small id="insp-vid-upload-hint">
+                Open a course and sign in to upload. Videos are hosted in the platform and play
+                offline in the learner app.
+              </small>
+            } @else {
+              <small id="insp-vid-upload-hint">
+                MP4 or WebM up to 500 MB. Hosted in the platform and playable offline in the learner
+                app.
+              </small>
+            }
+          </div>
+        }
+      } @else {
+        <div class="field">
+          <label for="insp-vid-url">Video URL</label>
+          <input
+            pInputText
+            id="insp-vid-url"
+            [value]="sel.url"
+            placeholder="YouTube, Vimeo, or direct file URL"
+            (change)="patchInput(sel.id, 'url', $event, 'Set video URL')"
+          />
+          <small>YouTube and Vimeo links become players automatically.</small>
+        </div>
+      }
+
       <div class="field">
         <label for="insp-vid-cap">Caption</label>
         <input

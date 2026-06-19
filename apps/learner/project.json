@@ -43,7 +43,8 @@
       },
       "configurations": {
         "production": {
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "serviceWorker": "apps/learner/ngsw-config.json"
         },
         "development": {
           "optimization": false,

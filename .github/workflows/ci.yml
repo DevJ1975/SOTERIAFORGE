@@ -47,7 +47,42 @@ jobs:
 
       - run: npm ci
 
-      - name: Firestore security rules tests (emulator)
+      - name: Firestore & Storage security rules tests (emulator)
         run: >-
-          npx firebase emulators:exec --only firestore --project demo-rules-test
+          npx firebase emulators:exec --only firestore,storage --project demo-rules-test
           "npx nx test data-access --testPathPattern=rules --skip-nx-cache"
+
+  # ---------------------------------------------------------------------------
+  # Security gates (SOC 2 CC7 vuln mgmt / CC8 change mgmt). Additive — these do
+  # not gate the build; they surface dependency and secret risks on every PR.
+  # ---------------------------------------------------------------------------
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Advisory only: surface high/critical advisories on every PR without
+      # gating the build (continue-on-error), so day-to-day PRs aren't held
+      # hostage by transitive noise. Triage happens via the report + Dependabot.
+      - name: npm audit (high+)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

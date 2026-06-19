@@ -16,6 +16,45 @@
           "source": "**",
           "destination": "/index.html"
         }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.googleapis.com https://firebaseinstallations.googleapis.com https://firebasestorage.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://www.google.com https://apis.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+            },
+            { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+            }
+          ]
+        },
+        {
+          "source": "**/*.@(js|css|woff2|woff|ttf|png|jpg|jpeg|svg|ico)",
+          "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        },
+        {
+          "source": "/index.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
+          "source": "/ngsw.json",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
+          "source": "/ngsw-worker.js",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
+          "source": "**/*.webmanifest",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        }
       ]
     },
     {
@@ -26,6 +65,25 @@
         {
           "source": "**",
           "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.googleapis.com https://firebaseinstallations.googleapis.com https://firebasestorage.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://www.google.com https://apis.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+            },
+            { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+            }
+          ]
         }
       ]
     },
@@ -38,6 +96,25 @@
           "source": "**",
           "destination": "/index.html"
         }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.googleapis.com https://firebaseinstallations.googleapis.com https://firebasestorage.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://www.google.com https://apis.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+            },
+            { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+            }
+          ]
+        }
       ]
     },
     {
@@ -48,6 +125,25 @@
         {
           "source": "**",
           "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.googleapis.com https://firebaseinstallations.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com; frame-src 'self' https://*.firebaseapp.com https://www.google.com https://apis.google.com https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+            },
+            { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+            { "key": "X-Content-Type-Options", "value": "nosniff" },
+            { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+            { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+            }
+          ]
         }
       ]
     }

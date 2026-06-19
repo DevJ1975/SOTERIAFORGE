@@ -111,6 +111,16 @@ maybe('firestore.rules', () => {
         contentType: 'video',
         ...AUDIT,
       });
+      // Rich player content (CourseDraft) at content/draft.
+      await setDoc(doc(db, 'tenants/acme/courses/pub-1/content/draft'), {
+        id: 'pub-1',
+        title: 'Published course',
+        description: 'Player content',
+        status: 'published',
+        lessons: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      });
       // Enrollments.
       await setDoc(doc(db, 'tenants/acme/courses/pub-1/enrollments/learner-1'), {
         uid: 'learner-1',
@@ -147,6 +157,23 @@ maybe('firestore.rules', () => {
         uid: 'buyer-1',
         entitlements: ['prod-1'],
         ...AUDIT,
+      });
+      // Audit logs (server-written, append-only). A tenant-scoped event for
+      // acme and a global (superadmin-only) event with no tenantId.
+      await setDoc(doc(db, 'auditLogs/audit-acme-1'), {
+        actorUid: 'admin-1',
+        actorRole: 'tenant_admin',
+        tenantId: 'acme',
+        action: 'inviteMember',
+        target: 'learner-9',
+        timestamp: '2024-01-01T00:00:00.000Z',
+      });
+      await setDoc(doc(db, 'auditLogs/audit-global-1'), {
+        actorUid: 'root-1',
+        actorRole: 'superadmin',
+        action: 'provisionTenant',
+        target: 'newco',
+        timestamp: '2024-01-01T00:00:00.000Z',
       });
     });
   });
@@ -324,6 +351,36 @@ maybe('firestore.rules', () => {
     });
   });
 
+  describe('/tenants/{tenantId}/courses/{courseId}/content/{contentId}', () => {
+    const CONTENT_PATH = 'tenants/acme/courses/pub-1/content/draft';
+
+    it('allows a tenant member to read the player content draft', async () => {
+      await assertSucceeds(getDoc(doc(acmeLearner(), CONTENT_PATH)));
+    });
+
+    it('allows superadmin to read player content in any tenant', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), CONTENT_PATH)));
+    });
+
+    it('denies a cross-tenant user reading the player content draft', async () => {
+      await assertFails(getDoc(doc(globexLearner(), CONTENT_PATH)));
+    });
+
+    it('denies content writes for everyone (Cloud Functions/seed only)', async () => {
+      await assertFails(
+        setDoc(doc(acmeInstructor(), CONTENT_PATH), {
+          id: 'pub-1',
+          title: 'Hacked',
+          status: 'published',
+          lessons: [],
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+        }),
+      );
+      await assertFails(updateDoc(doc(acmeAdmin(), CONTENT_PATH), { title: 'Hacked' }));
+    });
+  });
+
   describe('/tenants/{tenantId}/courses/{courseId}/enrollments/{uid}', () => {
     const ENROLLMENT_PATH = 'tenants/acme/courses/pub-1/enrollments/learner-1';
 
@@ -379,6 +436,100 @@ maybe('firestore.rules', () => {
 
     it('denies enrollment deletes, even by the enrollee', async () => {
       await assertFails(deleteDoc(doc(acmeLearner(), ENROLLMENT_PATH)));
+    });
+
+    it('denies an enrollment write whose embedded tenantId is spoofed', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), ENROLLMENT_PATH), {
+          uid: 'learner-1',
+          courseId: 'pub-1',
+          tenantId: 'globex', // spoofed: must match the path tenant
+          progressPct: 0,
+          completed: false,
+          ...AUDIT,
+        }),
+      );
+    });
+  });
+
+  describe('/tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events/{eventId}', () => {
+    const EVENTS_PATH = 'tenants/acme/courses/pub-1/enrollments/learner-1/events';
+
+    /** A well-formed progress event whose idempotencyKey equals the doc id. */
+    const event = (idempotencyKey: string, overrides: Record<string, unknown> = {}) => ({
+      idempotencyKey,
+      uid: 'learner-1',
+      tenantId: 'acme',
+      courseId: 'pub-1',
+      kind: 'lesson_completed',
+      lessonId: 'l1',
+      clientSeq: 1,
+      occurredAt: '2024-01-01T00:00:00.000Z',
+      deviceId: 'device-a',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      ...overrides,
+    });
+
+    it('allows the enrollee to create an event whose id == idempotencyKey', async () => {
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-aaaaaaaa`), event('evt-aaaaaaaa')),
+      );
+    });
+
+    it('denies creating an event whose id != idempotencyKey', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-bbbbbbbb`), event('evt-mismatch')),
+      );
+    });
+
+    it('allows an idempotent replay (same id, same data) to re-write the event', async () => {
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-replay01`), event('evt-replay01')),
+      );
+      await assertSucceeds(
+        setDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-replay01`), event('evt-replay01')),
+      );
+    });
+
+    it('allows authoring roles and superadmin to read events', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-readable`), event('evt-readable'));
+      });
+      await assertSucceeds(getDoc(doc(acmeInstructor(), `${EVENTS_PATH}/evt-readable`)));
+      await assertSucceeds(getDoc(doc(superadmin(), `${EVENTS_PATH}/evt-readable`)));
+      await assertSucceeds(getDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-readable`)));
+    });
+
+    it("denies another learner reading or writing someone else's events", async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-private`), event('evt-private'));
+      });
+      await assertFails(getDoc(doc(acmeLearner2(), `${EVENTS_PATH}/evt-private`)));
+      await assertFails(
+        setDoc(doc(acmeLearner2(), `${EVENTS_PATH}/evt-intruder`), event('evt-intruder')),
+      );
+    });
+
+    it('denies creating an event in another tenant', async () => {
+      await assertFails(
+        setDoc(
+          doc(
+            globexLearner(),
+            'tenants/acme/courses/pub-1/enrollments/learner-1/events/evt-xtenant',
+          ),
+          event('evt-xtenant'),
+        ),
+      );
+    });
+
+    it('denies event deletes, even by the enrollee', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore() as unknown as Firestore;
+        await setDoc(doc(db, `${EVENTS_PATH}/evt-nodelete`), event('evt-nodelete'));
+      });
+      await assertFails(deleteDoc(doc(acmeLearner(), `${EVENTS_PATH}/evt-nodelete`)));
     });
   });
 
@@ -443,6 +594,52 @@ maybe('firestore.rules', () => {
       await assertFails(
         updateDoc(doc(buyer(), 'b2c/store/customers/buyer-1'), { entitlements: ['prod-2'] }),
       );
+    });
+  });
+
+  describe('/auditLogs/{auditId}', () => {
+    const ACME_EVENT = 'auditLogs/audit-acme-1';
+    const GLOBAL_EVENT = 'auditLogs/audit-global-1';
+
+    it('allows superadmin to read any audit event', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), ACME_EVENT)));
+      await assertSucceeds(getDoc(doc(superadmin(), GLOBAL_EVENT)));
+    });
+
+    it('allows a tenant_admin to read audit events for their own tenant', async () => {
+      await assertSucceeds(getDoc(doc(acmeAdmin(), ACME_EVENT)));
+    });
+
+    it('denies a tenant_admin reading global (untenanted) audit events', async () => {
+      await assertFails(getDoc(doc(acmeAdmin(), GLOBAL_EVENT)));
+    });
+
+    it('denies a tenant_admin reading another tenant’s audit events', async () => {
+      await assertFails(
+        getDoc(
+          doc(authedDb('globex-admin', { role: 'tenant_admin', tenantId: 'globex' }), ACME_EVENT),
+        ),
+      );
+    });
+
+    it('denies non-admin roles (learner, instructor) and anonymous reads', async () => {
+      await assertFails(getDoc(doc(acmeLearner(), ACME_EVENT)));
+      await assertFails(getDoc(doc(acmeInstructor(), ACME_EVENT)));
+      await assertFails(getDoc(doc(anonDb(), ACME_EVENT)));
+    });
+
+    it('denies all client writes, even by superadmin (Cloud Functions only)', async () => {
+      await assertFails(
+        setDoc(doc(superadmin(), 'auditLogs/audit-new'), {
+          actorUid: 'root-1',
+          actorRole: 'superadmin',
+          action: 'setUserRole',
+          target: 'x',
+          timestamp: '2024-01-01T00:00:00.000Z',
+        }),
+      );
+      await assertFails(updateDoc(doc(superadmin(), ACME_EVENT), { action: 'tampered' }));
+      await assertFails(deleteDoc(doc(acmeAdmin(), ACME_EVENT)));
     });
   });
 });

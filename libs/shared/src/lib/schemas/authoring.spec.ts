@@ -1,4 +1,4 @@
-import { block, courseDraft, knowledgeCheckBlock, lessonDraft } from './authoring';
+import { block, courseDraft, knowledgeCheckBlock, lessonDraft, videoBlock } from './authoring';
 
 const timestamps = {
   createdAt: '2026-06-01T08:00:00Z',
@@ -26,6 +26,16 @@ const validCourse = {
           layout: 'centered',
         },
         { id: 'b4', kind: 'video', url: 'https://youtu.be/abc123', caption: 'Daily walkaround' },
+        {
+          id: 'b4b',
+          kind: 'video',
+          url: 'https://storage.example.com/walkaround.mp4?token=abc',
+          caption: 'Hosted walkaround',
+          storagePath: 'tenants/atl-airport/courses/course-1/videos/walkaround.mp4',
+          mimeType: 'video/mp4',
+          sizeBytes: 10_485_760,
+          durationSec: 92.5,
+        },
         { id: 'b5', kind: 'bulletList', items: ['Tires', 'Forks', 'Mast chains'] },
         { id: 'b6', kind: 'numberedList', items: ['Park', 'Lower forks', 'Set brake'] },
         { id: 'b7', kind: 'quote', text: 'Safety is no accident.', attribution: 'Site manager' },
@@ -80,7 +90,7 @@ const validCourse = {
 describe('courseDraft', () => {
   it('parses a valid course containing every block kind', () => {
     const parsed = courseDraft.parse(validCourse);
-    expect(parsed.lessons[0].blocks).toHaveLength(15);
+    expect(parsed.lessons[0].blocks).toHaveLength(16);
     expect(parsed.status).toBe('draft');
   });
 
@@ -152,6 +162,51 @@ describe('knowledgeCheckBlock', () => {
     expect(parsed.type).toBe('mcq');
     expect(parsed.feedbackCorrect.length).toBeGreaterThan(0);
     expect(parsed.options[1].correct).toBe(false);
+  });
+});
+
+describe('videoBlock', () => {
+  it('parses a legacy external embed (url only, no storagePath)', () => {
+    const parsed = videoBlock.parse({
+      id: 'v1',
+      kind: 'video',
+      url: 'https://youtu.be/abc123',
+      caption: 'Walkaround',
+    });
+    expect(parsed.url).toBe('https://youtu.be/abc123');
+    expect(parsed.storagePath).toBeUndefined();
+    expect(parsed.mimeType).toBeUndefined();
+    expect(parsed.sizeBytes).toBeUndefined();
+    expect(parsed.durationSec).toBeUndefined();
+  });
+
+  it('parses an uploaded asset with the offline metadata fields', () => {
+    const parsed = videoBlock.parse({
+      id: 'v2',
+      kind: 'video',
+      url: 'https://storage.example.com/clip.mp4',
+      storagePath: 'tenants/atl-airport/courses/c1/videos/clip.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 2048,
+      durationSec: 30,
+    });
+    expect(parsed.storagePath).toBe('tenants/atl-airport/courses/c1/videos/clip.mp4');
+    expect(parsed.mimeType).toBe('video/mp4');
+    expect(parsed.sizeBytes).toBe(2048);
+    expect(parsed.durationSec).toBe(30);
+  });
+
+  it('defaults url to an empty string and stays backward compatible', () => {
+    const parsed = videoBlock.parse({ id: 'v3', kind: 'video' });
+    expect(parsed.url).toBe('');
+    expect(parsed.storagePath).toBeUndefined();
+  });
+
+  it('rejects a fractional or negative sizeBytes and a negative durationSec', () => {
+    const base = { id: 'v4', kind: 'video', url: '' };
+    expect(videoBlock.safeParse({ ...base, sizeBytes: 1.5 }).success).toBe(false);
+    expect(videoBlock.safeParse({ ...base, sizeBytes: -1 }).success).toBe(false);
+    expect(videoBlock.safeParse({ ...base, durationSec: -0.1 }).success).toBe(false);
   });
 });
 

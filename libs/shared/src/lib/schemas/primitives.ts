@@ -30,6 +30,12 @@ export const storageRef = z.string().min(1);
 /** A non-negative integer count. */
 export const count = z.number().int().nonnegative();
 
+/**
+ * A client-generated idempotency key. It IS the event document id, so rules
+ * enforce `data.idempotencyKey == eventId`. URL/path-safe characters only.
+ */
+export const idempotencyKey = z.string().regex(/^[A-Za-z0-9_-]{8,200}$/);
+
 /** Audit metadata embedded on most documents. */
 export const auditable = z.object({
   createdAt: isoDateTime,

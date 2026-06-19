@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CONTENT_TYPES, PUBLISH_STATUSES } from '../constants';
-import { auditable, count, docId, storageRef, tenantId, uid } from './primitives';
+import { auditable, count, docId, idempotencyKey, storageRef, tenantId, uid } from './primitives';
 
 /** /tenants/{tenantId}/courses/{courseId} */
 export const course = auditable.extend({
@@ -52,5 +52,13 @@ export const enrollment = auditable.extend({
   lastActivityAt: z.string().datetime({ offset: true }).optional(),
   /** SCORM/cmi5 runtime state, persisted per enrollment. */
   cmi: z.record(z.string(), z.unknown()).optional(),
+  /** Monotonic guard: the highest applied event `clientSeq`. */
+  progressVersion: count.default(0),
+  /** Lesson ids completed so far (server-derived projection). */
+  completedLessonIds: z.array(docId).default([]),
+  /** Number of scored attempts recorded. */
+  attemptCount: count.default(0),
+  /** Idempotency key of the most recently applied event. */
+  lastEventKey: idempotencyKey.optional(),
 });
 export type Enrollment = z.infer<typeof enrollment>;

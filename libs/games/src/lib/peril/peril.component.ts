@@ -10,6 +10,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   NgZone,
   OnDestroy,
   ViewChild,
@@ -17,6 +18,7 @@ import {
 } from '@angular/core';
 import Phaser from 'phaser';
 import { PerilAudio } from './audio';
+import { DEFAULT_BOARD, resolveBoard } from './peril-data';
 import { GAME_HEIGHT, GAME_WIDTH, REGISTRY_KEYS } from './scenes/theme';
 import { LobbyScene } from './scenes/lobby-scene';
 import { BoardScene } from './scenes/board-scene';
@@ -31,7 +33,7 @@ import { ResultsScene } from './scenes/results-scene';
   template: `
     <div class="peril-shell">
       <div class="peril-toolbar">
-        <span class="peril-title">PERIL! &mdash; The Workplace Safety Game Show</span>
+        <span class="peril-title">{{ title }}</span>
         <button
           type="button"
           class="peril-mute"
@@ -100,7 +102,20 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
   @ViewChild('gameHost', { static: true })
   private gameHost!: ElementRef<HTMLDivElement>;
 
+  /**
+   * Optional explicit board id ('osha' | 'airport'). When omitted, the board
+   * is read from the `?board=` route query parameter (default = 'osha').
+   */
+  @Input() board?: string;
+
   muted = false;
+
+  /**
+   * Toolbar headline. Built from the active board's label so the OSHA board
+   * reads "PERIL! — The Workplace Safety Game Show" (unchanged) and the airport
+   * board surfaces its "Aviation Ground Safety" label. Defaults to OSHA.
+   */
+  title = perilTitle(DEFAULT_BOARD.label);
 
   private game: Phaser.Game | null = null;
   private audio: PerilAudio | null = null;
@@ -108,6 +123,9 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
 
   ngAfterViewInit(): void {
+    const board = resolveBoard(this.board ?? this.readBoardFromUrl());
+    this.title = perilTitle(board.label);
+    this.cdr.markForCheck();
     this.zone.runOutsideAngular(() => {
       this.audio = new PerilAudio();
       this.game = new Phaser.Game({
@@ -123,7 +141,18 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
         scene: [LobbyScene, BoardScene, ClueScene, FinalScene, ResultsScene],
       });
       this.game.registry.set(REGISTRY_KEYS.audio, this.audio);
+      this.game.registry.set(REGISTRY_KEYS.board, board);
     });
+  }
+
+  /** Reads the `?board=` query param off the current URL, if present. */
+  private readBoardFromUrl(): string | null {
+    if (typeof window === 'undefined' || !window.location) return null;
+    try {
+      return new URLSearchParams(window.location.search).get('board');
+    } catch {
+      return null;
+    }
   }
 
   toggleMute(): void {
@@ -140,4 +169,9 @@ export class PerilComponent implements AfterViewInit, OnDestroy {
       this.game = null;
     });
   }
+}
+
+/** Builds the toolbar headline "PERIL! — The {label} Game Show" for a board. */
+function perilTitle(boardLabel: string): string {
+  return `PERIL! — The ${boardLabel} Game Show`;
 }

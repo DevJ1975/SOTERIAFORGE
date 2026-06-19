@@ -6,3 +6,6 @@ export * from './lib/schemas/course';
 export * from './lib/schemas/commerce';
 export * from './lib/schemas/gamification';
 export * from './lib/schemas/authoring';
+export * from './lib/schemas/progress';
+export * from './lib/stagger';
+export * from './lib/telemetry';

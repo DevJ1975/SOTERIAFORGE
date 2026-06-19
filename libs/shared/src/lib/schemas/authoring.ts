@@ -54,9 +54,21 @@ export type ImageBlock = z.infer<typeof imageBlock>;
 export const videoBlock = z.object({
   ...blockBase,
   kind: z.literal('video'),
-  /** Direct file URL, or a YouTube/Vimeo page URL (rendered as an embed). */
+  /**
+   * Download URL (uploaded asset) OR a YouTube/Vimeo page URL (external embed).
+   * A block is "uploaded"/offline-capable iff `storagePath` is set; otherwise it
+   * is a legacy external embed rendered exactly as before.
+   */
   url: z.string().default(''),
   caption: z.string().optional(),
+  /** Cloud Storage object path; its presence marks the asset as offline-capable. */
+  storagePath: z.string().optional(),
+  /** MIME type of the uploaded asset, e.g. `video/mp4`. */
+  mimeType: z.string().optional(),
+  /** Uploaded asset size in bytes. */
+  sizeBytes: z.number().int().nonnegative().optional(),
+  /** Playback duration in seconds. */
+  durationSec: z.number().nonnegative().optional(),
 });
 export type VideoBlock = z.infer<typeof videoBlock>;
 

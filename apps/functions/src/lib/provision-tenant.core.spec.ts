@@ -92,4 +92,38 @@ describe('provisionTenantCore', () => {
       provisionTenantCore(deps, superToken, { id: 'Bad_ID!', name: 'Bad' }),
     ).rejects.toMatchObject({ code: 'invalid-argument' });
   });
+
+  it('audits the tenant creation (best-effort)', async () => {
+    const deps = makeFakes();
+    await provisionTenantCore(deps, superToken, { id: 'newco', name: 'NewCo' });
+    const provisionEvents = deps.audit.events.filter((e) => e.action === 'provisionTenant');
+    expect(provisionEvents).toHaveLength(1);
+    expect(provisionEvents[0]).toMatchObject({
+      actorUid: 'super-1',
+      actorRole: 'superadmin',
+      tenantId: 'newco',
+      action: 'provisionTenant',
+      target: 'newco',
+      metadata: { name: 'NewCo', plan: 'starter' },
+    });
+  });
+
+  it('also audits the first-admin invite when adminEmail is given', async () => {
+    const deps = makeFakes();
+    await provisionTenantCore(deps, superToken, {
+      id: 'newco',
+      name: 'NewCo',
+      adminEmail: 'boss@newco.com',
+    });
+    const actions = deps.audit.events.map((e) => e.action).sort();
+    expect(actions).toEqual(['inviteMember', 'provisionTenant']);
+  });
+
+  it('provisions even when the audit write fails (non-fatal)', async () => {
+    const deps = makeFakes();
+    deps.audit.failNext = true;
+    const result = await provisionTenantCore(deps, superToken, { id: 'newco', name: 'NewCo' });
+    expect(result.id).toBe('newco');
+    expect(deps.db.tenants.get('newco')).toBeDefined();
+  });
 });

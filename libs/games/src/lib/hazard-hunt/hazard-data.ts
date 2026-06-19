@@ -300,6 +300,136 @@ const TOOLSHOP_HAZARDS: HazardDef[] = [
   },
 ];
 
+const ATL_RAMP_HAZARDS: HazardDef[] = [
+  {
+    id: 'atl-fod-debris',
+    name: 'FOD — Loose Debris on the Apron',
+    kind: 'unstable-stack',
+    position: [4.5, 0, 2],
+    incident:
+      'A torn baggage strap, a snapped zip-tie, and a stray lavatory cap litter the gate area before the inbound 757 arrives. The strap is sucked into the No. 2 engine on spool-up — foreign object damage shreds three fan blades, the aircraft is grounded for an engine swap, and a $2.1M repair bill lands on the carrier. A pre-arrival FOD walk would have taken ninety seconds.',
+    oshaRef: '29 CFR 1910.22',
+    oshaTitle: 'Walking-working surfaces — general requirements',
+  },
+  {
+    id: 'atl-jet-blast',
+    name: 'Crew in the Jet Blast Zone',
+    kind: 'compressed-air',
+    position: [-8, 0, -7],
+    rotationY: 0.6,
+    incident:
+      'A ramp agent cuts behind a departing regional jet as it advances power to taxi out. The jet blast — well over 100 mph at break-away thrust — picks him off his feet and slams him into a baggage cart twenty feet away. Fractured collarbone, concussion, 7 weeks lost time. No OSHA standard names jet blast specifically, so this struck-by/thrown-by hazard falls under the General Duty Clause: blast danger areas behind running engines must be kept clear and marked.',
+    oshaRef: 'OSHA Sec. 5(a)(1)',
+    oshaTitle: 'General Duty Clause — recognized struck-by/thrown-by hazards',
+  },
+  {
+    id: 'atl-fuel-spill',
+    name: 'Fueling Operation — Open Flammable Spill',
+    kind: 'flammables-out',
+    position: [9.5, 0, -4],
+    incident:
+      'A hydrant fueler overfills the wing tank and a sheet of Jet A spreads under the aircraft, vapors rolling across the hot apron toward a running GPU. One ignition source from the spill zone and the whole gate goes up. The fueling was never bonded and no spill kit was staged — a 50-foot fuel-fire radius for the price of a missed shutoff.',
+    oshaRef: '29 CFR 1910.106',
+    oshaTitle: 'Flammable liquids',
+  },
+  {
+    id: 'atl-gpu-cable',
+    name: 'Damaged Ground-Power Cable',
+    kind: 'exposed-wiring',
+    position: [-12.6, 0, 3],
+    rotationY: Math.PI / 2,
+    incident:
+      'The 400-Hz ground-power cable has been dragged over the apron edge so often the jacket is worn through to the conductor. In a rain shower the puddle around the GPU head goes live; the agent unplugging it takes a shock hand-to-hand across 115 volts at high current. Cardiac monitoring, deep palm burns, 3 weeks lost time.',
+    oshaRef: '29 CFR 1910.305',
+    oshaTitle: 'Wiring methods, components, and equipment for general use',
+  },
+  {
+    id: 'atl-tug-unattended',
+    name: 'Unattended Baggage Tug, Engine Running',
+    kind: 'forklift-raised',
+    position: [6, 0, 7.5],
+    rotationY: -0.4,
+    incident:
+      'A driver hops off the tug to grab a dropped bag and leaves it idling, out of gear, on the gentle apron slope. It creeps forward, pins a fueler against the cargo-cart train, and crushes his leg before anyone can reach the brake. Powered tugs left running and unattended are a leading cause of ramp struck-by injuries.',
+    oshaRef: '29 CFR 1910.178',
+    oshaTitle: 'Powered industrial trucks',
+  },
+  {
+    id: 'atl-blocked-exit',
+    name: 'Blocked Jet Bridge Emergency Exit',
+    kind: 'blocked-exit',
+    position: [-14.6, 0, 7],
+    rotationY: Math.PI / 2,
+    incident:
+      'Stacked gate-checked strollers and a broken wheelchair wall off the emergency egress door at the base of the jet bridge. When a fuel-vapor alarm sounds during boarding, the only fast way off the apron level is jammed shut — agents and passengers funnel back up a single stair as the evacuation drags from seconds into minutes.',
+    oshaRef: '29 CFR 1910.37',
+    oshaTitle: 'Maintenance, safeguards, and operational features for exit routes',
+  },
+  {
+    id: 'atl-no-hivis',
+    name: 'Ramp Agent Without Hi-Vis & Hearing PPE',
+    kind: 'missing-ppe',
+    position: [1.5, 0, -6.5],
+    rotationY: 0.8,
+    incident:
+      "In a faded gray hoodie with no high-visibility vest, the new agent is invisible to the pushback driver's mirrors at dusk. He drifts into the pushback path and is clipped by the tow bar — a struck-by injury the required hi-vis PPE exists to prevent. (Working that same wash of 130-decibel engine noise with no muffs, his audiogram has also begun to show a standard threshold shift.)",
+    oshaRef: '29 CFR 1910.132',
+    oshaTitle: 'Personal protective equipment — general requirements',
+  },
+  {
+    id: 'atl-o2-cylinder',
+    name: 'Unsecured Aviation Oxygen Cylinder',
+    kind: 'unsecured-cylinder',
+    position: [12.6, 0, 5],
+    rotationY: -Math.PI / 2,
+    incident:
+      'A high-pressure oxygen cylinder for the cabin servicing cart stands free against the gate column, no chain, no cap. A loaded belt loader clips it and the valve shears on the concrete — 1,800 PSI of pure oxygen turns the bottle into a missile and feeds any nearby spark into a flash fire. Oxygen cylinders must be capped, secured upright, and kept clear of grease and fuel.',
+    oshaRef: '29 CFR 1910.101',
+    oshaTitle: 'Compressed gases — general requirements',
+  },
+  {
+    id: 'atl-belt-loader',
+    name: 'Belt Loader — Drive Guard Removed',
+    kind: 'unguarded-belt',
+    position: [-5, 0, 8],
+    incident:
+      "Maintenance pulled the belt loader's chain-and-pulley guard to chase a jam and never refit it. A loader feeding bags up the incline lets a glove cuff drift into the exposed nip point; it drags his hand into the drive before he can pull back. Two fingers crushed, surgery, 10 weeks lost time — the guard was sitting on the bench the whole time.",
+    oshaRef: '29 CFR 1910.219',
+    oshaTitle: 'Mechanical power-transmission apparatus',
+  },
+  {
+    id: 'atl-deice-glycol',
+    name: 'Unlabeled De-Icing Glycol Drum',
+    kind: 'unlabeled-drum',
+    position: [10, 0, 9.5],
+    incident:
+      'A blank amber drum by the de-ice pad is assumed to be spent Type I glycol and poured into the recovery sump. It was concentrated Type IV anti-ice fluid with a different additive package; the reaction in the warm sump throws off fumes that drive two crew members back coughing. Every chemical container on the ramp needs a compliant hazard label.',
+    oshaRef: '29 CFR 1910.1200',
+    oshaTitle: 'Hazard communication',
+  },
+  {
+    id: 'atl-blocked-extinguisher',
+    name: 'Blocked Apron Fire Extinguisher',
+    kind: 'blocked-extinguisher',
+    position: [13.6, 0, -8],
+    rotationY: -Math.PI / 2,
+    incident:
+      'The gate fire extinguisher cabinet — staged for exactly the fuel and electrical fires that happen here — is barricaded behind a train of loaded cargo carts. When a GPU overheats and a wiring fire starts under the aircraft, the forty seconds spent dragging carts clear is all the fire needs to climb the fuselage skin.',
+    oshaRef: '29 CFR 1910.157(c)',
+    oshaTitle: 'Portable fire extinguishers — general requirements',
+  },
+  {
+    id: 'atl-apron-slip',
+    name: 'Slip Hazard — Glycol & Fuel Sheen on the Apron',
+    kind: 'wet-floor',
+    position: [-3, 0, -2],
+    incident:
+      'A film of spent de-icing glycol mixed with a fuel sheen glazes the gate area, unmarked and unsqueegeed. A marshaller backing up to guide the aircraft in loses his footing on the slick concrete, goes down on his tailbone, and rolls toward the nosewheel path. Fractured coccyx, 4 weeks lost time, and a near-miss with the moving aircraft.',
+    oshaRef: '29 CFR 1910.22',
+    oshaTitle: 'Walking-working surfaces — general requirements',
+  },
+];
+
 export const LEVELS: LevelDef[] = [
   {
     id: 1,
@@ -320,6 +450,16 @@ export const LEVELS: LevelDef[] = [
     roomHalfDepth: 8,
     spawn: [0, 1.7, 6],
     hazards: TOOLSHOP_HAZARDS,
+  },
+  {
+    id: 3,
+    name: 'ATL RAMP',
+    shiftLabel: 'SHIFT 3 — HARTSFIELD RAMP',
+    inspections: 13,
+    roomHalfWidth: 16,
+    roomHalfDepth: 13,
+    spawn: [0, 1.7, 10.5],
+    hazards: ATL_RAMP_HAZARDS,
   },
 ];
 

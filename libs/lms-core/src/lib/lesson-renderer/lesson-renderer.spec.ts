@@ -1,6 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { LessonDraft } from '@forge/shared';
 import { ForgeLessonRenderer } from './lesson-renderer';
+import {
+  OFFLINE_VIDEO_PORT,
+  type OfflineVideoPort,
+  type ResolvedVideoSource,
+} from '../services/offline-video.port';
 
 const lessonWithEveryKind: LessonDraft = {
   id: 'lesson-1',
@@ -179,5 +184,77 @@ describe('ForgeLessonRenderer', () => {
     fixture.componentRef.setInput('lesson', { id: 'empty', title: 'Empty', blocks: [] });
     fixture.detectChanges();
     expect(element.querySelector('.lesson-empty')?.textContent).toContain('no content');
+  });
+
+  it('keeps the external YouTube embed for a non-uploaded video block', () => {
+    // The default lesson's b4 is an external YouTube embed (no storagePath).
+    expect(element.querySelector('.block-video iframe')).toBeTruthy();
+    expect(element.querySelector('.block-video .video-offline')).toBeFalsy();
+  });
+});
+
+const uploadedVideoLesson: LessonDraft = {
+  id: 'lesson-2',
+  title: 'Hosted video',
+  blocks: [
+    {
+      id: 'uv1',
+      kind: 'video',
+      url: 'https://storage.example.com/clip.mp4?token=remote',
+      storagePath: 'tenants/atl-airport/courses/c1/videos/clip.mp4',
+      mimeType: 'video/mp4',
+      sizeBytes: 2048,
+      caption: 'Hosted walkaround',
+    },
+  ],
+};
+
+describe('ForgeLessonRenderer — uploaded video without a port', () => {
+  it('falls back to the remote url and hides the offline control', async () => {
+    await TestBed.configureTestingModule({ imports: [ForgeLessonRenderer] }).compileComponents();
+    const fixture = TestBed.createComponent(ForgeLessonRenderer);
+    fixture.componentRef.setInput('lesson', uploadedVideoLesson);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    const video = element.querySelector<HTMLVideoElement>('.block-video video');
+    expect(video).toBeTruthy();
+    expect(video?.getAttribute('src')).toContain('clip.mp4?token=remote');
+    // No port ⇒ no external iframe and no offline control.
+    expect(element.querySelector('.block-video iframe')).toBeFalsy();
+    expect(element.querySelector('.video-offline')).toBeFalsy();
+  });
+});
+
+describe('ForgeLessonRenderer — uploaded video with a supporting port', () => {
+  it('resolves the src via the port and renders the offline control', async () => {
+    const port: OfflineVideoPort = {
+      supported: () => true,
+      resolve: async (): Promise<ResolvedVideoSource> => ({
+        src: 'capacitor://local/clip.mp4',
+        offline: true,
+      }),
+      isDownloaded: async () => true,
+      download: async () => undefined,
+      remove: async () => undefined,
+      listDownloads: async () => [],
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ForgeLessonRenderer],
+      providers: [{ provide: OFFLINE_VIDEO_PORT, useValue: port }],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ForgeLessonRenderer);
+    fixture.componentRef.setInput('lesson', uploadedVideoLesson);
+    fixture.detectChanges();
+    // Let the async resolve() settle, then re-render.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('.video-offline')).toBeTruthy();
+    expect(element.querySelector('.video-offline-status')?.textContent).toContain('Downloaded');
+    const video = element.querySelector<HTMLVideoElement>('.block-video video');
+    expect(video?.getAttribute('src')).toContain('capacitor://local/clip.mp4');
   });
 });

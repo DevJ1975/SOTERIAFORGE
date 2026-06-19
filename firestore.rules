@@ -71,6 +71,15 @@ service cloud.firestore {
           allow delete: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
         }
 
+        // Rich player content (CourseDraft at content/draft): any tenant member
+        // (or superadmin) may read; writes are Cloud-Functions/seed only. Note
+        // this is deliberately not published-gated — content is only reachable
+        // once the learner has the parent course's published metadata.
+        match /content/{contentId} {
+          allow read: if isSuperadmin() || inTenant(tenantId);
+          allow write: if false;
+        }
+
         // Enrollments: keyed by the enrollee's uid. The enrollee may read and
         // upsert their own enrollment (progress, scores, cmi state) within
         // their own tenant only; authoring roles and superadmin may read.
@@ -82,8 +91,28 @@ service cloud.firestore {
           allow create, update: if signedIn()
             && request.auth.uid == enrolleeUid
             && inTenant(tenantId)
-            && request.resource.data.uid == enrolleeUid;
+            && request.resource.data.uid == enrolleeUid
+            // Defense-in-depth: the embedded tenantId must match the path, so a
+            // learner cannot stamp another tenant onto their own enrollment.
+            && request.resource.data.tenantId == tenantId;
           allow delete: if false;
+
+          // Append-only progress events keyed by their own idempotencyKey. The
+          // enrollee appends their own events; authoring roles and superadmin
+          // may read. create AND update are both allowed so an idempotent
+          // replay re-writing the identical doc id succeeds (it collapses).
+          match /events/{eventId} {
+            allow read: if isSuperadmin()
+              || (inTenant(tenantId) && isAuthoring())
+              || (signedIn() && request.auth.uid == enrolleeUid);
+            allow create, update: if signedIn()
+              && request.auth.uid == enrolleeUid
+              && inTenant(tenantId)
+              && request.resource.data.uid == enrolleeUid
+              // The key IS the document id: rules enforce data.idempotencyKey == eventId.
+              && request.resource.data.idempotencyKey == eventId;
+            allow delete: if false;
+          }
         }
       }
 
@@ -121,6 +150,22 @@ service cloud.firestore {
     // (Cloud Functions).
     match /b2c/store/customers/{customerUid} {
       allow read: if signedIn() && request.auth.uid == customerUid;
+      allow write: if false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Audit logs (SOC 2 CC7 / Confidentiality). Append-only: written
+    // exclusively by Cloud Functions via the Admin SDK (which bypasses rules),
+    // so `write: if false` means "no client writes, ever" — no creates,
+    // updates, or deletes from any client. This guarantees immutability from
+    // the client surface. Reads are restricted to superadmin, plus a
+    // tenant_admin scoped to audit events for their own tenant.
+    // -----------------------------------------------------------------------
+    match /auditLogs/{auditId} {
+      allow read: if isSuperadmin()
+        || (signedIn()
+          && role() == 'tenant_admin'
+          && resource.data.tenantId == request.auth.token.tenantId);
       allow write: if false;
     }
 

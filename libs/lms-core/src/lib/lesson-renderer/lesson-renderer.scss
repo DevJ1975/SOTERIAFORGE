@@ -138,6 +138,68 @@
   }
 }
 
+.video-offline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.video-offline-btn {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--forge-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 130ms ease-out;
+
+  &:hover {
+    background: var(--forge-accent-hover);
+  }
+
+  &.ghost {
+    background: transparent;
+    color: var(--forge-accent);
+    border: 1.5px solid var(--forge-accent);
+
+    &:hover {
+      background: var(--forge-accent);
+      color: #fff;
+    }
+  }
+}
+
+.video-offline-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--forge-positive);
+}
+
+.video-offline-error {
+  font-size: 13px;
+  color: var(--forge-negative);
+}
+
+.video-offline-progress {
+  flex: 1 1 140px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--forge-surface-dim);
+  overflow: hidden;
+}
+
+.video-offline-bar {
+  display: block;
+  height: 100%;
+  background: var(--forge-accent);
+  transition: width 130ms ease-out;
+}
+
 .block-embed iframe {
   display: block;
   width: 100%;

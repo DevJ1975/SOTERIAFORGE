@@ -5,10 +5,12 @@ import {
   badge,
   catalogProduct,
   course,
+  courseDraft,
   enrollment,
   leaderboard,
   member,
   module as moduleSchema,
+  progressEvent,
   tenant,
 } from '@forge/shared';
 import type {
@@ -16,11 +18,13 @@ import type {
   Badge,
   CatalogProduct,
   Course,
+  CourseDraft,
   Enrollment,
   Leaderboard,
   LeaderboardPeriod,
   Member,
   Module,
+  ProgressEvent,
   Tenant,
 } from '@forge/shared';
 import { zodConverter } from './converters';
@@ -50,10 +54,15 @@ const memberConverter = zodConverter(member);
 const courseConverter = zodConverter(course);
 const moduleConverter = zodConverter(moduleSchema);
 const enrollmentConverter = zodConverter(enrollment);
+const progressEventConverter = zodConverter(progressEvent);
 const badgeConverter = zodConverter(badge);
 const leaderboardConverter = zodConverter(leaderboard);
 const catalogProductConverter = zodConverter(catalogProduct);
 const b2cCustomerConverter = zodConverter(b2cCustomer);
+const courseContentConverter = zodConverter(courseDraft);
+
+/** Fixed document id for a course's player content draft. */
+export const COURSE_CONTENT_DRAFT_ID = 'draft';
 
 /** /tenants */
 export function tenantsCol(db: Firestore): CollectionReference<Tenant> {
@@ -110,6 +119,30 @@ export function moduleDoc(
   return doc(modulesCol(db, tenantId, courseId), moduleId);
 }
 
+/**
+ * /tenants/{tenantId}/courses/{courseId}/content — rich authoring content
+ * (CourseDraft) consumed by the learner player. The content doc's
+ * `CourseDraft.id` MUST equal its parent `courseId`.
+ */
+export function courseContentCol(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+): CollectionReference<CourseDraft> {
+  return collection(db, 'tenants', tenantId, 'courses', courseId, 'content').withConverter(
+    courseContentConverter,
+  );
+}
+
+/** /tenants/{tenantId}/courses/{courseId}/content/draft */
+export function courseContentDoc(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+): DocumentReference<CourseDraft> {
+  return doc(courseContentCol(db, tenantId, courseId), COURSE_CONTENT_DRAFT_ID);
+}
+
 /** /tenants/{tenantId}/courses/{courseId}/enrollments */
 export function enrollmentsCol(
   db: Firestore,
@@ -129,6 +162,42 @@ export function enrollmentDoc(
   uid: string,
 ): DocumentReference<Enrollment> {
   return doc(enrollmentsCol(db, tenantId, courseId), uid);
+}
+
+/**
+ * /tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events —
+ * append-only progress events keyed by their own `idempotencyKey` document id.
+ * A replay re-writes the same doc id ⇒ collapses (the idempotency property the
+ * sync-storm must prove). The enrollment doc is a server-derived projection of
+ * these events, advanced under a monotonic `progressVersion` guard.
+ */
+export function enrollmentEventsCol(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+  uid: string,
+): CollectionReference<ProgressEvent> {
+  return collection(
+    db,
+    'tenants',
+    tenantId,
+    'courses',
+    courseId,
+    'enrollments',
+    uid,
+    'events',
+  ).withConverter(progressEventConverter);
+}
+
+/** /tenants/{tenantId}/courses/{courseId}/enrollments/{uid}/events/{idempotencyKey} */
+export function enrollmentEventDoc(
+  db: Firestore,
+  tenantId: string,
+  courseId: string,
+  uid: string,
+  idempotencyKey: string,
+): DocumentReference<ProgressEvent> {
+  return doc(enrollmentEventsCol(db, tenantId, courseId, uid), idempotencyKey);
 }
 
 /** /tenants/{tenantId}/badges */

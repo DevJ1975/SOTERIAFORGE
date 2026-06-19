@@ -1,45 +1,59 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { PwaInstall } from './pwa/pwa-install';
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, ButtonModule],
+  imports: [RouterLink, ButtonModule, PwaInstall],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="forge-page">
       <section class="hero forge-card">
         <h1>Welcome back</h1>
         <p>
-          Your safety training hub. Courses arrive with Phase 2 — meanwhile, sharpen your hazard
-          instincts in the Safety Arcade below.
+          Your ATL safety training hub. Work through aviation-safety courses, track your progress,
+          and sharpen your hazard instincts in the Safety Arcade.
         </p>
+        <div class="hero-actions">
+          <p-button label="Browse courses" routerLink="/courses" />
+          <p-button label="My Learning" routerLink="/my-learning" severity="secondary" />
+          <app-pwa-install />
+        </div>
       </section>
 
-      <h2 class="arcade-title">Safety Arcade</h2>
+      <h2 class="arcade-title">ATL Safety Arcade</h2>
       <div class="game-grid">
         <article class="forge-card game-card">
           <div class="game-art hazard" aria-hidden="true">
             <span class="game-emblem">&#9888;</span>
           </div>
-          <h3>Hazard Hunter</h3>
+          <h3>Hazard Hunter — ATL Ramp</h3>
           <p>
-            Walk the warehouse floor in first person. Spot the OSHA violations before the shift ends
-            — every miss becomes an incident report.
+            Walk the ATL ramp in first person. Spot the OSHA and ramp-safety violations before the
+            push-back window closes — every miss becomes an incident report.
           </p>
-          <p-button label="Start your shift" routerLink="/games/hazard-hunter" />
+          <p-button
+            label="Start your shift"
+            routerLink="/games/hazard-hunter"
+            [queryParams]="{ level: 3 }"
+          />
         </article>
 
         <article class="forge-card game-card">
           <div class="game-art peril" aria-hidden="true">
             <span class="game-emblem">PERIL!</span>
           </div>
-          <h3>PERIL!</h3>
+          <h3>PERIL! — Aviation Safety</h3>
           <p>
-            The workplace-safety game show. Buzz in against other players — or our notoriously
-            overconfident rookie AIs — across two rounds and a Final PERIL wager.
+            The workplace-safety game show, airport edition. Buzz in across two rounds of aviation
+            safety categories and a Final PERIL wager.
           </p>
-          <p-button label="Take the podium" routerLink="/games/peril" />
+          <p-button
+            label="Take the podium"
+            routerLink="/games/peril"
+            [queryParams]="{ board: 'airport' }"
+          />
         </article>
       </div>
     </div>
@@ -53,6 +67,13 @@ import { ButtonModule } from 'primeng/button';
       color: var(--forge-text-subtle);
       max-width: 60ch;
       margin: 0;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      flex-wrap: wrap;
     }
 
     .arcade-title {

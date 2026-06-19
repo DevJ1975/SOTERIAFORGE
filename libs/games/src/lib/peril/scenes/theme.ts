@@ -42,6 +42,7 @@ export const SCENE_KEYS = {
 export const REGISTRY_KEYS = {
   session: 'peril:session',
   audio: 'peril:audio',
+  board: 'peril:board',
 } as const;
 
 /** Cross-scene match state stashed in the game registry. */

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { tenant, tenantId as tenantIdSchema } from '@forge/shared';
+import { recordAuditEvent } from './audit-log';
 import { parseCaller } from './authz';
 import { FunctionsDomainError } from './errors';
 import { inviteMemberCore } from './invite-member.core';
@@ -70,6 +71,17 @@ export async function provisionTenantCore(
     ...(callerClaims.uid ? { createdBy: callerClaims.uid } : {}),
   });
   await deps.db.setTenant(input.id, tenantDoc);
+
+  // Best-effort, non-fatal audit trail of the tenant creation. (The optional
+  // first-admin invite is audited separately inside inviteMemberCore.)
+  await recordAuditEvent(deps.audit, {
+    actorUid: callerClaims.uid,
+    actorRole: callerClaims.role,
+    tenantId: input.id,
+    action: 'provisionTenant',
+    target: input.id,
+    metadata: { name: input.name, plan: tenantDoc.plan, gcipTenantId },
+  });
 
   let adminInvited = false;
   if (input.adminEmail) {

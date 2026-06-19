@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { customClaims, ROLES, tenantId as tenantIdSchema, type Role } from '@forge/shared';
+import { recordAuditEvent } from './audit-log';
 import { canManageRole, parseCaller } from './authz';
 import { FunctionsDomainError } from './errors';
 import type { CorePorts } from './ports';
@@ -60,6 +61,16 @@ export async function setUserRoleCore(
   if (input.tenantId) {
     await deps.db.setMember(input.tenantId, input.uid, { role: input.role });
   }
+
+  // Best-effort, non-fatal audit trail of the claim change.
+  await recordAuditEvent(deps.audit, {
+    actorUid: callerClaims?.uid,
+    actorRole: callerClaims?.role,
+    tenantId: input.tenantId,
+    action: 'setUserRole',
+    target: input.uid,
+    metadata: { role: input.role },
+  });
 
   return {
     uid: input.uid,

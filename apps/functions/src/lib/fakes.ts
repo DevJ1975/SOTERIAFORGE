@@ -1,4 +1,7 @@
-import type { AuthPort, CreateUserOptions, DbPort } from './ports';
+import type { AuditEvent, AuditLogPort } from './audit-log';
+import type { EnrollmentProjection } from './aggregate-progress.core';
+import type { BucketState } from './rate-limit.core';
+import type { AuthPort, CreateUserOptions, DbPort, EnrollmentRef, RateLimitPort } from './ports';
 
 /**
  * In-memory fakes for the ports. Used by the colocated jest specs — no emulator,
@@ -52,9 +55,15 @@ export class FakeAuthPort implements AuthPort {
 export class FakeDbPort implements DbPort {
   readonly tenants = new Map<string, Record<string, unknown>>();
   readonly members = new Map<string, Record<string, unknown>>();
+  /** Enrollment projections keyed by `${tenantId}/${courseId}/${uid}`. */
+  readonly enrollments = new Map<string, Partial<EnrollmentProjection>>();
 
   private memberKey(tenantId: string, uid: string): string {
     return `${tenantId}/${uid}`;
+  }
+
+  private enrollmentKey(ref: EnrollmentRef): string {
+    return `${ref.tenantId}/${ref.courseId}/${ref.uid}`;
   }
 
   async getTenant(tenantId: string): Promise<Record<string, unknown> | null> {
@@ -73,8 +82,53 @@ export class FakeDbPort implements DbPort {
     const key = this.memberKey(tenantId, uid);
     this.members.set(key, { ...(this.members.get(key) ?? {}), ...data });
   }
+
+  async runEnrollmentTransaction(
+    ref: EnrollmentRef,
+    apply: (current: Partial<EnrollmentProjection> | null) => Partial<EnrollmentProjection> | null,
+  ): Promise<void> {
+    const key = this.enrollmentKey(ref);
+    const current = this.enrollments.get(key) ?? null;
+    const patch = apply(current);
+    if (patch === null) return; // guard ignored → no write
+    this.enrollments.set(key, { ...(current ?? {}), ...patch });
+  }
 }
 
-export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort } {
-  return { auth: new FakeAuthPort(), db: new FakeDbPort() };
+/** In-memory token-bucket store. `failNext` simulates a transient transport error. */
+export class FakeRateLimitPort implements RateLimitPort {
+  readonly buckets = new Map<string, BucketState>();
+  failNext = false;
+
+  async runBucketTransaction(
+    key: string,
+    apply: (current: BucketState | null) => BucketState,
+  ): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw Object.assign(new Error('simulated transient failure'), { code: 'unavailable' });
+    }
+    const current = this.buckets.get(key) ?? null;
+    // `apply` throws when empty → nothing written (mirrors a transaction abort).
+    const next = apply(current);
+    this.buckets.set(key, next);
+  }
+}
+
+/** In-memory append-only audit sink. `failNext` simulates a write failure. */
+export class FakeAuditLogPort implements AuditLogPort {
+  readonly events: AuditEvent[] = [];
+  failNext = false;
+
+  async append(event: AuditEvent): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error('simulated audit write failure');
+    }
+    this.events.push(event);
+  }
+}
+
+export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort; audit: FakeAuditLogPort } {
+  return { auth: new FakeAuthPort(), db: new FakeDbPort(), audit: new FakeAuditLogPort() };
 }

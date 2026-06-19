@@ -69,4 +69,42 @@ describe('setUserRoleCore', () => {
       setUserRoleCore(deps, acmeAdminToken, { uid: 'user-5', role: 'superadmin' }),
     ).rejects.toMatchObject({ code: 'permission-denied' });
   });
+
+  it('writes a best-effort audit event on success', async () => {
+    const deps = makeFakes();
+    await setUserRoleCore(deps, acmeAdminToken, {
+      uid: 'user-1',
+      role: 'instructor',
+      tenantId: 'acme',
+    });
+    expect(deps.audit.events).toHaveLength(1);
+    expect(deps.audit.events[0]).toMatchObject({
+      actorUid: 'admin-1',
+      actorRole: 'tenant_admin',
+      tenantId: 'acme',
+      action: 'setUserRole',
+      target: 'user-1',
+      metadata: { role: 'instructor' },
+    });
+  });
+
+  it('does not audit when the caller is denied', async () => {
+    const deps = makeFakes();
+    await expect(
+      setUserRoleCore(deps, acmeAdminToken, { uid: 'user-5', role: 'superadmin' }),
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(deps.audit.events).toHaveLength(0);
+  });
+
+  it('still succeeds when the audit write fails (non-fatal)', async () => {
+    const deps = makeFakes();
+    deps.audit.failNext = true;
+    const result = await setUserRoleCore(deps, acmeAdminToken, {
+      uid: 'user-1',
+      role: 'instructor',
+      tenantId: 'acme',
+    });
+    expect(result).toEqual({ uid: 'user-1', role: 'instructor', tenantId: 'acme' });
+    expect(deps.audit.events).toHaveLength(0);
+  });
 });

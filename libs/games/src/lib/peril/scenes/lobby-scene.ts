@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import { AiOpponentProvider } from '../ai-opponents';
 import { PerilEngine } from '../game-rules';
+import { boardSubtitle, DEFAULT_BOARD, PerilBoard } from '../peril-data';
 import { OpponentProfile } from '../opponent-provider';
 import {
   COLORS,
@@ -36,6 +37,8 @@ export class LobbyScene extends Phaser.Scene {
     drawStageBackdrop(this);
     ensureSparkTexture(this);
     const audio = getAudio(this);
+    const board =
+      (this.registry.get(REGISTRY_KEYS.board) as PerilBoard | undefined) ?? DEFAULT_BOARD;
 
     // Big title with staggered letter drop.
     const title = 'PERIL!';
@@ -62,7 +65,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     this.add
-      .text(GAME_WIDTH / 2, 238, 'THE WORKPLACE SAFETY GAME SHOW', {
+      .text(GAME_WIDTH / 2, 238, boardSubtitle(board), {
         fontFamily: UI_FONT,
         fontSize: '24px',
         color: hexString(COLORS.goldBright),
@@ -166,7 +169,9 @@ export class LobbyScene extends Phaser.Scene {
       { id: HUMAN_ID, name: 'You', isHuman: true },
       { id: opponents[1].id, name: opponents[1].name, isHuman: false },
     ];
-    const engine = new PerilEngine(seats);
+    const board =
+      (this.registry.get(REGISTRY_KEYS.board) as PerilBoard | undefined) ?? DEFAULT_BOARD;
+    const engine = new PerilEngine(seats, Math.random, board);
     engine.controlId = HUMAN_ID; // the champ (you) selects first
 
     const avatars = new Map(opponents.map((o) => [o.id, o.avatar]));

@@ -1,4 +1,5 @@
 export * from './lib/firebase.providers';
+export * from './lib/app-check.providers';
 export * from './lib/tenant-host';
 export * from './lib/claims';
 export * from './lib/principal.store';
