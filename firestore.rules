@@ -91,7 +91,10 @@ service cloud.firestore {
           allow create, update: if signedIn()
             && request.auth.uid == enrolleeUid
             && inTenant(tenantId)
-            && request.resource.data.uid == enrolleeUid;
+            && request.resource.data.uid == enrolleeUid
+            // Defense-in-depth: the embedded tenantId must match the path, so a
+            // learner cannot stamp another tenant onto their own enrollment.
+            && request.resource.data.tenantId == tenantId;
           allow delete: if false;
         }
       }

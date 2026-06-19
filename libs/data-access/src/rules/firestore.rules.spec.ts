@@ -437,6 +437,19 @@ maybe('firestore.rules', () => {
     it('denies enrollment deletes, even by the enrollee', async () => {
       await assertFails(deleteDoc(doc(acmeLearner(), ENROLLMENT_PATH)));
     });
+
+    it('denies an enrollment write whose embedded tenantId is spoofed', async () => {
+      await assertFails(
+        setDoc(doc(acmeLearner(), ENROLLMENT_PATH), {
+          uid: 'learner-1',
+          courseId: 'pub-1',
+          tenantId: 'globex', // spoofed: must match the path tenant
+          progressPct: 0,
+          completed: false,
+          ...AUDIT,
+        }),
+      );
+    });
   });
 
   describe('/tenants/{tenantId}/badges and /leaderboard', () => {

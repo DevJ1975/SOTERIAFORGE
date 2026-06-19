@@ -2,6 +2,7 @@ import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 import { FirebaseOptions, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { provideForgeAppCheck } from './app-check.providers';
 
 /**
  * Demo options used against the local Firebase emulators (no real project).
@@ -32,11 +33,21 @@ let firestoreEmulatorConnected = false;
  * Composes Firebase app + Auth + Firestore providers for every Forge app.
  * On localhost the SDKs are pointed at the local emulator suite
  * (auth :9099, firestore :8080 — see workspace firebase.json).
+ *
+ * App Check (CC6) is wired in via {@link provideForgeAppCheck} and is a no-op
+ * unless a reCAPTCHA v3 site key is configured (env/`window`), so the local
+ * emulator demo keeps working unchanged. Pass `appCheckSiteKey` to override the
+ * key explicitly in production.
  */
-export function provideForgeFirebase(options?: FirebaseOptions): EnvironmentProviders {
+export function provideForgeFirebase(
+  options?: FirebaseOptions,
+  appCheckSiteKey?: string,
+): EnvironmentProviders {
   const firebaseOptions = options ?? DEFAULT_FIREBASE_OPTIONS;
   return makeEnvironmentProviders([
     provideFirebaseApp(() => initializeApp(firebaseOptions)),
+    // No-op unless a real site key is present (demo-safe).
+    provideForgeAppCheck(appCheckSiteKey),
     provideAuth(() => {
       const auth = getAuth();
       if (isLocalHost() && !authEmulatorConnected) {

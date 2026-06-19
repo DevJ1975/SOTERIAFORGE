@@ -28,9 +28,11 @@ describe('hazard-data integrity', () => {
     }
   });
 
-  it('uses real-format OSHA references (29 CFR 19xx.*) with titles', () => {
+  it('uses real-format OSHA references (29 CFR 19xx.* or the General Duty Clause) with titles', () => {
+    // Most hazards cite a specific 29 CFR standard; struck-by/thrown-by hazards
+    // with no specific standard (e.g. jet blast) cite the General Duty Clause.
     for (const h of LEVELS.flatMap((l) => l.hazards)) {
-      expect(h.oshaRef).toMatch(/^29 CFR 19\d\d\./);
+      expect(h.oshaRef).toMatch(/^29 CFR 19\d\d\.|^OSHA Sec\. 5\(a\)\(1\)$/);
       expect(h.oshaTitle.trim().length).toBeGreaterThan(0);
     }
   });
