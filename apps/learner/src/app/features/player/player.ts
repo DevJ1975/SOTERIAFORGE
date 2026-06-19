@@ -1,10 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
+import { getDoc } from 'firebase/firestore';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { PrincipalStore } from '@forge/auth';
+import { FIRESTORE, memberDoc } from '@forge/data-access';
 import {
   CourseCatalogService,
   CourseContentService,
@@ -17,9 +28,10 @@ import type { Course, CourseDraft, Enrollment, LessonDraft } from '@forge/shared
 
 interface CompletionProjection {
   awardedXp: number;
-  projectedXp: number;
-  level: number;
-  pct: number;
+  /** Absolute projected level, or undefined when the member baseline is unknown. */
+  level?: number;
+  /** Fraction toward the next level, or undefined without a baseline. */
+  pct?: number;
 }
 
 /**
@@ -35,6 +47,12 @@ interface CompletionProjection {
     <div class="forge-page">
       @if (loading()) {
         <p class="muted">Loading course…</p>
+      } @else if (error()) {
+        <div class="forge-card empty error-card">
+          <h2>Couldn't load this course</h2>
+          <p class="muted">Something went wrong reaching the training service. Please try again.</p>
+          <p-button label="Retry" icon="pi pi-refresh" (onClick)="retry()" />
+        </div>
       } @else if (!content()) {
         <div class="forge-card empty">
           <h2>Course unavailable</h2>
@@ -49,7 +67,12 @@ interface CompletionProjection {
           </div>
           <div class="head-progress">
             <span>{{ completedCount() }} / {{ lessons().length }} lessons</span>
-            <p-progressBar [value]="progressPct()" [showValue]="false" />
+            <p-progressBar
+              [value]="progressPct()"
+              [showValue]="false"
+              [attr.aria-label]="'Course progress'"
+              [attr.aria-valuetext]="progressPct() + '% complete'"
+            />
           </div>
         </header>
 
@@ -63,6 +86,7 @@ interface CompletionProjection {
                     class="nav-item"
                     [class.active]="i === activeIndex()"
                     [class.done]="isComplete(lesson.id)"
+                    [attr.aria-current]="i === activeIndex() ? 'step' : null"
                     (click)="goTo(i)"
                   >
                     <span class="nav-marker" aria-hidden="true"></span>

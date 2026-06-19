@@ -41,10 +41,10 @@ describe('ProgressService', () => {
     expect(result.progressPct).toBe(50);
   });
 
-  it('marks complete when every lesson is done', async () => {
+  it('reaches 100% but never auto-completes the course (reserved for completeCourse)', async () => {
     const result = await service.setLessonProgress('atl-airport', 'c1', 'u1', ['l1', 'l2'], 2);
     expect(result.progressPct).toBe(100);
-    expect(result.completed).toBe(true);
+    expect(result.completed).toBe(false);
   });
 
   it('guards against a zero-lesson course (no divide-by-zero)', async () => {

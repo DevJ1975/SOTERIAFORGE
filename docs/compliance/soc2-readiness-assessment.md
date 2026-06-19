@@ -241,19 +241,19 @@ This is the platform's strongest area and the core of the security story.
 
 ## Summary of statuses
 
-| TSC area                          | Status               |
-| --------------------------------- | -------------------- |
-| CC1 Control Environment           | Gap                  |
-| CC2 Communication & Information   | Partial              |
-| CC3 Risk Assessment               | Gap                  |
-| CC4 Monitoring of Controls        | Partial              |
-| CC5 Control Activities            | Partial              |
-| CC6 Logical & Physical Access     | **Implemented (app layer)** with App Check / MFA / rate-limit gaps |
-| CC7 System Operations             | Gap (logging/monitoring/IR) |
-| CC8 Change Management             | Partial (strong CI; branch protection undocumented) |
-| CC9 Risk Mitigation / Vendors     | Gap                  |
-| Availability                      | Gap / Planned (no prod, no backups/DR) |
-| Confidentiality                   | Partial (encryption inherited; policies/secrets gaps) |
+| TSC area                        | Status                                                             |
+| ------------------------------- | ------------------------------------------------------------------ |
+| CC1 Control Environment         | Gap                                                                |
+| CC2 Communication & Information | Partial                                                            |
+| CC3 Risk Assessment             | Gap                                                                |
+| CC4 Monitoring of Controls      | Partial                                                            |
+| CC5 Control Activities          | Partial                                                            |
+| CC6 Logical & Physical Access   | **Implemented (app layer)** with App Check / MFA / rate-limit gaps |
+| CC7 System Operations           | Gap (logging/monitoring/IR)                                        |
+| CC8 Change Management           | Partial (strong CI; branch protection undocumented)                |
+| CC9 Risk Mitigation / Vendors   | Gap                                                                |
+| Availability                    | Gap / Planned (no prod, no backups/DR)                             |
+| Confidentiality                 | Partial (encryption inherited; policies/secrets gaps)              |
 
 The strongest, genuinely-in-code areas are **CC6 (access/tenant isolation)** and the technical
 half of **CC8 (change pipeline)**. The largest gaps are operational and organizational: **CC7

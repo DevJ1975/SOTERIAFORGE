@@ -22,6 +22,10 @@ export class EnrollmentService {
   /**
    * Idempotent upsert: creates the learner's enrollment if absent, otherwise
    * returns the existing one untouched (preserving progress).
+   *
+   * `email` is accepted per the service contract but the audit fields record
+   * the actor's `uid` (the audit convention everywhere else); `email` is a
+   * mailbox, not a stable identity, so it must never land in `updatedBy`.
    */
   async enroll(
     tenantId: string,
@@ -29,6 +33,7 @@ export class EnrollmentService {
     uid: string,
     email: string,
   ): Promise<Enrollment> {
+    void email;
     const existing = await this.getEnrollment(tenantId, courseId, uid);
     if (existing) return existing;
 
@@ -43,7 +48,7 @@ export class EnrollmentService {
       createdAt: now,
       createdBy: uid,
       updatedAt: now,
-      updatedBy: email,
+      updatedBy: uid,
     };
     await setDoc(enrollmentDoc(this.db, tenantId, courseId, uid), enrollment);
     return enrollment;

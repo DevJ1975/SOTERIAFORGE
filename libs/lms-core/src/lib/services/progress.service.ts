@@ -20,6 +20,12 @@ export class ProgressService {
    * Records which lessons the learner has completed and derives `progressPct`.
    * Upserts the enrollment (enrolling implicitly if needed) so the call is safe
    * even before an explicit enroll().
+   *
+   * Note: this NEVER sets `completed = true`, even at 100% — reaching every
+   * lesson only fills the progress bar. The `completed` flag is reserved for
+   * {@link completeCourse} so the learner still has to click "Complete course"
+   * (and see the celebration). This keeps lesson progress and course completion
+   * as distinct, intentional steps.
    */
   async setLessonProgress(
     tenantId: string,
@@ -31,10 +37,7 @@ export class ProgressService {
     const unique = new Set(completedLessonIds);
     const progressPct =
       totalLessons > 0 ? Math.min(100, Math.round((unique.size / totalLessons) * 100)) : 0;
-    return this.write(tenantId, courseId, uid, {
-      progressPct,
-      completed: progressPct >= 100,
-    });
+    return this.write(tenantId, courseId, uid, { progressPct });
   }
 
   /** Marks the course complete: `completed = true`, `progressPct = 100`. */

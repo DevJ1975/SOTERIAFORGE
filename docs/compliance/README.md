@@ -35,12 +35,12 @@ controls, which are accordingly marked **Gap / Planned**.
 
 ## Documents in this folder
 
-| File                                                                 | Purpose                                                                                          |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [`soc2-readiness-assessment.md`](./soc2-readiness-assessment.md)     | Maps the platform to the SOC 2 Trust Services Criteria (CC1–CC9, plus Availability, Confidentiality) with current implementation, status, and remediation. |
-| [`controls-matrix.md`](./controls-matrix.md)                         | Control-by-control table: Control ID, TSC ref, description, implementation/evidence, owner, status. |
-| [`remediation-backlog.md`](./remediation-backlog.md)                 | Prioritized (P0/P1/P2) engineering backlog to reach audit-readiness, cross-referenced to ROADMAP Phase 8. |
-| [`policies/`](./policies/)                                           | Starter-**draft** policy templates (clearly marked as drafts to be reviewed and ratified).        |
+| File                                                             | Purpose                                                                                                                                                    |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`soc2-readiness-assessment.md`](./soc2-readiness-assessment.md) | Maps the platform to the SOC 2 Trust Services Criteria (CC1–CC9, plus Availability, Confidentiality) with current implementation, status, and remediation. |
+| [`controls-matrix.md`](./controls-matrix.md)                     | Control-by-control table: Control ID, TSC ref, description, implementation/evidence, owner, status.                                                        |
+| [`remediation-backlog.md`](./remediation-backlog.md)             | Prioritized (P0/P1/P2) engineering backlog to reach audit-readiness, cross-referenced to ROADMAP Phase 8.                                                  |
+| [`policies/`](./policies/)                                       | Starter-**draft** policy templates (clearly marked as drafts to be reviewed and ratified).                                                                 |
 
 ## How to read the status labels
 

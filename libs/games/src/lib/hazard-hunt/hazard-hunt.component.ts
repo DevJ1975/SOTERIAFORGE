@@ -9,6 +9,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  Input,
   NgZone,
   OnDestroy,
   ViewChild,
@@ -95,6 +96,9 @@ const UNUSED_BONUS = 100;
                   Shift 2 — Tool shop
                 </button>
               }
+              <button type="button" class="hh-btn hh-btn--secondary" (click)="start(3)">
+                Shift 3 — ATL RAMP
+              </button>
             </div>
           </section>
         </div>
@@ -627,6 +631,13 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
   @ViewChild('hudHost', { static: true })
   private hudHost!: ElementRef<HTMLDivElement>;
 
+  /**
+   * Optional explicit starting level (1, 2, or 3). When omitted, the level is
+   * read from the `?level=` route query parameter; an absent or invalid value
+   * leaves the player on the intro/locker-room screen (no auto-start).
+   */
+  @Input() level?: number;
+
   readonly firstLevel = LEVELS[0];
   readonly foundPoints = FOUND_POINTS;
   readonly missPenalty = MISS_PENALTY;
@@ -685,6 +696,37 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
       this.hud = new HazardHud(this.hudHost.nativeElement);
       window.addEventListener('keydown', this.onKeyDown);
     });
+
+    // Deep-link support: boot directly into a requested shift (e.g. the ATL
+    // RAMP flagship via `?level=3`). Falls back to the intro for absent/invalid
+    // values, and unlocks Shift 2 in the intro when jumping straight to it.
+    const requested = this.resolveRequestedLevel();
+    if (requested !== null) {
+      if (requested >= 2) this.unlocked2.set(true);
+      this.start(requested);
+    }
+  }
+
+  /**
+   * Resolve the requested starting level from the `@Input() level` or the
+   * `?level=` query param. Returns a valid level id, or `null` when none is
+   * supplied or the value is invalid.
+   */
+  private resolveRequestedLevel(): number | null {
+    const raw = this.level ?? this.readLevelFromUrl();
+    if (raw === null || raw === undefined) return null;
+    const id = Math.floor(Number(raw));
+    return Number.isFinite(id) && getLevel(id) ? id : null;
+  }
+
+  /** Reads the `?level=` query param off the current URL, if present. */
+  private readLevelFromUrl(): string | null {
+    if (typeof window === 'undefined' || !window.location) return null;
+    try {
+      return new URLSearchParams(window.location.search).get('level');
+    } catch {
+      return null;
+    }
   }
 
   ngOnDestroy(): void {
