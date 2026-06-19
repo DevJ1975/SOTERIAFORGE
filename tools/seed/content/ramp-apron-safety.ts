@@ -1,6 +1,7 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
 import { placeholderImage } from './placeholder';
+import { uploadedVideo } from './video-asset';
 
 /** Course id — MUST equal the parent courseId in Firestore. */
 export const RAMP_APRON_COURSE_ID = 'atl-ramp-apron-safety';
@@ -168,8 +169,10 @@ export function buildRampApronCourse(): CourseDraft {
           {
             id: bid(id, 'l2', 'b6'),
             kind: 'video',
-            url: 'https://www.youtube.com/watch?v=Dtl9I4Z9j_o',
-            caption: 'Jet blast and engine ingestion: why the danger zones exist.',
+            ...uploadedVideo(
+              RAMP_APRON_COURSE_ID,
+              'Jet blast and engine ingestion: why the danger zones exist.',
+            ),
           },
           {
             id: bid(id, 'l2', 'b7'),

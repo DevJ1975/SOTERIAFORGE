@@ -31,7 +31,54 @@
       }
       @case ('video') {
         <figure class="block-video">
-          @if (b.url) {
+          @if (isUploadedVideo(b)) {
+            <!-- Uploaded/offline-capable asset: resolved via the offline port. -->
+            <video
+              controls
+              [src]="videoState(b).src || b.url"
+              preload="metadata"
+              [attr.type]="b.mimeType || null"
+            ></video>
+            @if (offlineSupported()) {
+              <div class="video-offline">
+                @if (videoState(b).offline) {
+                  <span class="video-offline-status" role="status">Downloaded ✓</span>
+                  <button type="button" class="video-offline-btn ghost" (click)="removeVideo(b)">
+                    Remove
+                  </button>
+                } @else if (videoState(b).downloading) {
+                  <div
+                    class="video-offline-progress"
+                    role="progressbar"
+                    aria-label="Downloading video for offline"
+                    [attr.aria-valuenow]="(videoState(b).progress * 100).toFixed(0)"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    <span
+                      class="video-offline-bar"
+                      [style.width.%]="videoState(b).progress * 100"
+                    ></span>
+                  </div>
+                  <span class="video-offline-status"
+                    >Downloading… {{ (videoState(b).progress * 100).toFixed(0) }}%</span
+                  >
+                } @else {
+                  <button
+                    type="button"
+                    class="video-offline-btn"
+                    (click)="downloadVideo(b)"
+                    aria-label="Download this video for offline playback"
+                  >
+                    Download for offline
+                  </button>
+                }
+                @if (videoState(b).error) {
+                  <span class="video-offline-error" role="alert">{{ videoState(b).error }}</span>
+                }
+              </div>
+            }
+          } @else if (b.url) {
             @if (videoEmbedUrl(b.url); as embed) {
               <div class="video-frame">
                 <iframe

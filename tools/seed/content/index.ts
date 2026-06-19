@@ -56,3 +56,11 @@ export const SEED_COURSES: SeedCourse[] = [
 ];
 
 export { RAMP_APRON_COURSE_ID, JET_BRIDGE_COURSE_ID, DEICING_COURSE_ID, FUELING_COURSE_ID };
+export {
+  SAMPLE_VIDEO_FILE,
+  SAMPLE_VIDEO_MIME,
+  SAMPLE_VIDEO_SIZE_BYTES,
+  SEED_STORAGE_BUCKET,
+  emulatorDownloadUrl,
+  videoStoragePath,
+} from './video-asset';

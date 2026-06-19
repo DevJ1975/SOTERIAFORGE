@@ -1,21 +1,24 @@
 /**
  * Soteria FORGE — ATL airport demo emulator seed.
  *
- * Populates the Firestore + Auth emulators with a complete, demo-ready slice
- * for the Hartsfield-Jackson Atlanta (ATL) airport tenant: branded tenant,
- * members, four authored airport-safety courses (Course meta + CourseDraft
- * content), badges, enrollments, and leaderboards.
+ * Populates the Auth + Firestore + Storage emulators with a complete,
+ * demo-ready slice for the Hartsfield-Jackson Atlanta (ATL) airport tenant:
+ * branded tenant, members, four authored airport-safety courses (Course meta +
+ * CourseDraft content), badges, enrollments, leaderboards, and the
+ * platform-hosted course videos uploaded to Storage.
  *
  * Every Firestore document is validated through its `@forge/shared` zod schema
  * before it is written (schema.parse(obj) -> set(parsed, { merge: true })), and
  * the script is idempotent: fixed document ids + merge writes mean re-running
  * it overwrites the same docs rather than creating duplicates.
  *
- * Prerequisites: the Firestore and Auth emulators must be running
- * (`firebase emulators:start --only auth,firestore`). See tools/seed/README.md.
+ * Prerequisites: the Auth, Firestore, and Storage emulators must be running
+ * (`firebase emulators:start --only auth,firestore,storage`). See
+ * tools/seed/README.md.
  *
  *   FIRESTORE_EMULATOR_HOST     default 127.0.0.1:8080
  *   FIREBASE_AUTH_EMULATOR_HOST default 127.0.0.1:9099
+ *   STORAGE_EMULATOR_HOST       default http://127.0.0.1:9199
  *
  * Run with: `npm run seed`
  */
@@ -25,6 +28,7 @@ import { dirname, resolve } from 'node:path';
 import { initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import {
   badge as badgeSchema,
   course as courseSchema,
@@ -43,7 +47,13 @@ import {
   type Role,
   type Tenant,
 } from '@forge/shared';
-import { SEED_COURSES } from './content';
+import {
+  SAMPLE_VIDEO_FILE,
+  SAMPLE_VIDEO_MIME,
+  SEED_COURSES,
+  SEED_STORAGE_BUCKET,
+} from './content';
+import type { VideoBlock } from '@forge/shared';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -54,6 +64,7 @@ const DEMO_PASSWORD = 'AtlDemo!2026';
 const NOW = '2026-06-19T12:00:00.000Z';
 const DEFAULT_FIRESTORE_EMULATOR = '127.0.0.1:8080';
 const DEFAULT_AUTH_EMULATOR = '127.0.0.1:9099';
+const DEFAULT_STORAGE_EMULATOR = 'http://127.0.0.1:9199';
 
 /** Resolve the project id from .firebaserc (default project). */
 function resolveProjectId(): string {
@@ -471,6 +482,39 @@ async function seedFirestore(db: Firestore): Promise<void> {
   }
 }
 
+/**
+ * Upload the sample clip to Storage for every ATL course whose draft has an
+ * uploaded `video` block (one carrying a `storagePath`). The content blocks
+ * already point at these exact object paths + emulator download URLs, so the
+ * bytes simply have to exist; we upload to the same path with `video/mp4` and
+ * make it idempotent by overwriting any prior object at that path.
+ */
+async function seedStorage(app: App): Promise<number> {
+  const bucket = getStorage(app).bucket();
+  const here = dirname(fileURLToPath(import.meta.url));
+  const samplePath = resolve(here, SAMPLE_VIDEO_FILE);
+  const bytes = readFileSync(samplePath);
+
+  let uploaded = 0;
+  for (const seed of SEED_COURSES) {
+    const videoBlocks = seed.draft.lessons
+      .flatMap((lesson) => lesson.blocks)
+      .filter((block): block is VideoBlock => block.kind === 'video' && !!block.storagePath);
+    for (const block of videoBlocks) {
+      const storagePath = block.storagePath as string;
+      const file = bucket.file(storagePath);
+      // Overwrite/merge: re-running replaces the object at the fixed path.
+      await file.save(bytes, {
+        contentType: SAMPLE_VIDEO_MIME,
+        resumable: false,
+        metadata: { contentType: SAMPLE_VIDEO_MIME },
+      });
+      uploaded += 1;
+    }
+  }
+  return uploaded;
+}
+
 // ---------------------------------------------------------------------------
 // Reporting
 // ---------------------------------------------------------------------------
@@ -503,15 +547,23 @@ async function main(): Promise<void> {
   if (!process.env['FIREBASE_AUTH_EMULATOR_HOST']) {
     process.env['FIREBASE_AUTH_EMULATOR_HOST'] = DEFAULT_AUTH_EMULATOR;
   }
+  // firebase-admin Storage talks to the emulator when STORAGE_EMULATOR_HOST is
+  // set (full URL with scheme, unlike the Firestore/Auth host:port form).
+  if (!process.env['STORAGE_EMULATOR_HOST']) {
+    process.env['STORAGE_EMULATOR_HOST'] = DEFAULT_STORAGE_EMULATOR;
+  }
 
   const projectId = resolveProjectId();
   // eslint-disable-next-line no-console
   console.log(
     `Seeding project "${projectId}" — Firestore @ ${process.env['FIRESTORE_EMULATOR_HOST']}, ` +
-      `Auth @ ${process.env['FIREBASE_AUTH_EMULATOR_HOST']}`,
+      `Auth @ ${process.env['FIREBASE_AUTH_EMULATOR_HOST']}, ` +
+      `Storage @ ${process.env['STORAGE_EMULATOR_HOST']}`,
   );
 
-  const app = initializeApp({ projectId });
+  // Default bucket is the project's app-default bucket; the apps resolve the
+  // same bucket from their (unconfigured) Firebase options. See video-asset.ts.
+  const app = initializeApp({ projectId, storageBucket: SEED_STORAGE_BUCKET });
   const db = getFirestore(app);
   // Belt-and-suspenders against `undefined` Firestore values (e.g. an
   // in-progress enrollment with no `score`): drop undefined keys on write.
@@ -519,8 +571,14 @@ async function main(): Promise<void> {
 
   await seedAuth(app);
   await seedFirestore(db);
+  const uploadedVideos = await seedStorage(app);
 
   printCredentials();
+  // eslint-disable-next-line no-console
+  console.log(
+    `Uploaded ${uploadedVideos} course video${uploadedVideos === 1 ? '' : 's'} to Storage ` +
+      `(bucket ${SEED_STORAGE_BUCKET}).`,
+  );
   // eslint-disable-next-line no-console
   console.log('Done. Start the apps and sign in as any demo account above.');
 }

@@ -25,6 +25,11 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./features/my-learning/my-learning').then((m) => m.MyLearning),
   },
   {
+    path: 'downloads',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/downloads/downloads').then((m) => m.Downloads),
+  },
+  {
     path: 'games/hazard-hunter',
     canActivate: [authGuard],
     loadComponent: () => import('@forge/games').then((m) => m.HazardHuntComponent),

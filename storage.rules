@@ -1,10 +1,54 @@
 rules_version = '2';
 
-// Deny-by-default. Tenant-scoped content paths are opened up alongside the
-// upload features that use them (Phase 2+), with the same claim checks as
-// Firestore.
+// Soteria FORGE Cloud Storage rules.
+//
+// Deny-by-default: every path must be explicitly opened up, in the same change
+// that introduces it, together with rules unit tests (see
+// libs/data-access/src/rules/storage.rules.spec.ts).
+//
+// Tenant isolation mirrors the Firestore rules: it is enforced via custom claims
+// (request.auth.token.tenantId, request.auth.token.role) set exclusively by
+// Cloud Functions. The Admin SDK bypasses these rules, so "write: if false"
+// means "Cloud Functions / seed only".
 service firebase.storage {
   match /b/{bucket}/o {
+    // ---------------------------------------------------------------------
+    // Helpers (mirror firestore.rules)
+    // ---------------------------------------------------------------------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function isSuperadmin() {
+      return signedIn() && role() == 'superadmin';
+    }
+
+    function inTenant(tenantId) {
+      return signedIn() && request.auth.token.tenantId == tenantId;
+    }
+
+    // Tenant-scoped content authors. Superadmin is handled separately.
+    function isAuthoring() {
+      return signedIn() && role() in ['tenant_admin', 'instructor'];
+    }
+
+    // Course videos, tenant-scoped:
+    //   tenants/{tenantId}/courses/{courseId}/videos/{fileName}
+    // Reads: any tenant member (or superadmin) — learners stream the asset.
+    // Writes: authoring roles inside the tenant (or superadmin), capped at
+    // 500 MB and limited to `video/*` content types.
+    match /tenants/{tenantId}/courses/{courseId}/videos/{fileName} {
+      allow read: if isSuperadmin() || inTenant(tenantId);
+      allow write: if (isSuperadmin() || (inTenant(tenantId) && isAuthoring()))
+        && request.resource.size < 500 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+    }
+
+    // Everything not explicitly matched above is denied.
     match /{allPaths=**} {
       allow read, write: if false;
     }

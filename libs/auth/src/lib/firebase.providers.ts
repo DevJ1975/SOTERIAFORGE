@@ -2,6 +2,7 @@ import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 import { FirebaseOptions, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { connectStorageEmulator, getStorage, provideStorage } from '@angular/fire/storage';
 import { provideForgeAppCheck } from './app-check.providers';
 
 /**
@@ -18,6 +19,8 @@ export const DEFAULT_FIREBASE_OPTIONS: FirebaseOptions = {
 const AUTH_EMULATOR_URL = 'http://localhost:9099';
 const FIRESTORE_EMULATOR_HOST = 'localhost';
 const FIRESTORE_EMULATOR_PORT = 8080;
+const STORAGE_EMULATOR_HOST = 'localhost';
+const STORAGE_EMULATOR_PORT = 9199;
 
 /** True when the app is served from a local dev host (use the emulators). */
 function isLocalHost(): boolean {
@@ -28,11 +31,12 @@ function isLocalHost(): boolean {
 // multiple injector factories). Track connections at module scope.
 let authEmulatorConnected = false;
 let firestoreEmulatorConnected = false;
+let storageEmulatorConnected = false;
 
 /**
  * Composes Firebase app + Auth + Firestore providers for every Forge app.
  * On localhost the SDKs are pointed at the local emulator suite
- * (auth :9099, firestore :8080 — see workspace firebase.json).
+ * (auth :9099, firestore :8080, storage :9199 — see workspace firebase.json).
  *
  * App Check (CC6) is wired in via {@link provideForgeAppCheck} and is a no-op
  * unless a reCAPTCHA v3 site key is configured (env/`window`), so the local
@@ -71,6 +75,18 @@ export function provideForgeFirebase(
         }
       }
       return firestore;
+    }),
+    provideStorage(() => {
+      const storage = getStorage();
+      if (isLocalHost() && !storageEmulatorConnected) {
+        try {
+          connectStorageEmulator(storage, STORAGE_EMULATOR_HOST, STORAGE_EMULATOR_PORT);
+          storageEmulatorConnected = true;
+        } catch {
+          // Already connected (e.g. hot reload) — safe to ignore.
+        }
+      }
+      return storage;
     }),
   ]);
 }

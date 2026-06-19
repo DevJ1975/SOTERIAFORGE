@@ -21,10 +21,12 @@ import {
   CourseContentService,
   EnrollmentService,
   ForgeLessonRenderer,
+  OFFLINE_VIDEO_PORT,
   ProgressService,
 } from '@forge/lms-core';
 import { courseCompletionXp, levelForXp, levelProgress } from '@forge/gamification';
-import type { Course, CourseDraft, Enrollment, LessonDraft } from '@forge/shared';
+import type { Course, CourseDraft, Enrollment, LessonDraft, VideoBlock } from '@forge/shared';
+import { NetworkStatusService } from '../../offline/network-status.service';
 
 interface CompletionProjection {
   awardedXp: number;
@@ -64,6 +66,30 @@ interface CompletionProjection {
           <div>
             <a routerLink="/courses" class="back-link">&larr; Catalog</a>
             <h1>{{ content()!.title }}</h1>
+            @if (uploadedVideoCount() > 0) {
+              <p class="offline-affordance">
+                @if (offlineSupported()) {
+                  @if (offlineReadyCount() === uploadedVideoCount()) {
+                    <span class="offline-chip ready" role="status">
+                      <span class="offline-dot" aria-hidden="true"></span> Available offline
+                    </span>
+                  } @else if (offlineReadyCount() > 0) {
+                    <span class="offline-chip partial" role="status">
+                      {{ offlineReadyCount() }} of {{ uploadedVideoCount() }} videos saved offline
+                    </span>
+                  } @else {
+                    <span class="offline-chip" role="status">
+                      Download videos in a lesson for offline viewing
+                    </span>
+                  }
+                  <a routerLink="/downloads" class="manage-link">Manage downloads</a>
+                } @else if (!networkOnline()) {
+                  <span class="offline-chip warn" role="status">
+                    You're offline — uploaded videos need a connection on the web
+                  </span>
+                }
+              </p>
+            }
           </div>
           <div class="head-progress">
             <span>{{ completedCount() }} / {{ lessons().length }} lessons</span>
@@ -173,6 +199,47 @@ interface CompletionProjection {
     }
     .player-head h1 {
       margin: 8px 0 0;
+    }
+    .offline-affordance {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0 0;
+    }
+    .offline-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--forge-surface-dim);
+      border: 1px solid var(--forge-border);
+      font-size: 0.8rem;
+      color: var(--forge-text-subtle);
+    }
+    .offline-chip.ready {
+      color: var(--forge-positive);
+      border-color: var(--forge-positive);
+    }
+    .offline-chip.partial {
+      color: var(--forge-notice);
+      border-color: var(--forge-notice);
+    }
+    .offline-chip.warn {
+      color: var(--forge-notice);
+      border-color: var(--forge-notice);
+    }
+    .offline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--forge-positive);
+    }
+    .manage-link {
+      color: var(--forge-accent);
+      text-decoration: none;
+      font-size: 0.8rem;
     }
     .back-link {
       color: var(--forge-accent);
@@ -287,6 +354,10 @@ export class Player {
   private readonly enrollments = inject(EnrollmentService);
   private readonly progress = inject(ProgressService);
   private readonly principal = inject(PrincipalStore);
+  // Optional so the player still works in the admin preview / tests where no
+  // offline port is provided.
+  private readonly offlinePort = inject(OFFLINE_VIDEO_PORT, { optional: true });
+  private readonly network = inject(NetworkStatusService);
 
   private readonly courseId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('courseId') ?? '')),
@@ -317,6 +388,19 @@ export class Player {
   protected readonly allLessonsDone = computed(
     () => this.lessons().length > 0 && this.progressPct() === 100,
   );
+
+  // ---- Offline video affordance -------------------------------------------
+  protected readonly networkOnline = this.network.online;
+  protected readonly offlineSupported = signal(this.offlinePort?.supported() ?? false);
+  /** Downloaded count among this course's uploaded (offline-capable) videos. */
+  protected readonly offlineReadyCount = signal(0);
+  /** Uploaded (offline-capable) video blocks across the course's lessons. */
+  protected readonly uploadedVideos = computed<VideoBlock[]>(() =>
+    this.lessons()
+      .flatMap((lesson) => lesson.blocks)
+      .filter((b): b is VideoBlock => b.kind === 'video' && !!b.storagePath),
+  );
+  protected readonly uploadedVideoCount = computed(() => this.uploadedVideos().length);
 
   private lastCourseId = '';
 
@@ -351,6 +435,7 @@ export class Player {
       this.content.set(content);
       this.course.set(course);
       this.enrollment.set(enrollment);
+      void this.refreshOfflineState();
       this.memberXp.set(memberSnap.exists() ? memberSnap.data().xp : undefined);
       // Seed completion: if the enrollment is finished, treat all lessons done.
       if (enrollment?.completed && content) {
@@ -366,6 +451,29 @@ export class Player {
   protected retry(): void {
     this.lastCourseId = '';
     void this.maybeLoad(this.courseId());
+  }
+
+  /**
+   * Recompute how many of this course's uploaded videos are saved offline, so
+   * the player header can show an "Available offline" affordance. Best-effort:
+   * any failure (or no port) simply shows zero ready downloads.
+   */
+  private async refreshOfflineState(): Promise<void> {
+    this.offlineSupported.set(this.offlinePort?.supported() ?? false);
+    const port = this.offlinePort;
+    const videos = this.uploadedVideos();
+    if (!port || !port.supported() || videos.length === 0) {
+      this.offlineReadyCount.set(0);
+      return;
+    }
+    try {
+      const flags = await Promise.all(
+        videos.map((v) => port.isDownloaded(v.storagePath as string)),
+      );
+      this.offlineReadyCount.set(flags.filter(Boolean).length);
+    } catch {
+      this.offlineReadyCount.set(0);
+    }
   }
 
   protected isComplete(lessonId: string): boolean {

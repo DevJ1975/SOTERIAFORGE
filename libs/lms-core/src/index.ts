@@ -7,3 +7,5 @@ export * from './lib/services/course-catalog.service';
 export * from './lib/services/course-content.service';
 export * from './lib/services/enrollment.service';
 export * from './lib/services/progress.service';
+export * from './lib/services/video-asset.service';
+export * from './lib/services/offline-video.port';

@@ -1,6 +1,7 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
 import { placeholderImage } from './placeholder';
+import { uploadedVideo } from './video-asset';
 
 export const JET_BRIDGE_COURSE_ID = 'atl-jet-bridge-door-ops';
 
@@ -256,8 +257,10 @@ export function buildJetBridgeCourse(): CourseDraft {
           {
             id: bid(id, 'l4', 'b3'),
             kind: 'video',
-            url: 'https://www.youtube.com/watch?v=2f4lN1Q0pXg',
-            caption: 'Walkthrough of safe jet bridge docking and undocking.',
+            ...uploadedVideo(
+              JET_BRIDGE_COURSE_ID,
+              'Walkthrough of safe jet bridge docking and undocking.',
+            ),
           },
           {
             id: bid(id, 'l4', 'b4'),

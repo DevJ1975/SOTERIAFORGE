@@ -1,6 +1,7 @@
 import type { CourseDraft } from '@forge/shared';
 import { bid, SEED_TIMESTAMP } from './ids';
 import { placeholderImage } from './placeholder';
+import { uploadedVideo } from './video-asset';
 
 export const DEICING_COURSE_ID = 'atl-deicing-winter-ops';
 
@@ -286,8 +287,10 @@ export function buildDeicingCourse(): CourseDraft {
           {
             id: bid(id, 'l4', 'b3'),
             kind: 'video',
-            url: 'https://www.youtube.com/watch?v=q4iJL9j2Z2A',
-            caption: 'How aircraft de-icing and anti-icing protect the wing.',
+            ...uploadedVideo(
+              DEICING_COURSE_ID,
+              'How aircraft de-icing and anti-icing protect the wing.',
+            ),
           },
           {
             id: bid(id, 'l4', 'b4'),

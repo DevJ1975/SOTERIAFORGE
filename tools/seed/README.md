@@ -3,7 +3,8 @@
 Populates the Firebase **emulators** with a complete, demo-ready slice for the
 Hartsfield-Jackson Atlanta (ATL) airport tenant: a branded tenant, members,
 four authored airport-safety courses (catalog metadata + rich `CourseDraft`
-player content), badges, enrollments, and leaderboards.
+player content), badges, enrollments, leaderboards, and the platform-hosted
+course videos uploaded to **Storage**.
 
 Every Firestore document is validated through its `@forge/shared` zod schema
 before it is written, and the seed is **idempotent** — fixed document ids plus
@@ -16,12 +17,13 @@ merge writes mean you can re-run it safely.
 
 ## Prerequisites
 
-Start only the Auth + Firestore emulators — the seed needs nothing else, and
-limiting the scope avoids spinning up the Functions emulator (which requires a
-built `dist` and can stall on a fresh checkout):
+Start the Auth + Firestore + Storage emulators — the seed needs Storage to host
+the course videos, and limiting the scope to these three avoids spinning up the
+Functions emulator (which requires a built `dist` and can stall on a fresh
+checkout):
 
 ```bash
-firebase emulators:start --only auth,firestore
+firebase emulators:start --only auth,firestore,storage
 ```
 
 Run order: start the emulators (above), then in a second terminal run the seed
@@ -29,12 +31,14 @@ Run order: start the emulators (above), then in a second terminal run the seed
 
 By default the seed connects to:
 
-| Emulator  | Env var                       | Default          |
-| --------- | ----------------------------- | ---------------- |
-| Firestore | `FIRESTORE_EMULATOR_HOST`     | `127.0.0.1:8080` |
-| Auth      | `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099` |
+| Emulator  | Env var                       | Default                  |
+| --------- | ----------------------------- | ------------------------ |
+| Firestore | `FIRESTORE_EMULATOR_HOST`     | `127.0.0.1:8080`         |
+| Auth      | `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099`         |
+| Storage   | `STORAGE_EMULATOR_HOST`       | `http://127.0.0.1:9199`  |
 
-The project id is read from `.firebaserc` (`soteria-forge-dev`).
+The project id is read from `.firebaserc` (`soteria-forge-dev`). Videos upload
+to the app-default bucket `soteria-forge-dev.appspot.com`.
 
 ## Run
 
@@ -83,6 +87,14 @@ leaderboard.
   `CourseDraft` at `courses/{courseId}/content/draft` (its `id` equals the
   `courseId`) exercising every authoring block kind with real OSHA / FAA / NFPA
   references and knowledge checks.
+
+- **Course videos** in **Storage** at
+  `tenants/atl-airport/courses/{courseId}/videos/intro-clip.mp4`. Three courses
+  (Ramp & Apron, Jet Bridge, De-Icing) carry an uploaded `video` block — their
+  former external YouTube embeds are re-pointed to this platform-hosted sample
+  (`tools/seed/assets/sample-ramp-safety.mp4`), so the learner can play and
+  download them for offline use. The block's `storagePath`, emulator `url`,
+  `mimeType`, and `sizeBytes` are set in the seeded `CourseDraft`.
 
 - **Badges** `tenants/atl-airport/badges/{badgeId}` — FOD Spotter, Ramp Safety
   Certified, De-Ice Pro, Fuel Safety, 7-Day Streak.
