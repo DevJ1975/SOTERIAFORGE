@@ -1,10 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import {
-  getDownloadURL,
-  ref,
-  Storage,
-  uploadBytesResumable,
-} from '@angular/fire/storage';
+import { getDownloadURL, ref, Storage, uploadBytesResumable } from '@angular/fire/storage';
 
 /** The result of a successful upload, ready to stamp onto a `videoBlock`. */
 export interface UploadedVideoResult {

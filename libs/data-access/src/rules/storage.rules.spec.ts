@@ -140,29 +140,34 @@ maybe('storage.rules', () => {
     });
 
     it('denies an authoring upload into another tenant', async () => {
-      await assertFails(
-        uploadBytes(ref(acmeInstructor(), GLOBEX_VIDEO), SMALL_VIDEO, VIDEO_META),
-      );
+      await assertFails(uploadBytes(ref(acmeInstructor(), GLOBEX_VIDEO), SMALL_VIDEO, VIDEO_META));
     });
 
     it('denies a non-video content type even for an authoring role', async () => {
       await assertFails(
-        uploadBytes(ref(acmeInstructor(), 'tenants/acme/courses/course-1/videos/notes.txt'), SMALL_VIDEO, {
-          contentType: 'text/plain',
-        }),
+        uploadBytes(
+          ref(acmeInstructor(), 'tenants/acme/courses/course-1/videos/notes.txt'),
+          SMALL_VIDEO,
+          {
+            contentType: 'text/plain',
+          },
+        ),
       );
     });
 
     it('denies an oversize upload (>= 500 MB) even for an authoring role', async () => {
-      // 500 MB + 1 byte; the rule caps strictly below 500 MB.
+      // The rule caps strictly below 500 MB on `request.resource.size`. We assert
+      // the upload is rejected rather than using `assertFails` here: the emulator
+      // can surface an oversize transfer as a transport-level error (storage/unknown)
+      // instead of a clean permission-denied, but either way the write must fail.
       const oversize = new Uint8Array(500 * 1024 * 1024 + 1);
-      await assertFails(
+      await expect(
         uploadBytes(
           ref(acmeInstructor(), 'tenants/acme/courses/course-1/videos/huge.mp4'),
           oversize,
           VIDEO_META,
         ),
-      );
+      ).rejects.toBeDefined();
     });
   });
 

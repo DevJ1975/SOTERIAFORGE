@@ -47,12 +47,7 @@ import {
   type Role,
   type Tenant,
 } from '@forge/shared';
-import {
-  SAMPLE_VIDEO_FILE,
-  SAMPLE_VIDEO_MIME,
-  SEED_COURSES,
-  SEED_STORAGE_BUCKET,
-} from './content';
+import { SAMPLE_VIDEO_FILE, SAMPLE_VIDEO_MIME, SEED_COURSES, SEED_STORAGE_BUCKET } from './content';
 import type { VideoBlock } from '@forge/shared';
 
 // ---------------------------------------------------------------------------

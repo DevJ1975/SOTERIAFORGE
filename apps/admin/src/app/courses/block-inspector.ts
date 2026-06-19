@@ -2,12 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import type {
-  BlockKind,
-  KnowledgeCheckBlock,
-  KnowledgeCheckType,
-  VideoBlock,
-} from '@forge/shared';
+import type { BlockKind, KnowledgeCheckBlock, KnowledgeCheckType, VideoBlock } from '@forge/shared';
 import {
   BUTTON_STYLES,
   CALLOUT_TONES,

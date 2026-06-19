@@ -31,11 +31,11 @@ Run order: start the emulators (above), then in a second terminal run the seed
 
 By default the seed connects to:
 
-| Emulator  | Env var                       | Default                  |
-| --------- | ----------------------------- | ------------------------ |
-| Firestore | `FIRESTORE_EMULATOR_HOST`     | `127.0.0.1:8080`         |
-| Auth      | `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099`         |
-| Storage   | `STORAGE_EMULATOR_HOST`       | `http://127.0.0.1:9199`  |
+| Emulator  | Env var                       | Default                 |
+| --------- | ----------------------------- | ----------------------- |
+| Firestore | `FIRESTORE_EMULATOR_HOST`     | `127.0.0.1:8080`        |
+| Auth      | `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099`        |
+| Storage   | `STORAGE_EMULATOR_HOST`       | `http://127.0.0.1:9199` |
 
 The project id is read from `.firebaserc` (`soteria-forge-dev`). Videos upload
 to the app-default bucket `soteria-forge-dev.appspot.com`.
