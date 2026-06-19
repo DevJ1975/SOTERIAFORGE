@@ -47,9 +47,9 @@ jobs:
 
       - run: npm ci
 
-      - name: Firestore security rules tests (emulator)
+      - name: Firestore & Storage security rules tests (emulator)
         run: >-
-          npx firebase emulators:exec --only firestore --project demo-rules-test
+          npx firebase emulators:exec --only firestore,storage --project demo-rules-test
           "npx nx test data-access --testPathPattern=rules --skip-nx-cache"
 
   # ---------------------------------------------------------------------------
