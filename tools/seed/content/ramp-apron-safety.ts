@@ -18,8 +18,7 @@ export function buildRampApronCourse(): CourseDraft {
     title: 'Ramp & Apron Safety',
     description:
       'Foreign object debris control, aircraft danger zones, ground support equipment, and pushback safety for ramp agents at a major hub. Aligned with OSHA 29 CFR 1910 and FAA AC 150/5210-24.',
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1521727857535-28d2047619b3?w=1400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1521727857535-28d2047619b3?w=1400&q=80',
     status: 'published',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,
@@ -100,7 +99,12 @@ export function buildRampApronCourse(): CourseDraft {
         id: bid(id, 'l2'),
         title: 'Aircraft Danger Zones',
         blocks: [
-          { id: bid(id, 'l2', 'b1'), kind: 'heading', text: 'Intake, exhaust, and props', level: 2 },
+          {
+            id: bid(id, 'l2', 'b1'),
+            kind: 'heading',
+            text: 'Intake, exhaust, and props',
+            level: 2,
+          },
           {
             id: bid(id, 'l2', 'b2'),
             kind: 'paragraph',
@@ -229,7 +233,11 @@ export function buildRampApronCourse(): CourseDraft {
             type: 'multi_select',
             options: [
               { id: bid(id, 'l3', 'b5', 'o1'), text: 'Set the parking brake', correct: true },
-              { id: bid(id, 'l3', 'b5', 'o2'), text: 'Chock the equipment if required', correct: true },
+              {
+                id: bid(id, 'l3', 'b5', 'o2'),
+                text: 'Chock the equipment if required',
+                correct: true,
+              },
               {
                 id: bid(id, 'l3', 'b5', 'o3'),
                 text: 'Leave it running so it stays warm',

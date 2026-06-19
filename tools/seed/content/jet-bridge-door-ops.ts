@@ -16,8 +16,7 @@ export function buildJetBridgeCourse(): CourseDraft {
     title: 'Jet Bridge & Aircraft Door Operations',
     description:
       'Operating the passenger boarding bridge safely, managing crush and pinch points, fall protection at the cab, auto-leveling, and the heavy pressure-loaded cabin door. Aligned with OSHA 29 CFR 1910.',
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1542296332-2e4473faf563?w=1400&q=80',
+    coverImageUrl: 'https://images.unsplash.com/photo-1542296332-2e4473faf563?w=1400&q=80',
     status: 'published',
     createdAt: SEED_TIMESTAMP,
     updatedAt: SEED_TIMESTAMP,
@@ -26,7 +25,12 @@ export function buildJetBridgeCourse(): CourseDraft {
         id: bid(id, 'l1'),
         title: 'Anatomy of a Jet Bridge',
         blocks: [
-          { id: bid(id, 'l1', 'b1'), kind: 'heading', text: 'The passenger boarding bridge', level: 1 },
+          {
+            id: bid(id, 'l1', 'b1'),
+            kind: 'heading',
+            text: 'The passenger boarding bridge',
+            level: 1,
+          },
           {
             id: bid(id, 'l1', 'b2'),
             kind: 'paragraph',
@@ -61,7 +65,8 @@ export function buildJetBridgeCourse(): CourseDraft {
           {
             id: bid(id, 'l1', 'b6'),
             kind: 'knowledgeCheck',
-            question: 'Which jet bridge system keeps the cab matched to the aircraft door as it lightens during boarding?',
+            question:
+              'Which jet bridge system keeps the cab matched to the aircraft door as it lightens during boarding?',
             type: 'mcq',
             options: [
               { id: bid(id, 'l1', 'b6', 'o1'), text: 'The auto-leveler', correct: true },
@@ -123,7 +128,8 @@ export function buildJetBridgeCourse(): CourseDraft {
           {
             id: bid(id, 'l2', 'b6'),
             kind: 'knowledgeCheck',
-            question: 'When the bridge is parked away from an aircraft, the cab safety gate should be:',
+            question:
+              'When the bridge is parked away from an aircraft, the cab safety gate should be:',
             type: 'mcq',
             options: [
               { id: bid(id, 'l2', 'b6', 'o1'), text: 'Closed and secured', correct: true },
@@ -142,7 +148,12 @@ export function buildJetBridgeCourse(): CourseDraft {
         id: bid(id, 'l3'),
         title: 'The Aircraft Cabin Door',
         blocks: [
-          { id: bid(id, 'l3', 'b1'), kind: 'heading', text: 'Heavy, awkward, and pressure-aware', level: 2 },
+          {
+            id: bid(id, 'l3', 'b1'),
+            kind: 'heading',
+            text: 'Heavy, awkward, and pressure-aware',
+            level: 2,
+          },
           {
             id: bid(id, 'l3', 'b2'),
             kind: 'paragraph',
@@ -197,7 +208,11 @@ export function buildJetBridgeCourse(): CourseDraft {
               { id: bid(id, 'l3', 'b6', 'o1'), text: 'Twisting while lifting', correct: true },
               { id: bid(id, 'l3', 'b6', 'o2'), text: 'Lifting away from the body', correct: true },
               { id: bid(id, 'l3', 'b6', 'o3'), text: 'Repetition without rotation', correct: true },
-              { id: bid(id, 'l3', 'b6', 'o4'), text: 'Keeping the load in the power zone', correct: false },
+              {
+                id: bid(id, 'l3', 'b6', 'o4'),
+                text: 'Keeping the load in the power zone',
+                correct: false,
+              },
             ],
             feedbackCorrect:
               'Exactly — twisting, reaching, and repetition raise MSD risk; keeping loads in the power zone close to the body lowers it.',
@@ -210,7 +225,12 @@ export function buildJetBridgeCourse(): CourseDraft {
         id: bid(id, 'l4'),
         title: 'Procedures & Resources',
         blocks: [
-          { id: bid(id, 'l4', 'b1'), kind: 'heading', text: 'Docking, undocking, references', level: 2 },
+          {
+            id: bid(id, 'l4', 'b1'),
+            kind: 'heading',
+            text: 'Docking, undocking, references',
+            level: 2,
+          },
           {
             id: bid(id, 'l4', 'b2'),
             kind: 'tabs',
@@ -249,7 +269,8 @@ export function buildJetBridgeCourse(): CourseDraft {
           {
             id: bid(id, 'l4', 'b6'),
             kind: 'knowledgeCheck',
-            question: 'True or false: a cabin door may be opened from the outside before confirming the slide is disarmed.',
+            question:
+              'True or false: a cabin door may be opened from the outside before confirming the slide is disarmed.',
             type: 'true_false',
             options: [
               { id: bid(id, 'l4', 'b6', 'o1'), text: 'True', correct: false },
