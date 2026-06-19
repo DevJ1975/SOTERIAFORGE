@@ -535,7 +535,9 @@ maybe('firestore.rules', () => {
 
     it('denies a tenant_admin reading another tenant’s audit events', async () => {
       await assertFails(
-        getDoc(doc(authedDb('globex-admin', { role: 'tenant_admin', tenantId: 'globex' }), ACME_EVENT)),
+        getDoc(
+          doc(authedDb('globex-admin', { role: 'tenant_admin', tenantId: 'globex' }), ACME_EVENT),
+        ),
       );
     });
 

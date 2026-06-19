@@ -1,6 +1,11 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { createAuditLogAdapter, createAuthAdapter, createDbAdapter, ensureApp } from './lib/adapters';
+import {
+  createAuditLogAdapter,
+  createAuthAdapter,
+  createDbAdapter,
+  ensureApp,
+} from './lib/adapters';
 import { FunctionsDomainError } from './lib/errors';
 import { inviteMemberCore } from './lib/invite-member.core';
 import { syncMemberClaimsCore } from './lib/member-claims-sync.core';

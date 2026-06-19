@@ -15,11 +15,7 @@ import { z } from 'zod';
  */
 
 /** Privileged actions worth recording. Open enum: any string is accepted. */
-export const AUDIT_ACTIONS = [
-  'setUserRole',
-  'inviteMember',
-  'provisionTenant',
-] as const;
+export const AUDIT_ACTIONS = ['setUserRole', 'inviteMember', 'provisionTenant'] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {});
 
 /** The validated shape persisted to Firestore. */

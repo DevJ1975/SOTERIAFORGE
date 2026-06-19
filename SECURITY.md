@@ -22,12 +22,12 @@ GitHub issue, pull request, or discussion for a vulnerability.
 
 What to expect:
 
-| Stage                 | Target                                          |
-| --------------------- | ----------------------------------------------- |
-| Acknowledgement       | within **3 business days**                      |
-| Triage & severity     | within **7 business days**                      |
-| Fix / mitigation plan | communicated after triage, severity-dependent   |
-| Coordinated disclosure| by mutual agreement once a fix is available     |
+| Stage                  | Target                                        |
+| ---------------------- | --------------------------------------------- |
+| Acknowledgement        | within **3 business days**                    |
+| Triage & severity      | within **7 business days**                    |
+| Fix / mitigation plan  | communicated after triage, severity-dependent |
+| Coordinated disclosure | by mutual agreement once a fix is available   |
 
 We support coordinated disclosure and will credit reporters who wish to be
 named. Please give us a reasonable window to remediate before public disclosure.
@@ -39,10 +39,10 @@ denial-of-service or automated load tests against production.
 The platform is delivered as a continuously deployed monorepo rather than
 discrete numbered releases. Security fixes are applied to:
 
-| Version                       | Supported |
-| ----------------------------- | --------- |
-| `main` (current production)   | ✅        |
-| Previous deployed revisions   | ❌        |
+| Version                     | Supported |
+| --------------------------- | --------- |
+| `main` (current production) | ✅        |
+| Previous deployed revisions | ❌        |
 
 Only the latest `main` is patched. There is no long-term support branch.
 

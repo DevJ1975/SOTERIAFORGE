@@ -636,7 +636,7 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
    * read from the `?level=` route query parameter; an absent or invalid value
    * leaves the player on the intro/locker-room screen (no auto-start).
    */
-  @Input() level?: number;
+  @Input() startLevel?: number;
 
   readonly firstLevel = LEVELS[0];
   readonly foundPoints = FOUND_POINTS;
@@ -708,12 +708,12 @@ export class HazardHuntComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Resolve the requested starting level from the `@Input() level` or the
+   * Resolve the requested starting level from the `@Input() startLevel` or the
    * `?level=` query param. Returns a valid level id, or `null` when none is
    * supplied or the value is invalid.
    */
   private resolveRequestedLevel(): number | null {
-    const raw = this.level ?? this.readLevelFromUrl();
+    const raw = this.startLevel ?? this.readLevelFromUrl();
     if (raw === null || raw === undefined) return null;
     const id = Math.floor(Number(raw));
     return Number.isFinite(id) && getLevel(id) ? id : null;

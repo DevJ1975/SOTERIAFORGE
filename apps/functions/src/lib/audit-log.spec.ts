@@ -1,9 +1,4 @@
-import {
-  auditEvent,
-  buildAuditEvent,
-  recordAuditEvent,
-  type AuditLogPort,
-} from './audit-log';
+import { auditEvent, buildAuditEvent, recordAuditEvent, type AuditLogPort } from './audit-log';
 import { FakeAuditLogPort } from './fakes';
 
 const NOW = new Date('2026-01-02T03:04:05.678Z');
