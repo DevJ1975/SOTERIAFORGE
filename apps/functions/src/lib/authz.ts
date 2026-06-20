@@ -79,10 +79,7 @@ export function canManageRole(
  * - tenant_admin / instructor: only within their own tenant.
  * - everyone else (including unauthenticated): nothing.
  */
-export function canManageLiveSession(
-  caller: CallerClaims | null,
-  tenantId: string,
-): AuthzDecision {
+export function canManageLiveSession(caller: CallerClaims | null, tenantId: string): AuthzDecision {
   if (!caller) {
     return { allowed: false, reason: 'Caller is unauthenticated or has no valid role claims' };
   }

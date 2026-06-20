@@ -45,12 +45,16 @@ describe('cancelLiveSessionCore', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
-  it('denies an admin from another tenant', async () => {
+  it('an admin from another tenant cannot reach the session (tenant-scoped lookup → not-found)', async () => {
     const deps = makeFakes();
-    seedSession(deps);
+    seedSession(deps); // seeded under 'acme'
+    // Authz passes for the caller's OWN tenant ('other'), but the lookup is
+    // scoped to 'other' where no such session exists — cross-tenant is unreachable.
     await expect(
       cancelLiveSessionCore(deps, otherTenantAdmin, { sessionId: 's-1' }),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
+    ).rejects.toMatchObject({ code: 'not-found' });
+    // The acme session is untouched.
+    expect(deps.db.liveSessions.get('acme/s-1')).toMatchObject({ status: 'scheduled' });
   });
 
   it('fails not-found when the session does not exist', async () => {

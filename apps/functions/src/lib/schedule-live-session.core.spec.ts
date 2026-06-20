@@ -42,16 +42,16 @@ describe('scheduleLiveSessionCore', () => {
   it('throws unavailable when the Zoom port is absent', async () => {
     const deps = makeFakes();
     deps.zoom = undefined as never;
-    await expect(
-      scheduleLiveSessionCore(deps, instructorToken, validInput),
-    ).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(scheduleLiveSessionCore(deps, instructorToken, validInput)).rejects.toMatchObject({
+      code: 'unavailable',
+    });
   });
 
   it('denies a learner with permission-denied (no doc written)', async () => {
     const deps = makeFakes();
-    await expect(
-      scheduleLiveSessionCore(deps, learnerToken, validInput),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(scheduleLiveSessionCore(deps, learnerToken, validInput)).rejects.toMatchObject({
+      code: 'permission-denied',
+    });
     expect(deps.db.liveSessions.size).toBe(0);
     expect(deps.zoom.created).toHaveLength(0);
   });

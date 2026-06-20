@@ -49,11 +49,7 @@ export interface DbPort {
    * Upsert (merge) the authoring-only private subdoc holding the sensitive host
    * `startUrl` at `tenants/{t}/liveSessions/{id}/private/host`.
    */
-  setLiveSessionPrivate(
-    tenantId: string,
-    id: string,
-    data: Record<string, unknown>,
-  ): Promise<void>;
+  setLiveSessionPrivate(tenantId: string, id: string, data: Record<string, unknown>): Promise<void>;
   /** Read the private host subdoc, or `null` when absent. */
   getLiveSessionPrivate(tenantId: string, id: string): Promise<Record<string, unknown> | null>;
   /** Delete the live-session doc (and is best-effort on its private subdoc). */

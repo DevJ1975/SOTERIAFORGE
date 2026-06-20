@@ -115,11 +115,7 @@ export class FakeDbPort implements DbPort {
     return this.liveSessions.get(this.pairKey(tenantId, id)) ?? null;
   }
 
-  async setLiveSession(
-    tenantId: string,
-    id: string,
-    data: Record<string, unknown>,
-  ): Promise<void> {
+  async setLiveSession(tenantId: string, id: string, data: Record<string, unknown>): Promise<void> {
     const key = this.pairKey(tenantId, id);
     this.liveSessions.set(key, { ...(this.liveSessions.get(key) ?? {}), ...data });
   }

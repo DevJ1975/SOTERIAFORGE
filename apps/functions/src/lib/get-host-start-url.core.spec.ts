@@ -22,13 +22,14 @@ describe('getHostStartUrlCore', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
-  it('denies an admin from another tenant (cannot read across tenants)', async () => {
+  it('an admin from another tenant cannot read across tenants (tenant-scoped lookup → not-found)', async () => {
     const deps = makeFakes();
     deps.db.liveSessionPrivate.set('acme/s-1', { startUrl: 'https://zoom.test/s/zoom-1' });
+    // The lookup is scoped to the caller's own tenant ('other'), which has no
+    // such private doc — the acme startUrl is never reachable cross-tenant.
     await expect(
       getHostStartUrlCore(deps, otherTenantAdmin, { sessionId: 's-1' }),
-    ).rejects.toMatchObject({ code: 'permission-denied' });
-    // Authz uses the caller's own tenant; the 'other' tenant has no such doc anyway.
+    ).rejects.toMatchObject({ code: 'not-found' });
     expect(deps.db.liveSessionPrivate.get('other/s-1')).toBeUndefined();
   });
 

@@ -319,7 +319,11 @@ export const zoomWebhook = onRequest(HTTP_OPTS, async (req: Request, res: Respon
   const meetingId =
     object['id'] !== undefined && object['id'] !== null ? String(object['id']) : undefined;
   if (!meetingId) {
-    logger.warn('Zoom webhook missing meeting id', { function: 'zoomWebhook', outcome: 'ignored', event });
+    logger.warn('Zoom webhook missing meeting id', {
+      function: 'zoomWebhook',
+      outcome: 'ignored',
+      event,
+    });
     res.status(200).send('ignored');
     return;
   }
@@ -349,8 +353,7 @@ export const zoomWebhook = onRequest(HTTP_OPTS, async (req: Request, res: Respon
       : [];
     const playable = files.find((f) => typeof f['play_url'] === 'string');
     const recordingUrl =
-      (playable?.['play_url'] as string | undefined) ??
-      (object['share_url'] as string | undefined);
+      (playable?.['play_url'] as string | undefined) ?? (object['share_url'] as string | undefined);
     const recordingId = object['uuid'] !== undefined ? String(object['uuid']) : undefined;
     await ref.set(
       {

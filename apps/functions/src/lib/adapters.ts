@@ -262,8 +262,10 @@ function readZoomCredentials(): ZoomCredentials | null {
  * graceful `unavailable` and tests run the in-memory mock.
  */
 export function createZoomAdapter(): ZoomPort | null {
-  const creds = readZoomCredentials();
-  if (!creds) return null;
+  const maybeCreds = readZoomCredentials();
+  if (!maybeCreds) return null;
+  // Non-null binding so the closures below keep the narrowed type.
+  const creds: ZoomCredentials = maybeCreds;
 
   // Cached account access token (account_credentials grant). Refreshed shortly
   // before expiry; Zoom tokens live ~1h.
