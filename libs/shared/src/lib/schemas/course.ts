@@ -43,6 +43,12 @@ export const module = auditable.extend({
    * the authoring flow; the player defaults to '2004' when absent.
    */
   scormVersion: z.enum(['1.2', '2004']).optional(),
+  /**
+   * Microlearning (MO-14): optional author-estimated time to complete this
+   * module, in whole minutes. Surfaced per-module and summed into a course-level
+   * total in the learner UI. Optional so existing module docs validate unchanged.
+   */
+  estimatedMinutes: z.number().int().min(0).optional(),
   xpReward: count.default(0),
   badgeRefs: z.array(docId).default([]),
   /** Completion criteria, e.g. minimum score or watch percentage. */

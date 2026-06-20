@@ -17,6 +17,8 @@ export interface NewModuleInput {
   assetRef?: string;
   externalUrl?: string;
   order?: number;
+  /** Microlearning estimated duration in whole minutes (MO-14). */
+  estimatedMinutes?: number;
 }
 
 /**
@@ -61,6 +63,7 @@ export class CourseAuthoringService {
       contentType: input.contentType,
       assetRef: input.assetRef,
       externalUrl: input.externalUrl,
+      estimatedMinutes: input.estimatedMinutes,
       xpReward: 0,
       badgeRefs: [],
       completion: {},

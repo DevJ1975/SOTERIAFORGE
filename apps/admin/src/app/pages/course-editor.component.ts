@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   effect,
   inject,
   input,
@@ -143,6 +144,16 @@ interface MemberOption {
                 aria-label="Video URL or asset ref"
               />
             }
+            <input
+              pInputText
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Est. minutes"
+              [(ngModel)]="newEstimatedMinutes"
+              aria-label="Estimated minutes to complete"
+              class="course-editor__minutes-input"
+            />
             <p-button
               label="Add Module"
               [loading]="addingModule()"
@@ -174,6 +185,7 @@ interface MemberOption {
                 <th>Title</th>
                 <th>Type</th>
                 <th>URL / Asset</th>
+                <th>Est. min</th>
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-m>
@@ -182,14 +194,20 @@ interface MemberOption {
                 <td>{{ m.title }}</td>
                 <td>{{ m.contentType }}</td>
                 <td>{{ m.externalUrl ?? m.assetRef ?? '—' }}</td>
+                <td>{{ m.estimatedMinutes != null ? m.estimatedMinutes : '—' }}</td>
               </tr>
             </ng-template>
             <ng-template pTemplate="emptymessage">
               <tr>
-                <td colspan="4">No modules yet. Add your first module above.</td>
+                <td colspan="5">No modules yet. Add your first module above.</td>
               </tr>
             </ng-template>
           </p-table>
+          @if (totalEstimatedMinutes() > 0) {
+            <p class="course-editor__total-time">
+              Total estimated time: {{ totalEstimatedMinutes() }} min
+            </p>
+          }
         }
 
         <!-- Assign to Learners -->
@@ -293,6 +311,14 @@ interface MemberOption {
         align-items: flex-end;
         margin-top: 0.75rem;
       }
+      .course-editor__minutes-input {
+        width: 8rem;
+      }
+      .course-editor__total-time {
+        margin-top: 0.75rem;
+        font-weight: 600;
+        color: #374151;
+      }
       .course-editor__error {
         color: #b00020;
         margin-top: 0.5rem;
@@ -363,6 +389,11 @@ export class CourseEditorComponent implements OnInit {
   protected readonly modulesLoading = signal(false);
   protected readonly modulesError = signal<string | null>(null);
 
+  /** Course-level total estimated time (MO-14): sum of module minutes. */
+  protected readonly totalEstimatedMinutes = computed(() =>
+    this.modules().reduce((sum, m) => sum + (m.estimatedMinutes ?? 0), 0),
+  );
+
   protected readonly quizOptions = signal<QuizOption[]>([]);
   protected readonly gameOptions = signal<GameOption[]>([]);
 
@@ -371,6 +402,8 @@ export class CourseEditorComponent implements OnInit {
   protected newExternalUrl = '';
   protected newQuizRef = '';
   protected newGameRef = '';
+  /** Optional author-estimated minutes for the new module (MO-14). */
+  protected newEstimatedMinutes: number | null = null;
   protected readonly addingModule = signal(false);
   protected readonly addModuleError = signal<string | null>(null);
 
@@ -472,12 +505,17 @@ export class CourseEditorComponent implements OnInit {
               : undefined,
         externalUrl:
           !isQuiz && !isGame && this.newExternalUrl.trim() ? this.newExternalUrl.trim() : undefined,
+        estimatedMinutes:
+          this.newEstimatedMinutes != null && this.newEstimatedMinutes >= 0
+            ? Math.floor(this.newEstimatedMinutes)
+            : undefined,
       });
       this.newModuleTitle = '';
       this.newContentType = null;
       this.newExternalUrl = '';
       this.newQuizRef = '';
       this.newGameRef = '';
+      this.newEstimatedMinutes = null;
       await this.loadModules(tid, courseId);
     } catch (err) {
       this.addModuleError.set((err as Error).message ?? 'Failed to add module');

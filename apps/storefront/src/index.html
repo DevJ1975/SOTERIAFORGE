@@ -11,6 +11,29 @@
     />
     <meta name="theme-color" content="#0b5fff" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!--
+      Static SEO/social defaults. Per-route components override these at runtime
+      via SeoService (SSR-safe). These ensure a sensible link preview even before
+      Angular bootstraps and for any crawler that ignores client-set tags.
+    -->
+    <link rel="canonical" href="https://soteriaforge.com/" />
+    <meta property="og:site_name" content="Soteria Assurance" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Soteria Assurance — Training Marketplace" />
+    <meta
+      property="og:description"
+      content="Buy and take compliance & skills training online — modules, courses, and all-access subscriptions."
+    />
+    <meta property="og:url" content="https://soteriaforge.com/" />
+    <meta property="og:image" content="https://soteriaforge.com/assets/og-default.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Soteria Assurance — Training Marketplace" />
+    <meta
+      name="twitter:description"
+      content="Buy and take compliance & skills training online — modules, courses, and all-access subscriptions."
+    />
+    <meta name="twitter:image" content="https://soteriaforge.com/assets/og-default.png" />
   </head>
   <body>
     <assurance-storefront-root></assurance-storefront-root>

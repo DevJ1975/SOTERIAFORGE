@@ -36,6 +36,23 @@ const mockModule: Module = {
   order: 1,
   contentType: 'video',
   externalUrl: 'https://www.youtube.com/watch?v=test',
+  estimatedMinutes: 5,
+  xpReward: 0,
+  badgeRefs: [],
+  completion: {},
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const mockModule2: Module = {
+  id: 'mod-2',
+  courseId: 'course-1',
+  tenantId: 'tenant-1',
+  title: 'Lesson 2',
+  order: 2,
+  contentType: 'video',
+  externalUrl: 'https://www.youtube.com/watch?v=test2',
+  estimatedMinutes: 7,
   xpReward: 0,
   badgeRefs: [],
   completion: {},
@@ -72,7 +89,7 @@ const mockEnrollment: Enrollment = {
 };
 
 const mockModuleRepository: Partial<ModuleRepository> = {
-  listOrdered: jest.fn().mockResolvedValue([mockModule]),
+  listOrdered: jest.fn().mockResolvedValue([mockModule, mockModule2]),
 };
 
 const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
@@ -207,5 +224,87 @@ describe('CourseDetailComponent', () => {
 
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Requires connection');
+  });
+
+  // ----- MO-14: estimated duration + stepped/focused mode -----
+
+  async function load(): Promise<void> {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+  }
+
+  it('renders the per-module estimated duration (MO-14)', async () => {
+    await load();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('5 min');
+    expect(el.textContent).toContain('7 min');
+  });
+
+  it('sums module minutes into a course-level total (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as { totalEstimatedMinutes(): number };
+    expect(comp.totalEstimatedMinutes()).toBe(12);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Total: 12 min');
+  });
+
+  it('toggles into stepped/focused mode showing "1 of M" and large controls (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      stepped(): boolean;
+    };
+    comp.toggleStepped();
+    fixture.detectChanges();
+
+    expect(comp.stepped()).toBe(true);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('1 of 2');
+    expect(el.textContent).toContain('Continue');
+    expect(el.textContent).toContain('Back');
+  });
+
+  it('advances and rewinds steps with Next/Back, keeping selection in sync (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      nextStep(): void;
+      prevStep(): void;
+      stepIndex(): number;
+      isFirstStep(): boolean;
+      isLastStep(): boolean;
+      selectedModule(): Module | null;
+    };
+    comp.toggleStepped();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(0);
+    expect(comp.isFirstStep()).toBe(true);
+
+    comp.nextStep();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(1);
+    expect(comp.isLastStep()).toBe(true);
+    // The player follows the step.
+    expect(comp.selectedModule()?.id).toBe('mod-2');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 of 2');
+
+    comp.prevStep();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(0);
+    expect(comp.selectedModule()?.id).toBe('mod-1');
+  });
+
+  it('does not advance past the last step (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      nextStep(): void;
+      stepIndex(): number;
+    };
+    comp.toggleStepped();
+    comp.nextStep();
+    comp.nextStep(); // already last — should be a no-op
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(1);
   });
 });

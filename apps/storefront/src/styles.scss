@@ -11,6 +11,13 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Fluid root font-size: scales between 320px and ~1200px viewports so the
+     whole type scale (rem-based) responds without per-element media queries. */
+  font-size: clamp(15px, 0.9rem + 0.25vw, 18px);
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
@@ -18,4 +25,20 @@ body {
   font-family: var(--assurance-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
   color: var(--assurance-text);
   background: var(--assurance-surface);
+  /* Never allow accidental horizontal scroll at 320/375px. */
+  overflow-x: hidden;
+}
+
+/* Media never overflows its container on small screens. */
+img,
+video,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 30rem) {
+  body {
+    line-height: 1.5;
+  }
 }

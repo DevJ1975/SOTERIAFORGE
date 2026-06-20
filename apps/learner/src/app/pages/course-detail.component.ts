@@ -29,6 +29,25 @@ import type { Module, Enrollment, Course } from '@assurance/shared';
 
       <h1 id="course-detail-heading" class="course-detail__title">Course: {{ id() }}</h1>
 
+      <!-- Microlearning meta (MO-14): total estimated time + focused-mode toggle. -->
+      @if (!loading() && modules().length > 0) {
+        <div class="course-detail__meta">
+          @if (totalEstimatedMinutes() > 0) {
+            <span class="course-detail__total-time">
+              ⏱ Total: {{ totalEstimatedMinutes() }} min
+            </span>
+          }
+          <button
+            type="button"
+            class="course-detail__mode-toggle"
+            [attr.aria-pressed]="stepped()"
+            (click)="toggleStepped()"
+          >
+            {{ stepped() ? 'Exit focused mode' : 'Focused mode' }}
+          </button>
+        </div>
+      }
+
       @if (course()?.availableOffline) {
         <div
           class="course-detail__download"
@@ -78,6 +97,73 @@ import type { Module, Enrollment, Course } from '@assurance/shared';
 
       @if (loading()) {
         <p class="course-detail__status">Loading…</p>
+      } @else if (stepped() && modules().length > 0) {
+        <!-- Microlearning stepped mode (MO-14): one module per screen. -->
+        <div class="course-detail__step" role="region" aria-label="Focused module view">
+          <!-- Progress: dots + "N of M" -->
+          <div class="course-detail__step-progress">
+            <ol class="course-detail__step-dots" aria-hidden="true">
+              @for (mod of modules(); track mod.id; let i = $index) {
+                <li
+                  class="course-detail__step-dot"
+                  [class.course-detail__step-dot--active]="i === stepIndex()"
+                  [class.course-detail__step-dot--done]="isComplete(mod.id)"
+                ></li>
+              }
+            </ol>
+            <span class="course-detail__step-count" aria-live="polite">
+              {{ stepIndex() + 1 }} of {{ stepCount() }}
+            </span>
+          </div>
+
+          @if (currentStepModule(); as mod) {
+            <h2 class="course-detail__step-title">
+              {{ mod.title }}
+              @if (estimatedLabel(mod); as label) {
+                <span class="course-detail__step-duration">· {{ label }}</span>
+              }
+            </h2>
+            <div role="region" aria-label="Module player" class="course-detail__step-player">
+              @if (uid() && tenantId()) {
+                <assurance-module-player
+                  [module]="mod"
+                  [courseId]="id()"
+                  [tenantId]="tenantId()!"
+                  [uid]="uid()!"
+                />
+              }
+            </div>
+          }
+
+          <!-- Large (>=44px) Back / Next controls -->
+          <div class="course-detail__step-controls">
+            <button
+              type="button"
+              class="course-detail__step-btn course-detail__step-btn--back"
+              (click)="prevStep()"
+              [disabled]="isFirstStep()"
+            >
+              ← Back
+            </button>
+            @if (!isLastStep()) {
+              <button
+                type="button"
+                class="course-detail__step-btn course-detail__step-btn--next"
+                (click)="nextStep()"
+              >
+                Continue →
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="course-detail__step-btn course-detail__step-btn--next"
+                (click)="toggleStepped()"
+              >
+                Finish
+              </button>
+            }
+          </div>
+        </div>
       } @else {
         <div class="course-detail__layout">
           <!-- Module list sidebar -->
@@ -100,6 +186,11 @@ import type { Module, Enrollment, Course } from '@assurance/shared';
                     >
                       {{ mod.title }}
                       <span class="course-detail__module-meta">
+                        @if (estimatedLabel(mod); as label) {
+                          <span class="course-detail__module-duration" aria-label="Estimated time">
+                            {{ label }}
+                          </span>
+                        }
                         @if (requiresConnection(mod.id)) {
                           <span
                             class="course-detail__conn-badge"
@@ -289,6 +380,133 @@ import type { Module, Enrollment, Course } from '@assurance/shared';
         font-size: 0.875rem;
         color: var(--assurance-text-muted, #666);
       }
+      /* Microlearning meta + per-module duration (MO-14). */
+      .course-detail__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0 0 1rem;
+      }
+      .course-detail__total-time {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--assurance-text-muted, #666);
+      }
+      .course-detail__mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--assurance-primary, #0b5fff);
+        border-radius: 0.5rem;
+        background: none;
+        color: var(--assurance-primary, #0b5fff);
+        font-size: 0.875rem;
+        cursor: pointer;
+      }
+      .course-detail__mode-toggle[aria-pressed='true'] {
+        background: var(--assurance-primary, #0b5fff);
+        color: #fff;
+      }
+      .course-detail__module-duration {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        background: var(--surface-100, #f1f5f9);
+        color: var(--assurance-text-muted, #475569);
+        white-space: nowrap;
+      }
+      /* Stepped / focused one-module-per-screen view (MO-14). */
+      .course-detail__step {
+        max-width: 44rem;
+        margin: 0 auto;
+      }
+      .course-detail__step-progress {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .course-detail__step-dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .course-detail__step-dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: var(--assurance-border, #d1d5db);
+      }
+      .course-detail__step-dot--active {
+        background: var(--assurance-primary, #0b5fff);
+        transform: scale(1.2);
+      }
+      .course-detail__step-dot--done {
+        background: var(--assurance-success, #22c55e);
+      }
+      .course-detail__step-count {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--assurance-text-muted, #666);
+        white-space: nowrap;
+      }
+      .course-detail__step-title {
+        font-size: clamp(1.1rem, 4vw, 1.5rem);
+        line-height: 1.2;
+        margin: 0 0 1rem;
+      }
+      .course-detail__step-duration {
+        font-size: 0.875rem;
+        font-weight: 400;
+        color: var(--assurance-text-muted, #666);
+      }
+      .course-detail__step-player {
+        min-height: 18rem;
+        margin-bottom: 1.5rem;
+      }
+      .course-detail__step-controls {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+      }
+      .course-detail__step-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        /* Large touch targets. */
+        min-height: 48px;
+        min-width: 44px;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .course-detail__step-btn--back {
+        border: 1px solid var(--assurance-border, #d1d5db);
+        background: none;
+        color: var(--assurance-text, #1a1a1a);
+      }
+      .course-detail__step-btn--back:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .course-detail__step-btn--next {
+        border: none;
+        background: var(--assurance-primary, #0b5fff);
+        color: #fff;
+        /* Larger primary action. */
+        flex: 1 1 auto;
+        max-width: 16rem;
+      }
       .course-detail__player {
         min-height: 20rem;
         /* Phones: show the player above the stacked module list. */
@@ -340,6 +558,24 @@ export class CourseDetailComponent implements OnInit {
   protected readonly selectedModule = signal<Module | null>(null);
   protected readonly loading = signal(true);
   protected readonly course = signal<Course | null>(null);
+
+  // Microlearning (MO-14): stepped one-module-per-screen mode.
+  /** When true, present one module per screen with Back/Next + progress. */
+  protected readonly stepped = signal(false);
+  /** Index of the module shown in stepped mode. */
+  protected readonly stepIndex = signal(0);
+  /** Total modules (for "N of M"). */
+  protected readonly stepCount = computed(() => this.modules().length);
+  protected readonly currentStepModule = computed(() => this.modules()[this.stepIndex()] ?? null);
+  protected readonly isFirstStep = computed(() => this.stepIndex() === 0);
+  protected readonly isLastStep = computed(
+    () => this.stepIndex() >= Math.max(0, this.modules().length - 1),
+  );
+
+  /** Course-level total estimated time (MO-14): sum of per-module minutes. */
+  protected readonly totalEstimatedMinutes = computed(() =>
+    this.modules().reduce((sum, m) => sum + (m.estimatedMinutes ?? 0), 0),
+  );
 
   // Offline download state (MO-07)
   protected readonly downloading = signal(false);
@@ -436,6 +672,46 @@ export class CourseDetailComponent implements OnInit {
 
   selectModule(mod: Module): void {
     this.selectedModule.set(mod);
+    // Keep the stepped index in sync if the learner picks from the list.
+    const idx = this.modules().findIndex((m) => m.id === mod.id);
+    if (idx >= 0) this.stepIndex.set(idx);
+  }
+
+  /** Human label for a module's estimated duration, or null when unset (MO-14). */
+  protected estimatedLabel(mod: Module): string | null {
+    const mins = mod.estimatedMinutes;
+    if (mins == null) return null;
+    return mins === 1 ? '1 min' : `${mins} min`;
+  }
+
+  /** Toggle the stepped/focused one-module-per-screen mode (MO-14). */
+  protected toggleStepped(): void {
+    this.stepped.update((v) => !v);
+    // Entering stepped mode: start at the currently selected module if any.
+    if (this.stepped()) {
+      const sel = this.selectedModule();
+      const idx = sel ? this.modules().findIndex((m) => m.id === sel.id) : 0;
+      this.stepIndex.set(idx >= 0 ? idx : 0);
+      this.syncStepSelection();
+    }
+  }
+
+  protected nextStep(): void {
+    if (this.isLastStep()) return;
+    this.stepIndex.update((i) => i + 1);
+    this.syncStepSelection();
+  }
+
+  protected prevStep(): void {
+    if (this.isFirstStep()) return;
+    this.stepIndex.update((i) => i - 1);
+    this.syncStepSelection();
+  }
+
+  /** Keep the selected module (the one the player renders) aligned to the step. */
+  private syncStepSelection(): void {
+    const mod = this.modules()[this.stepIndex()];
+    if (mod) this.selectedModule.set(mod);
   }
 
   /** Download this course's cacheable content for offline use (MO-07). */
