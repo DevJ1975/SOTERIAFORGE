@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
@@ -74,7 +81,9 @@ import type { LiveSession } from '@forge/shared';
                 (onClick)="openJoin(s.joinUrl)"
               />
               @if (s.passcode) {
-                <p class="muted passcode">Passcode: <strong>{{ s.passcode }}</strong></p>
+                <p class="muted passcode">
+                  Passcode: <strong>{{ s.passcode }}</strong>
+                </p>
               }
             } @else if (s.status === 'scheduled') {
               <p class="join-note">
