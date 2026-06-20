@@ -32,6 +32,7 @@ const mockCourse: Course = {
   tags: [],
   badgeRefs: [],
   xpReward: 0,
+  availableOffline: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };

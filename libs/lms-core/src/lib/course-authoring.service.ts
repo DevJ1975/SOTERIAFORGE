@@ -41,6 +41,7 @@ export class CourseAuthoringService {
       tags: input.tags ?? [],
       badgeRefs: [],
       xpReward: 0,
+      availableOffline: false,
       createdAt: now,
     };
     await this.courses.set(input.tenantId, course);

@@ -9,12 +9,12 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
-import { ModulePlayerComponent } from '@assurance/player';
-import { ModuleRepository, EnrollmentRepository } from '@assurance/data-access';
+import { ModulePlayerComponent, DownloadService, formatBytes } from '@assurance/player';
+import { ModuleRepository, EnrollmentRepository, CourseRepository } from '@assurance/data-access';
 import { EnrollmentService } from '@assurance/lms-core';
 import { AuthService, TenantService } from '@assurance/auth';
 import { TutorChatComponent } from '@assurance/ai-tutor';
-import type { Module, Enrollment } from '@assurance/shared';
+import type { Module, Enrollment, Course } from '@assurance/shared';
 
 @Component({
   selector: 'assurance-learner-course-detail',
@@ -28,6 +28,53 @@ import type { Module, Enrollment } from '@assurance/shared';
       </nav>
 
       <h1 id="course-detail-heading" class="course-detail__title">Course: {{ id() }}</h1>
+
+      @if (course()?.availableOffline) {
+        <div
+          class="course-detail__download"
+          role="group"
+          aria-label="Offline download for this course"
+        >
+          @if (isDownloaded()) {
+            <span class="course-detail__download-status">
+              Downloaded for offline
+              @if (downloadedSize()) {
+                · {{ downloadedSize() }}
+              }
+            </span>
+            <button
+              type="button"
+              class="course-detail__download-btn course-detail__download-btn--remove"
+              (click)="removeDownload()"
+              [disabled]="downloading()"
+            >
+              Remove download
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="course-detail__download-btn"
+              (click)="downloadCourse()"
+              [disabled]="downloading() || cacheableCount() === 0"
+              [attr.aria-busy]="downloading()"
+            >
+              @if (downloading()) {
+                Downloading…
+              } @else {
+                Download for offline
+              }
+            </button>
+            @if (cacheableCount() === 0) {
+              <span class="course-detail__download-note" role="note">
+                No downloadable content (all modules require a connection).
+              </span>
+            }
+          }
+          @if (downloadError()) {
+            <p class="course-detail__download-error" role="alert">{{ downloadError() }}</p>
+          }
+        </div>
+      }
 
       @if (loading()) {
         <p class="course-detail__status">Loading…</p>
@@ -52,9 +99,21 @@ import type { Module, Enrollment } from '@assurance/shared';
                       (click)="selectModule(mod)"
                     >
                       {{ mod.title }}
-                      @if (isComplete(mod.id)) {
-                        <span class="course-detail__badge" aria-label="Completed">✓</span>
-                      }
+                      <span class="course-detail__module-meta">
+                        @if (requiresConnection(mod.id)) {
+                          <span
+                            class="course-detail__conn-badge"
+                            role="note"
+                            aria-label="Requires connection"
+                            title="Streams from an external host (e.g. YouTube/Vimeo) and cannot be downloaded for offline use"
+                          >
+                            Requires connection
+                          </span>
+                        }
+                        @if (isComplete(mod.id)) {
+                          <span class="course-detail__badge" aria-label="Completed">✓</span>
+                        }
+                      </span>
                     </button>
                   </li>
                 }
@@ -119,6 +178,65 @@ import type { Module, Enrollment } from '@assurance/shared';
       }
       .course-detail__status {
         color: var(--assurance-text-muted, #666);
+      }
+      .course-detail__download {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0 0 1rem;
+      }
+      .course-detail__download-status {
+        font-size: 0.875rem;
+        color: var(--assurance-success, #15803d);
+        font-weight: 600;
+      }
+      .course-detail__download-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--assurance-primary, #0b5fff);
+        border-radius: 0.5rem;
+        background: var(--assurance-primary, #0b5fff);
+        color: #fff;
+        font-size: 0.875rem;
+        cursor: pointer;
+      }
+      .course-detail__download-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .course-detail__download-btn--remove {
+        background: none;
+        color: var(--assurance-primary, #0b5fff);
+      }
+      .course-detail__download-note,
+      .course-detail__download-error {
+        font-size: 0.8125rem;
+        color: var(--assurance-text-muted, #666);
+        margin: 0;
+      }
+      .course-detail__download-error {
+        color: #b00020;
+        flex-basis: 100%;
+      }
+      .course-detail__module-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        margin-left: 0.5rem;
+      }
+      .course-detail__conn-badge {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        background: var(--assurance-warning-bg, #fef3c7);
+        color: var(--assurance-warning-text, #92400e);
+        white-space: nowrap;
       }
       .course-detail__layout {
         display: grid;
@@ -212,13 +330,42 @@ export class CourseDetailComponent implements OnInit {
 
   private readonly moduleRepo = inject(ModuleRepository);
   private readonly enrollmentRepo = inject(EnrollmentRepository);
+  private readonly courseRepo = inject(CourseRepository);
   private readonly enrollmentService = inject(EnrollmentService);
   private readonly auth = inject(AuthService);
   private readonly tenantSvc = inject(TenantService);
+  private readonly downloadSvc = inject(DownloadService);
 
   protected readonly modules = signal<Module[]>([]);
   protected readonly selectedModule = signal<Module | null>(null);
   protected readonly loading = signal(true);
+  protected readonly course = signal<Course | null>(null);
+
+  // Offline download state (MO-07)
+  protected readonly downloading = signal(false);
+  protected readonly downloadError = signal<string | null>(null);
+  /** Module ids that stream from external hosts (YouTube/Vimeo) — not cacheable. */
+  private readonly connectionOnlyIds = computed(
+    () =>
+      new Set(
+        this.downloadSvc.analyzeCacheability(this.modules()).requiresConnection.map((m) => m.id),
+      ),
+  );
+  protected readonly cacheableCount = computed(
+    () => this.downloadSvc.analyzeCacheability(this.modules()).cacheable.length,
+  );
+  /** Reactive downloaded state for this course (from DownloadService's map). */
+  protected readonly isDownloaded = computed(
+    () => this.downloadSvc.downloads()[this.id()]?.downloaded ?? false,
+  );
+  protected readonly downloadedSize = computed(() => {
+    const bytes = this.downloadSvc.downloads()[this.id()]?.totalBytes;
+    return bytes ? formatBytes(bytes) : null;
+  });
+
+  protected requiresConnection(moduleId: string): boolean {
+    return this.connectionOnlyIds().has(moduleId);
+  }
 
   // These are typed to handle null TenantService values
   protected readonly tenantId = computed(() => this.tenantSvc.tenantId() ?? null);
@@ -250,9 +397,15 @@ export class CourseDetailComponent implements OnInit {
     }
 
     try {
-      // Load modules
+      // Load course (for the availableOffline flag) and modules.
+      const course = await this.courseRepo.getById(tenantId, courseId).catch(() => null);
+      this.course.set(course ?? null);
+
       const mods = await this.moduleRepo.listOrdered(tenantId, courseId);
       this.modules.set(mods);
+
+      // Reflect any prior download for this course in the reactive state.
+      void this.downloadSvc.getManifest(tenantId, courseId);
 
       // Auto-select first module
       if (mods.length > 0) {
@@ -283,5 +436,31 @@ export class CourseDetailComponent implements OnInit {
 
   selectModule(mod: Module): void {
     this.selectedModule.set(mod);
+  }
+
+  /** Download this course's cacheable content for offline use (MO-07). */
+  protected async downloadCourse(): Promise<void> {
+    const tenantId = this.tenantId();
+    const courseId = this.id();
+    if (!tenantId || !courseId) return;
+    this.downloading.set(true);
+    this.downloadError.set(null);
+    try {
+      const result = await this.downloadSvc.download(tenantId, courseId, this.modules());
+      if (!result.ok) {
+        this.downloadError.set(result.reason ?? 'Download failed.');
+      }
+    } finally {
+      this.downloading.set(false);
+    }
+  }
+
+  /** Remove this course's downloaded content. */
+  protected async removeDownload(): Promise<void> {
+    const tenantId = this.tenantId();
+    const courseId = this.id();
+    if (!tenantId || !courseId) return;
+    this.downloadError.set(null);
+    await this.downloadSvc.remove(tenantId, courseId);
   }
 }

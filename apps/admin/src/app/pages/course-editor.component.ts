@@ -14,6 +14,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { CheckboxModule } from 'primeng/checkbox';
 import { CourseAuthoringService, AssignmentService } from '@assurance/lms-core';
 import {
   CourseRepository,
@@ -58,6 +59,7 @@ interface MemberOption {
     TableModule,
     SelectModule,
     MultiSelectModule,
+    CheckboxModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -76,6 +78,30 @@ interface MemberOption {
         @if (course()!.description) {
           <p>{{ course()!.description }}</p>
         }
+
+        <!-- Offline availability -->
+        <div class="course-editor__offline">
+          <h2>Offline access</h2>
+          <label class="course-editor__checkbox-label">
+            <p-checkbox
+              [(ngModel)]="availableOffline"
+              [binary]="true"
+              inputId="available-offline"
+              (onChange)="saveOfflineSetting()"
+              [disabled]="savingOffline()"
+            />
+            Available offline (allow learners to download)
+          </label>
+          <p class="course-editor__hint">
+            Learners can download cacheable content (uploaded/Storage media) for offline use.
+            YouTube/Vimeo modules still require a connection.
+          </p>
+          @if (saveOfflineError()) {
+            <p class="course-editor__error">{{ saveOfflineError() }}</p>
+          } @else if (offlineSaved()) {
+            <p class="course-editor__assign-result" role="status">Offline setting saved.</p>
+          }
+        </div>
 
         <!-- Add Module Form -->
         <div class="course-editor__add-module">
@@ -233,6 +259,25 @@ interface MemberOption {
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
       }
+      .course-editor__offline {
+        background: var(--assurance-color-surface, #fff);
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-top: 1.5rem;
+      }
+      .course-editor__checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        cursor: pointer;
+      }
+      .course-editor__hint {
+        color: #6b7280;
+        font-size: 0.8125rem;
+        margin: 0.5rem 0 0;
+      }
       .course-editor__add-module {
         background: var(--assurance-color-surface, #fff);
         border: 1px solid #e5e7eb;
@@ -308,6 +353,12 @@ export class CourseEditorComponent implements OnInit {
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
 
+  // Offline availability (MO-07)
+  protected availableOffline = false;
+  protected readonly savingOffline = signal(false);
+  protected readonly saveOfflineError = signal<string | null>(null);
+  protected readonly offlineSaved = signal(false);
+
   protected readonly modules = signal<Module[]>([]);
   protected readonly modulesLoading = signal(false);
   protected readonly modulesError = signal<string | null>(null);
@@ -357,6 +408,7 @@ export class CourseEditorComponent implements OnInit {
         this.gameRepo.list(tid),
       ]);
       this.course.set(c);
+      this.availableOffline = c?.availableOffline ?? false;
       this.quizOptions.set((quizList as Quiz[]).map((q) => ({ label: q.title, value: q.id })));
       this.gameOptions.set((gameList as Game[]).map((g) => ({ label: g.title, value: g.id })));
       await Promise.all([this.loadModules(tid, courseId), this.loadMembers(tid)]);
@@ -431,6 +483,28 @@ export class CourseEditorComponent implements OnInit {
       this.addModuleError.set((err as Error).message ?? 'Failed to add module');
     } finally {
       this.addingModule.set(false);
+    }
+  }
+
+  /** Persist the `availableOffline` author opt-in (MO-07). */
+  protected async saveOfflineSetting(): Promise<void> {
+    const tid = this.tenantService.tenantId();
+    const current = this.course();
+    if (!tid || !current) return;
+    this.savingOffline.set(true);
+    this.saveOfflineError.set(null);
+    this.offlineSaved.set(false);
+    try {
+      const updated: Course = { ...current, availableOffline: this.availableOffline };
+      await this.courseRepo.set(tid, updated);
+      this.course.set(updated);
+      this.offlineSaved.set(true);
+    } catch (err) {
+      // Revert the toggle to the persisted value on failure.
+      this.availableOffline = current.availableOffline ?? false;
+      this.saveOfflineError.set((err as Error).message ?? 'Failed to save offline setting');
+    } finally {
+      this.savingOffline.set(false);
     }
   }
 
