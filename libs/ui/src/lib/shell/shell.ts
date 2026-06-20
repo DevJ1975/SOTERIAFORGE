@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ForgeMark } from '../brand/forge-mark';
+import { ForgeTagline } from '../brand/forge-tagline';
 
 export interface ShellLink {
   label: string;
@@ -14,15 +15,18 @@ export interface ShellLink {
  */
 @Component({
   selector: 'forge-shell',
-  imports: [RouterLink, RouterLinkActive, ForgeMark],
+  imports: [RouterLink, RouterLinkActive, ForgeMark, ForgeTagline],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="shell-header">
       <a class="brand" routerLink="/">
         <forge-mark [size]="34" />
-        <span class="brand-name">
-          {{ wordmark().pre }}<span class="ember">{{ wordmark().ember }}</span
-          >{{ wordmark().post }}
+        <span class="brand-text">
+          <span class="brand-name">
+            {{ wordmark().pre }}<span class="ember">{{ wordmark().ember }}</span
+            >{{ wordmark().post }}
+          </span>
+          <forge-tagline class="brand-tagline" />
         </span>
       </a>
       <nav class="shell-nav" aria-label="Primary">
@@ -73,18 +77,39 @@ export interface ShellLink {
       text-decoration: none;
     }
 
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      min-width: 0;
+    }
+
     .brand-name {
       font-family: var(--forge-font-display, 'Oswald', sans-serif);
       font-weight: 700;
       font-size: 19px;
+      line-height: 1.05;
       letter-spacing: 0.01em;
       text-transform: uppercase;
-      color: #f4f2ee;
+      color: var(--sf-cast, #f6f1e9);
       white-space: nowrap;
     }
 
     .brand-name .ember {
       color: var(--sf-ember-hot, #ff7a3d);
+    }
+
+    /* Tagline rides under the wordmark only on wide widths, kept subtle. */
+    .brand-tagline {
+      display: none;
+      font-size: 0.5rem;
+    }
+
+    @media (min-width: 900px) {
+      .brand-tagline {
+        display: inline-flex;
+      }
     }
 
     .shell-nav {
@@ -100,7 +125,7 @@ export interface ShellLink {
       font-weight: 600;
       font-size: 14px;
       letter-spacing: 0.02em;
-      color: #c4c9cf;
+      color: var(--forge-text-subtle, #c4c9cf);
       text-decoration: none;
       transition:
         background 130ms ease-out,
@@ -108,7 +133,7 @@ export interface ShellLink {
     }
 
     .shell-nav a:hover {
-      background: #2a2e35;
+      background: var(--sf-steel, #3a4048);
       color: #fff;
       text-decoration: none;
     }

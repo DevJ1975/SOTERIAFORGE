@@ -25,6 +25,12 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./features/my-learning/my-learning').then((m) => m.MyLearning),
   },
   {
+    path: 'certificate/:courseId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/certificate/certificate-page').then((m) => m.CertificatePage),
+  },
+  {
     path: 'live-sessions',
     pathMatch: 'full',
     canActivate: [authGuard],

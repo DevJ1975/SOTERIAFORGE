@@ -1,0 +1,36 @@
+{
+  "name": "Soteria FORGE — Superadmin",
+  "short_name": "FORGE Superadmin",
+  "description": "Soteria FORGE superadmin — manage tenants, branding, and platform-wide settings.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#1b1e23",
+  "theme_color": "#15171b",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "business"],
+  "icons": [
+    {
+      "src": "brand/app-icons/app-icon-charcoal-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "brand/app-icons/app-icon-charcoal-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "brand/app-icons/app-icon-ember-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

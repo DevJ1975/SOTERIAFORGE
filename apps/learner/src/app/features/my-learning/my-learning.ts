@@ -72,11 +72,20 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
                   [attr.aria-label]="item.course.title + ' progress'"
                   [attr.aria-valuetext]="item.enrollment.progressPct + '% complete'"
                 />
-                <p-button
-                  [label]="item.enrollment.completed ? 'Review' : 'Continue'"
-                  severity="secondary"
-                  [routerLink]="['/courses', item.course.id]"
-                />
+                <div class="enroll-actions">
+                  <p-button
+                    [label]="item.enrollment.completed ? 'Review' : 'Continue'"
+                    severity="secondary"
+                    [routerLink]="['/courses', item.course.id]"
+                  />
+                  @if (item.enrollment.completed) {
+                    <p-button
+                      label="Certificate"
+                      icon="pi pi-verified"
+                      [routerLink]="['/certificate', item.course.id]"
+                    />
+                  }
+                </div>
               </article>
             }
           </div>
@@ -143,6 +152,12 @@ import type { Badge, Leaderboard, Member } from '@forge/shared';
     }
     .enroll-top h3 {
       margin: 0;
+    }
+    .enroll-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: auto;
     }
     .badge-done {
       background: var(--forge-positive);
