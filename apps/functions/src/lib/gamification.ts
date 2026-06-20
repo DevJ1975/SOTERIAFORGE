@@ -1,5 +1,6 @@
 import { levelFromXp, nextStreak } from '@assurance/shared';
 import { db } from './admin';
+import { applyLeaderboardEntry, type LeaderboardEntryData } from './leaderboard';
 
 export interface AwardResult {
   newXp: number;
@@ -55,26 +56,44 @@ export async function awardToMember(opts: {
   });
 }
 
-interface Entry {
+/** The member identity written into every board entry. */
+interface MemberEntry {
   uid: string;
   displayName?: string;
   avatarUrl?: string;
-  xp: number;
 }
 
-/** Upsert a member's entry into the denormalized daily/weekly/allTime boards. */
-export async function upsertLeaderboards(tenantId: string, entry: Entry): Promise<void> {
+/**
+ * Upsert a member's award into the denormalized daily/weekly/allTime boards.
+ *
+ * The **allTime** board mirrors the member's cumulative XP (`newXp`, mode
+ * `'set'`). The **daily** and **weekly** boards instead *accumulate* only the
+ * `xpDelta` earned this award (mode `'add'`), so after a scheduled reset clears
+ * them to `[]` they grow from 0 and reflect *period* activity rather than
+ * lifetime XP — previously all three boards stored the same cumulative XP and so
+ * were always identical and never meaningfully reset (MO-13b).
+ *
+ * Each board is updated transactionally via the pure {@link applyLeaderboardEntry}
+ * helper (sorts, ranks, truncates to the top 100).
+ */
+export async function upsertLeaderboards(
+  tenantId: string,
+  member: MemberEntry,
+  award: { xpDelta: number; newXp: number },
+): Promise<void> {
+  const plan: ReadonlyArray<{ period: string; mode: 'set' | 'add'; value: number }> = [
+    { period: 'daily', mode: 'add', value: award.xpDelta },
+    { period: 'weekly', mode: 'add', value: award.xpDelta },
+    { period: 'allTime', mode: 'set', value: award.newXp },
+  ];
+
   await Promise.all(
-    ['daily', 'weekly', 'allTime'].map((period) =>
+    plan.map(({ period, mode, value }) =>
       db.runTransaction(async (tx) => {
         const ref = db.doc(`tenants/${tenantId}/leaderboard/${period}`);
         const snap = await tx.get(ref);
-        const entries: Entry[] = ((snap.get('entries') as Entry[]) ?? []).filter(
-          (e) => e.uid !== entry.uid,
-        );
-        entries.push(entry);
-        entries.sort((a, b) => b.xp - a.xp);
-        const ranked = entries.slice(0, 100).map((e, i) => ({ ...e, rank: i + 1 }));
+        const current = (snap.get('entries') as LeaderboardEntryData[] | undefined) ?? [];
+        const ranked = applyLeaderboardEntry(current, member, mode, value);
         tx.set(
           ref,
           { tenantId, period, entries: ranked, updatedAt: new Date().toISOString() },

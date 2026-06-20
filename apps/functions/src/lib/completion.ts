@@ -67,12 +67,11 @@ export async function recordModuleCompletion(opts: {
     const xpDelta = moduleXp + (opts.extraXp ?? 0);
     const award = await awardToMember({ tenantId, uid, xpDelta, nowISO, badgeIds });
     if (xpDelta > 0) {
-      await upsertLeaderboards(tenantId, {
-        uid,
-        displayName: award.displayName,
-        avatarUrl: award.avatarUrl,
-        xp: award.newXp,
-      });
+      await upsertLeaderboards(
+        tenantId,
+        { uid, displayName: award.displayName, avatarUrl: award.avatarUrl },
+        { xpDelta, newXp: award.newXp },
+      );
     }
   }
 
