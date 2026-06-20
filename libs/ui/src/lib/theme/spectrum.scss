@@ -22,6 +22,7 @@
   --sf-hairline: #dddcde;
   --sf-muted: #8a929c;
   --sf-grad-ember: linear-gradient(150deg, #f69a3c, #d8451a);
+  --sf-grad-flame: linear-gradient(180deg, #ffe6b0, #f8d38a);
 
   /* Spectrum semantic colors retained for status communication */
   --spectrum-red-600: #d7373f;
@@ -41,7 +42,10 @@
   --forge-negative: var(--spectrum-red-600);
   --forge-positive: var(--spectrum-green-600);
   --forge-notice: var(--spectrum-orange-600);
-  --forge-radius: 8px;
+  --forge-radius-tile: 24px;
+  --forge-radius-card: 18px;
+  --forge-radius-chip: 12px;
+  --forge-radius: var(--forge-radius-card);
   --forge-radius-small: 4px;
   --forge-font: 'Barlow Semi Condensed', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
@@ -123,12 +127,13 @@ a:hover {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
+  background: var(--sf-page);
 }
 
 .forge-card {
   background: var(--forge-surface);
-  border: 1px solid var(--forge-border);
-  border-radius: var(--forge-radius);
+  border: 1px solid var(--sf-hairline);
+  border-radius: var(--forge-radius-card);
   padding: 20px 24px;
   box-shadow: var(--forge-shadow-emphasized);
 }
