@@ -14,7 +14,7 @@ import {
   updateDoc,
 } from '@angular/fire/firestore';
 import type { Observable } from 'rxjs';
-import { type SchemaOf, zodConverter } from './converters';
+import { type SchemaOf, safeParseSnapshot, zodConverter } from './converters';
 
 /**
  * Generic Firestore repository bound to a collection path and a zod schema.
@@ -27,8 +27,8 @@ export class BaseRepository<T extends { id?: string } & DocumentData> {
   constructor(
     protected readonly fs: Firestore,
     protected readonly collectionPath: string,
-    schema: SchemaOf<T>,
-    context = 'document',
+    private readonly schema: SchemaOf<T>,
+    private readonly context = 'document',
   ) {
     this.converter = zodConverter<T>(schema, context);
   }
@@ -52,8 +52,16 @@ export class BaseRepository<T extends { id?: string } & DocumentData> {
   }
 
   async list(...constraints: QueryConstraint[]): Promise<T[]> {
-    const snap = await getDocs(query(this.col(), ...constraints));
-    return snap.docs.map((d) => d.data());
+    // Read WITHOUT the strict converter so a single invalid/stale-cached doc can
+    // be skipped-and-logged (MO-01) instead of throwing and blanking the list.
+    const plain = collection(this.fs, this.collectionPath);
+    const snap = await getDocs(query(plain, ...constraints));
+    const out: T[] = [];
+    for (const d of snap.docs) {
+      const parsed = safeParseSnapshot<T>(this.schema, d, this.context);
+      if (parsed !== null) out.push(parsed);
+    }
+    return out;
   }
 
   /** Create or replace a document at a known id. */

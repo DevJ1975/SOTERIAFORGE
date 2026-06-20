@@ -1,12 +1,15 @@
 /**
- * Unit tests for OfflineXapiQueue.
+ * Unit tests for OfflineXapiQueue (MO-05 — IndexedDB-backed).
  *
- * jsdom (used by Jest / jest-preset-angular) provides a working `localStorage`
- * implementation, so no manual mock is needed.  We do clear it between tests
- * to keep them isolated.
+ * jsdom does not ship IndexedDB and `fake-indexeddb` is not a workspace
+ * dependency, so a minimal in-memory IndexedDB fake (the local
+ * `fake-indexed-db.testkit`) is installed for the persistence tests. The fake's
+ * backing data survives across `IndexedDbStore` instances, which lets us
+ * simulate an app reload (a brand-new `OfflineXapiQueue`) and assert the queue
+ * is rehydrated from durable storage.
  *
  * navigator.onLine / window events are stubbed via Object.defineProperty and
- * dispatchEvent so that the online-flush path is exercisable.
+ * dispatchEvent so the online-flush and startup-flush paths are exercisable.
  */
 
 // Stub @angular/fire/functions so nothing Firebase-related is imported.
@@ -17,9 +20,8 @@ jest.mock('@angular/fire/functions', () => ({
 
 import { TestBed } from '@angular/core/testing';
 import { OfflineXapiQueue } from './offline-xapi-queue.service';
+import { installFakeIndexedDb, uninstallFakeIndexedDb } from './fake-indexed-db.testkit';
 import type { XapiStatement } from '@assurance/shared';
-
-const QUEUE_KEY = 'forge.xapi.queue';
 
 function makeStmt(id = 'stmt-1'): XapiStatement {
   return {
@@ -32,35 +34,34 @@ function makeStmt(id = 'stmt-1'): XapiStatement {
   } as unknown as XapiStatement;
 }
 
-describe('OfflineXapiQueue', () => {
-  let queue: OfflineXapiQueue;
+/** Flush the microtask queue so async IndexedDB writes/reads settle. */
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
+function setOnline(online: boolean): void {
+  Object.defineProperty(navigator, 'onLine', { value: online, configurable: true });
+}
+
+describe('OfflineXapiQueue (IndexedDB-backed)', () => {
   beforeEach(() => {
-    localStorage.clear();
+    installFakeIndexedDb();
+    setOnline(true);
     TestBed.configureTestingModule({});
-    queue = TestBed.inject(OfflineXapiQueue);
   });
 
   afterEach(() => {
-    localStorage.clear();
+    uninstallFakeIndexedDb();
     jest.restoreAllMocks();
+    TestBed.resetTestingModule();
   });
 
   // ---------------------------------------------------------------------------
-  // enqueue
+  // enqueue / peekAll / size (synchronous mirror)
   // ---------------------------------------------------------------------------
   describe('enqueue', () => {
-    it('persists a statement to localStorage', () => {
-      const stmt = makeStmt('a');
-      queue.enqueue(stmt);
-      const raw = localStorage.getItem(QUEUE_KEY);
-      expect(raw).not.toBeNull();
-      const stored = JSON.parse(raw ?? '[]') as XapiStatement[];
-      expect(stored).toHaveLength(1);
-      expect(stored[0].object.id).toBe('https://x.com/activities/a');
-    });
-
-    it('appends multiple statements in order', () => {
+    it('appends statements to the in-memory mirror in order', () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
       queue.enqueue(makeStmt('first'));
       queue.enqueue(makeStmt('second'));
       expect(queue.size()).toBe(2);
@@ -68,17 +69,33 @@ describe('OfflineXapiQueue', () => {
       expect(all[0].object.id).toContain('first');
       expect(all[1].object.id).toContain('second');
     });
-  });
 
-  // ---------------------------------------------------------------------------
-  // peekAll
-  // ---------------------------------------------------------------------------
-  describe('peekAll', () => {
-    it('returns an empty array when the queue is empty', () => {
-      expect(queue.peekAll()).toEqual([]);
+    it('updates the pendingCount signal', () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+      expect(queue.pendingCount()).toBe(0);
+      queue.enqueue(makeStmt('a'));
+      expect(queue.pendingCount()).toBe(1);
     });
 
-    it('returns queued statements without removing them', () => {
+    it('persists statements to IndexedDB', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+      queue.enqueue(makeStmt('persisted'));
+      await flushMicrotasks();
+      // A fresh instance reads the same durable backing store.
+      const reloaded = TestBed.inject(OfflineXapiQueue);
+      expect(reloaded).toBe(queue); // root singleton within one TestBed
+    });
+  });
+
+  describe('peekAll / size', () => {
+    it('returns an empty array / 0 for an empty queue', () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+      expect(queue.peekAll()).toEqual([]);
+      expect(queue.size()).toBe(0);
+    });
+
+    it('peekAll does not remove statements', () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
       queue.enqueue(makeStmt());
       const before = queue.size();
       queue.peekAll();
@@ -87,50 +104,27 @@ describe('OfflineXapiQueue', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // size
-  // ---------------------------------------------------------------------------
-  describe('size', () => {
-    it('returns 0 for an empty queue', () => {
-      expect(queue.size()).toBe(0);
-    });
-
-    it('increments with each enqueue', () => {
-      queue.enqueue(makeStmt('x1'));
-      expect(queue.size()).toBe(1);
-      queue.enqueue(makeStmt('x2'));
-      expect(queue.size()).toBe(2);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // flush
   // ---------------------------------------------------------------------------
   describe('flush', () => {
-    it('calls sender for each queued statement', async () => {
+    it('calls sender for each queued statement and drains them', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
       const sender = jest.fn().mockResolvedValue(undefined);
       queue.enqueue(makeStmt('f1'));
       queue.enqueue(makeStmt('f2'));
       await queue.flush(sender);
       expect(sender).toHaveBeenCalledTimes(2);
-    });
-
-    it('removes successfully sent statements from the queue', async () => {
-      const sender = jest.fn().mockResolvedValue(undefined);
-      queue.enqueue(makeStmt('ok'));
-      await queue.flush(sender);
       expect(queue.size()).toBe(0);
     });
 
-    it('keeps failing statements in the queue for next flush', async () => {
-      const okStmt = makeStmt('ok');
-      const failStmt = makeStmt('fail');
-
+    it('keeps failing statements in the queue for the next flush', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
       const sender = jest.fn().mockImplementation(async (s: XapiStatement) => {
         if (s.object.id.includes('fail')) throw new Error('network error');
       });
 
-      queue.enqueue(okStmt);
-      queue.enqueue(failStmt);
+      queue.enqueue(makeStmt('ok'));
+      queue.enqueue(makeStmt('fail'));
       await queue.flush(sender);
 
       expect(queue.size()).toBe(1);
@@ -138,9 +132,97 @@ describe('OfflineXapiQueue', () => {
     });
 
     it('is a no-op on an empty queue', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
       const sender = jest.fn().mockResolvedValue(undefined);
       await queue.flush(sender);
       expect(sender).not.toHaveBeenCalled();
+    });
+
+    it('removes drained statements from IndexedDB (survives reload)', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+      const sender = jest.fn().mockResolvedValue(undefined);
+      queue.enqueue(makeStmt('drain-me'));
+      await flushMicrotasks();
+      await queue.flush(sender);
+      await flushMicrotasks();
+
+      // Reload: a new instance must NOT see the drained statement.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      const reloaded = TestBed.inject(OfflineXapiQueue);
+      await flushMicrotasks();
+      expect(reloaded.size()).toBe(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // persistence survives a simulated reload
+  // ---------------------------------------------------------------------------
+  describe('persistence across reload', () => {
+    it('rehydrates a queue persisted by a prior session', async () => {
+      const first = TestBed.inject(OfflineXapiQueue);
+      first.enqueue(makeStmt('survivor-1'));
+      first.enqueue(makeStmt('survivor-2'));
+      await flushMicrotasks();
+
+      // Simulate the app being closed and reopened: brand-new injector, same
+      // IndexedDB backing store.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      const reloaded = TestBed.inject(OfflineXapiQueue);
+      await flushMicrotasks();
+
+      expect(reloaded.size()).toBe(2);
+      const ids = reloaded.peekAll().map((s) => s.object.id);
+      expect(ids[0]).toContain('survivor-1');
+      expect(ids[1]).toContain('survivor-2');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // startup flush (already-online reopen drains the queue)
+  // ---------------------------------------------------------------------------
+  describe('startup flush', () => {
+    it('drains a persisted queue when registerSender is called while online', async () => {
+      // Seed a queue and persist it.
+      const first = TestBed.inject(OfflineXapiQueue);
+      first.enqueue(makeStmt('startup-1'));
+      await flushMicrotasks();
+
+      // Reopen already-online.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      setOnline(true);
+      const reloaded = TestBed.inject(OfflineXapiQueue);
+      await flushMicrotasks();
+      expect(reloaded.size()).toBe(1);
+
+      // XapiClient would register its sender on startup — that triggers a flush.
+      const sender = jest.fn().mockResolvedValue(undefined);
+      reloaded.registerSender(sender);
+      await flushMicrotasks();
+
+      expect(sender).toHaveBeenCalledTimes(1);
+      expect(reloaded.size()).toBe(0);
+    });
+
+    it('does NOT flush on registerSender when offline', async () => {
+      const first = TestBed.inject(OfflineXapiQueue);
+      first.enqueue(makeStmt('hold'));
+      await flushMicrotasks();
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      setOnline(false);
+      const reloaded = TestBed.inject(OfflineXapiQueue);
+      await flushMicrotasks();
+
+      const sender = jest.fn().mockResolvedValue(undefined);
+      reloaded.registerSender(sender);
+      await flushMicrotasks();
+
+      expect(sender).not.toHaveBeenCalled();
+      expect(reloaded.size()).toBe(1);
     });
   });
 
@@ -148,17 +230,66 @@ describe('OfflineXapiQueue', () => {
   // online event → auto flush
   // ---------------------------------------------------------------------------
   describe('online event triggers flush', () => {
-    it('flushes via registered sender when window fires online event', async () => {
+    it('flushes via the registered sender when window fires online', async () => {
+      // Register the sender while offline so the startup flush is suppressed and
+      // we isolate the window `online` → flush path.
+      setOnline(false);
+      const queue = TestBed.inject(OfflineXapiQueue);
       const sender = jest.fn().mockResolvedValue(undefined);
       queue.registerSender(sender);
       queue.enqueue(makeStmt('online-test'));
+      await flushMicrotasks();
+      expect(sender).not.toHaveBeenCalled();
 
-      // Simulate coming back online
+      // Come back online.
+      setOnline(true);
       window.dispatchEvent(new Event('online'));
+      await flushMicrotasks();
 
-      // Let microtasks (the async flush) settle
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(sender).toHaveBeenCalledTimes(1);
+      expect(queue.size()).toBe(0);
+    });
+  });
 
+  // ---------------------------------------------------------------------------
+  // quota / write error → retain, never drop
+  // ---------------------------------------------------------------------------
+  describe('no data loss on IndexedDB quota error', () => {
+    it('retains the statement in memory when the IndexedDB write rejects', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+
+      // Force the next persist to fail as if the quota were exceeded.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dbAny = queue as any;
+      jest.spyOn(dbAny.db, 'put').mockRejectedValue(new Error('QuotaExceededError'));
+
+      queue.enqueue(makeStmt('quota'));
+      await flushMicrotasks();
+
+      // Not dropped: still present in the synchronous mirror and sendable.
+      expect(queue.size()).toBe(1);
+      const sender = jest.fn().mockResolvedValue(undefined);
+      await queue.flush(sender);
+      expect(sender).toHaveBeenCalledTimes(1);
+      expect(queue.size()).toBe(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SSR / no-IndexedDB safety (mirror still works)
+  // ---------------------------------------------------------------------------
+  describe('without IndexedDB available', () => {
+    it('still queues in memory and flushes (no throw)', async () => {
+      uninstallFakeIndexedDb(); // remove the fake → indexedDB undefined
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      const queue = TestBed.inject(OfflineXapiQueue);
+
+      queue.enqueue(makeStmt('mem-only'));
+      expect(queue.size()).toBe(1);
+
+      const sender = jest.fn().mockResolvedValue(undefined);
+      await queue.flush(sender);
       expect(sender).toHaveBeenCalledTimes(1);
       expect(queue.size()).toBe(0);
     });

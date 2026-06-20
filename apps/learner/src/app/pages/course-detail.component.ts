@@ -111,6 +111,9 @@ import type { Module, Enrollment } from '@assurance/shared';
         margin-bottom: 1rem;
       }
       .course-detail__nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
       }
@@ -119,8 +122,16 @@ import type { Module, Enrollment } from '@assurance/shared';
       }
       .course-detail__layout {
         display: grid;
-        grid-template-columns: 16rem 1fr;
+        /* Phones: single column — player full-width above a stacked module list
+           (no horizontal scroll at 320/375px). The fixed 16rem sidebar only
+           applies once there is room for it. */
+        grid-template-columns: 1fr;
         gap: 1.5rem;
+      }
+      @media (min-width: 48rem) {
+        .course-detail__layout {
+          grid-template-columns: 16rem 1fr;
+        }
       }
       .course-detail__module-list {
         list-style: none;
@@ -135,6 +146,8 @@ import type { Module, Enrollment } from '@assurance/shared';
         align-items: center;
         justify-content: space-between;
         width: 100%;
+        /* >= 44px touch target. */
+        min-height: 44px;
         padding: 0.625rem 0.5rem;
         background: none;
         border: none;
@@ -160,6 +173,13 @@ import type { Module, Enrollment } from '@assurance/shared';
       }
       .course-detail__player {
         min-height: 20rem;
+        /* Phones: show the player above the stacked module list. */
+        order: -1;
+      }
+      @media (min-width: 48rem) {
+        .course-detail__player {
+          order: 0;
+        }
       }
       .course-detail__tutor {
         margin-top: 1.5rem;

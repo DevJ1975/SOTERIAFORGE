@@ -4,6 +4,7 @@ import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { QuizRepository } from '@assurance/data-access';
 import { QuizSubmissionService } from '@assurance/lms-core';
 import { QuizPlayerComponent } from './quiz-player.component';
+import { installFakeIndexedDb, uninstallFakeIndexedDb } from './fake-indexed-db.testkit';
 import type { Quiz, QuizGrade } from '@assurance/shared';
 
 const testEnv: AssuranceEnvironment = {
@@ -70,6 +71,7 @@ const mockQuizRepository: Partial<QuizRepository> = {
 
 const mockSubmissionService: Partial<QuizSubmissionService> = {
   submit: jest.fn().mockResolvedValue(mockGrade),
+  submitWithOutbox: jest.fn().mockResolvedValue({ graded: true, grade: mockGrade, queued: false }),
 };
 
 describe('QuizPlayerComponent', () => {
@@ -157,5 +159,131 @@ describe('QuizPlayerComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('100%');
     expect(el.textContent).toContain('Passed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MO-08 — draft autosave / restore + offline submission notice
+// ---------------------------------------------------------------------------
+describe('QuizPlayerComponent — draft autosave (MO-08)', () => {
+  function flushMicrotasks(): Promise<void> {
+    return new Promise((r) => setTimeout(r, 0));
+  }
+
+  async function makeFixture(): Promise<ComponentFixture<QuizPlayerComponent>> {
+    await TestBed.configureTestingModule({
+      imports: [QuizPlayerComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ASSURANCE_ENV, useValue: testEnv },
+        { provide: QuizRepository, useValue: mockQuizRepository },
+        { provide: QuizSubmissionService, useValue: mockSubmissionService },
+      ],
+    }).compileComponents();
+
+    const fx = TestBed.createComponent(QuizPlayerComponent);
+    fx.componentRef.setInput('quizId', 'quiz-1');
+    fx.componentRef.setInput('courseId', 'course-1');
+    fx.componentRef.setInput('moduleId', 'mod-1');
+    fx.componentRef.setInput('tenantId', 'tenant-1');
+    fx.componentRef.setInput('uid', 'user-1');
+    return fx;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (mockQuizRepository.getById as jest.Mock).mockResolvedValue(mockQuiz);
+    (mockSubmissionService.submitWithOutbox as jest.Mock).mockResolvedValue({
+      graded: true,
+      grade: mockGrade,
+      queued: false,
+    });
+    installFakeIndexedDb();
+  });
+
+  afterEach(() => {
+    uninstallFakeIndexedDb();
+    TestBed.resetTestingModule();
+  });
+
+  it('round-trips an in-progress answer: autosaves then restores after reload', async () => {
+    // First mount: answer q1, let the debounced autosave persist.
+    const first = await makeFixture();
+    first.detectChanges();
+    await flushMicrotasks();
+    first.detectChanges();
+
+    // Select option 'opt-b' on the mcq question and persist immediately.
+    const inst = first.componentInstance as unknown as {
+      questionStates: () => Array<{ question: { id: string }; selectedSingle: string }>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      saveDraft: () => Promise<void>;
+    };
+    const states = inst.questionStates();
+    states[0].selectedSingle = 'opt-b';
+    await inst.saveDraft();
+    await flushMicrotasks();
+
+    // Reload: a fresh component instance must restore the saved selection.
+    TestBed.resetTestingModule();
+    const second = await makeFixture();
+    second.detectChanges();
+    await flushMicrotasks();
+    second.detectChanges();
+
+    const restored = (
+      second.componentInstance as unknown as {
+        questionStates: () => Array<{ question: { id: string }; selectedSingle: string }>;
+      }
+    ).questionStates();
+    expect(restored[0].selectedSingle).toBe('opt-b');
+  });
+
+  it('clears the draft on successful submit (no restore on next load)', async () => {
+    const first = await makeFixture();
+    first.detectChanges();
+    await flushMicrotasks();
+    first.detectChanges();
+
+    const inst = first.componentInstance as unknown as {
+      questionStates: () => Array<{ selectedSingle: string }>;
+      saveDraft: () => Promise<void>;
+      onSubmit: () => Promise<void>;
+    };
+    inst.questionStates()[0].selectedSingle = 'opt-b';
+    await inst.saveDraft();
+    await inst.onSubmit();
+    await flushMicrotasks();
+
+    TestBed.resetTestingModule();
+    const second = await makeFixture();
+    second.detectChanges();
+    await flushMicrotasks();
+    second.detectChanges();
+
+    const restored = (
+      second.componentInstance as unknown as {
+        questionStates: () => Array<{ selectedSingle: string }>;
+      }
+    ).questionStates();
+    // Draft was cleared on submit → fresh (empty) state.
+    expect(restored[0].selectedSingle).toBe('');
+  });
+
+  it('shows the offline sync notice when the attempt is queued', async () => {
+    (mockSubmissionService.submitWithOutbox as jest.Mock).mockResolvedValue({
+      graded: false,
+      queued: true,
+    });
+
+    const fx = await makeFixture();
+    fx.detectChanges();
+    await flushMicrotasks();
+    fx.detectChanges();
+
+    await fx.componentInstance.onSubmit();
+    fx.detectChanges();
+
+    expect((fx.nativeElement as HTMLElement).textContent).toContain('will sync when');
   });
 });
