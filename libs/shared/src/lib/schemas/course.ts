@@ -29,6 +29,12 @@ export const module = auditable.extend({
   /** Storage reference or external URL for the content asset. */
   assetRef: storageRef.optional(),
   externalUrl: z.string().url().optional(),
+  /**
+   * SCORM specification version for `scorm` modules. Detected from the package's
+   * imsmanifest.xml on upload (`scormPackages.scormVersion`) and copied here by
+   * the authoring flow; the player defaults to '2004' when absent.
+   */
+  scormVersion: z.enum(['1.2', '2004']).optional(),
   xpReward: count.default(0),
   badgeRefs: z.array(docId).default([]),
   /** Completion criteria, e.g. minimum score or watch percentage. */

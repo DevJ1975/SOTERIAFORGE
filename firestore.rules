@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Soteria FORGE — Firestore security rules.
+// Soteria Assurance — Firestore security rules.
 // Authoritative tenant isolation + RBAC. Privileged writes (claims, provisioning,
 // entitlements, leaderboard recompute) go through Cloud Functions (admin SDK
 // bypasses rules), so client write surfaces here are deliberately narrow.
@@ -69,12 +69,34 @@ service cloud.firestore {
           allow write: if canAuthor(tenantId);
         }
 
-        // enrollments: a learner reads/writes only their own progress doc.
+        // enrollments: a learner reads/writes only their own progress doc, but
+        // credit-bearing fields (progressPct/completed/score/cmi.completedModuleIds)
+        // are server-only (the `completeModule`/`submitQuiz` admin-SDK writers
+        // bypass rules). Self-writes are limited to runtime/bookmark state so a
+        // learner cannot forge completion or score (anti-cheat).
         match /enrollments/{uid} {
           allow read: if isSelf(uid) ? inTenant(tenantId) : isTenantAdmin(tenantId);
-          allow create, update: if isSelf(uid) && inTenant(tenantId)
-            && request.resource.data.tenantId == tenantId;
-          // Score-bearing completion is validated server-side (anti-cheat).
+          // Self may create only a zero-progress enrollment (no forged completion/
+          // score). completedModuleIds must also be empty: the server trusts the
+          // existing cmi.completedModuleIds as the prior-progress baseline when
+          // recomputing progress on completeModule/submitQuiz, so a seeded list at
+          // create time would let one real completion inflate to full course credit.
+          allow create: if isSelf(uid) && inTenant(tenantId)
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.progressPct == 0
+            && request.resource.data.completed == false
+            && !('score' in request.resource.data)
+            && request.resource.data.get('cmi', {}).get('completedModuleIds', []) == [];
+          // Self may update ONLY runtime/bookmark state; credit-bearing fields are
+          // server-only. Use .get(field, default) so optional fields (score, cmi,
+          // completedModuleIds) compare safely whether or not they are present.
+          allow update: if isSelf(uid) && inTenant(tenantId)
+            && request.resource.data.tenantId == resource.data.tenantId
+            && request.resource.data.progressPct == resource.data.progressPct
+            && request.resource.data.completed == resource.data.completed
+            && request.resource.data.get('score', -1) == resource.data.get('score', -1)
+            && request.resource.data.get('cmi', {}).get('completedModuleIds', [])
+               == resource.data.get('cmi', {}).get('completedModuleIds', []);
           allow delete: if isTenantAdmin(tenantId);
         }
       }

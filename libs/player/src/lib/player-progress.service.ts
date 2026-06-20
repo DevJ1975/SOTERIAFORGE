@@ -47,20 +47,42 @@ export class PlayerProgressService {
 
   /**
    * Records module completion:
-   *  1. Reports completion to the server-authoritative `completeModule` function,
-   *     which recomputes progress and grants XP/badges/streak (anti-cheat).
-   *  2. Emits an xAPI 'completed' statement with optional score.
+   *  1. Reports completion to the server-authoritative `completeModule` function
+   *     via the offline-durable outbox (MO-10), which recomputes progress and
+   *     grants XP/badges/streak (anti-cheat). When offline or the callable
+   *     rejects, the completion is persisted and retried on reconnect/relaunch.
+   *  2. Emits an xAPI 'completed' statement with optional score — but ONLY once
+   *     the authoritative completion is confirmed OR durably queued, so the LRS
+   *     never says "completed" while the LMS has no record (no divergence).
+   *
+   * `completeModule` is a callable (not a Firestore write), so it is not covered
+   * by Firestore offline persistence (MO-01) — the outbox is what makes it
+   * offline-durable. The xAPI statement itself is durably queued by the xAPI
+   * pipeline (MO-05); we just defer emitting it until the completion is durable.
    */
   async recordCompletion(ctx: PlayerContext, score?: number): Promise<void> {
+    let completionDurable = false;
     try {
-      await this.completion.complete({
+      const outcome = await this.completion.completeWithOutbox({
         tenantId: ctx.tenantId,
         courseId: ctx.courseId,
         moduleId: ctx.module.id,
         score,
       });
+      completionDurable = outcome.durable;
     } catch (err) {
       console.warn('[PlayerProgressService] completeModule failed', err);
+    }
+
+    // Guard against LRS/LMS divergence: if the authoritative completion could
+    // not even be durably queued (e.g. IndexedDB unavailable), do NOT emit the
+    // xAPI `completed` statement — otherwise the LRS would record completion the
+    // LMS never gets.
+    if (!completionDurable) {
+      console.warn(
+        '[PlayerProgressService] completion not durable — skipping xAPI completed to avoid LRS/LMS divergence',
+      );
+      return;
     }
 
     try {

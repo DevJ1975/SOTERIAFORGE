@@ -138,22 +138,51 @@ export class ScormRuntimeService {
     return {};
   }
 
-  /** Update score signal from the extracted CMI. */
+  /**
+   * Update the scaled-score signal [0–1] from the extracted CMI.
+   *
+   * - SCORM 2004 exposes `cmi.score.scaled` already normalised to [0, 1].
+   * - SCORM 1.2 exposes `cmi.core.score.raw` / `cmi.core.score.max` (typically
+   *   0–100), so we compute `scaled = raw / max` (default max 100 when absent or
+   *   non-positive) and clamp to [0, 1]. Previously the raw 1.2 value was written
+   *   straight into the 0–1 `scaled` signal, so an 80/100 reported as 80.
+   */
   private _updateSignals(cmi: Record<string, unknown>): void {
-    // SCORM 1.2: cmi.core.score.raw / max
-    // SCORM 2004: cmi.score.scaled
-    const cmiAny = cmi as Record<string, Record<string, Record<string, Record<string, unknown>>>>;
-    const scaled =
-      cmiAny?.['cmi']?.['score']?.['scaled'] ?? cmiAny?.['cmi']?.['core']?.['score']?.['raw'];
-    if (typeof scaled === 'number') {
-      this.score.set(scaled);
-    } else if (typeof scaled === 'string') {
-      const parsed = parseFloat(scaled);
-      if (!isNaN(parsed)) {
-        this.score.set(parsed);
-      }
+    const root = (cmi?.['cmi'] ?? {}) as Record<string, unknown>;
+
+    // SCORM 2004: cmi.score.scaled (already 0–1).
+    const score2004 = (root['score'] ?? {}) as Record<string, unknown>;
+    const scaled2004 = toNumber(score2004['scaled']);
+    if (scaled2004 !== null) {
+      this.score.set(clamp01(scaled2004));
+      return;
+    }
+
+    // SCORM 1.2: cmi.core.score.raw / cmi.core.score.max.
+    const core = (root['core'] ?? {}) as Record<string, unknown>;
+    const score12 = (core['score'] ?? {}) as Record<string, unknown>;
+    const raw = toNumber(score12['raw']);
+    if (raw !== null) {
+      const max = toNumber(score12['max']);
+      const denom = max !== null && max > 0 ? max : 100;
+      this.score.set(clamp01(raw / denom));
     }
   }
+}
+
+/** Coerce a number-or-numeric-string to a finite number, else null. */
+function toNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+/** Clamp to the [0, 1] range. */
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n));
 }
 
 // ---------------------------------------------------------------------------

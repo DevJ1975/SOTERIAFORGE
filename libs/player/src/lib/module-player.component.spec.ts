@@ -29,6 +29,7 @@ const mockPlayerProgressService: Partial<PlayerProgressService> = {
 const mockEnrollmentService: Partial<EnrollmentService> = {
   saveCmi: jest.fn().mockResolvedValue(undefined),
   markModuleComplete: jest.fn().mockResolvedValue(undefined),
+  getRuntimeCmi: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockScormRuntimeService: Partial<ScormRuntimeService> = {
@@ -207,5 +208,55 @@ describe('ModulePlayerComponent', () => {
       text.includes('Loading game') ||
       text.includes('No game configured');
     expect(hasGameContent).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // MO-09 — SCORM resume + dynamic version
+  // -------------------------------------------------------------------------
+
+  it('defaults scormVersion to 2004 and uses the module value when set', () => {
+    const scormModule: Module = {
+      ...videoModule,
+      contentType: 'scorm',
+      id: 'mod-2',
+      externalUrl: 'https://cdn.example.com/scorm/index.html',
+    };
+    fixture.componentRef.setInput('module', scormModule);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.scormVersion()).toBe('2004');
+
+    fixture.componentRef.setInput('module', { ...scormModule, scormVersion: '1.2' });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.scormVersion()).toBe('1.2');
+  });
+
+  it('loads saved runtime CMI and exposes it as initialCmi for scorm modules', async () => {
+    const savedCmi = { 'cmi.core.lesson_status': 'incomplete', 'cmi.suspend_data': 'page-3' };
+    (mockEnrollmentService.getRuntimeCmi as jest.Mock).mockResolvedValueOnce(savedCmi);
+
+    const scormModule: Module = {
+      ...videoModule,
+      contentType: 'scorm',
+      id: 'mod-2',
+      externalUrl: 'https://cdn.example.com/scorm/index.html',
+    };
+
+    const scormFixture = TestBed.createComponent(ModulePlayerComponent);
+    scormFixture.componentRef.setInput('module', scormModule);
+    scormFixture.componentRef.setInput('courseId', 'course-1');
+    scormFixture.componentRef.setInput('tenantId', 'tenant-1');
+    scormFixture.componentRef.setInput('uid', 'user-1');
+    scormFixture.detectChanges();
+
+    // afterNextRender runs the async runtime-CMI load.
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockEnrollmentService.getRuntimeCmi).toHaveBeenCalledWith(
+      'tenant-1',
+      'course-1',
+      'user-1',
+      'mod-2',
+    );
+    expect(scormFixture.componentInstance.scormInitialCmi()).toEqual(savedCmi);
   });
 });
