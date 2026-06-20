@@ -18,5 +18,17 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./courses/course-builder-page').then((m) => m.CourseBuilderPage),
   },
+  {
+    path: 'live-sessions',
+    canActivate: [authGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () =>
+      import('./live-sessions/live-sessions-list-page').then((m) => m.LiveSessionsListPage),
+  },
+  {
+    path: 'live-sessions/:sessionId',
+    canActivate: [authGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () =>
+      import('./live-sessions/live-session-detail-page').then((m) => m.LiveSessionDetailPage),
+  },
   { path: '**', redirectTo: '' },
 ];

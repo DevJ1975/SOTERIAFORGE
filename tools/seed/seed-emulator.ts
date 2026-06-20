@@ -35,6 +35,7 @@ import {
   courseDraft as courseDraftSchema,
   enrollment as enrollmentSchema,
   leaderboard as leaderboardSchema,
+  liveSession as liveSessionSchema,
   member as memberSchema,
   tenant as tenantSchema,
   type Badge,
@@ -43,11 +44,18 @@ import {
   type Leaderboard,
   type LeaderboardEntry,
   type LeaderboardPeriod,
+  type LiveSession,
   type Member,
   type Role,
   type Tenant,
 } from '@forge/shared';
-import { SAMPLE_VIDEO_FILE, SAMPLE_VIDEO_MIME, SEED_COURSES, SEED_STORAGE_BUCKET } from './content';
+import {
+  RAMP_APRON_COURSE_ID,
+  SAMPLE_VIDEO_FILE,
+  SAMPLE_VIDEO_MIME,
+  SEED_COURSES,
+  SEED_STORAGE_BUCKET,
+} from './content';
 import type { VideoBlock } from '@forge/shared';
 
 // ---------------------------------------------------------------------------
@@ -238,6 +246,105 @@ const BADGES: SeedBadge[] = [
     criteria: 'Maintain a learning streak of at least seven consecutive days.',
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Live sessions (Zoom) — one upcoming, one live now, one ended with a recording
+// ---------------------------------------------------------------------------
+
+/** The seeded instructor hosts every demo live session. */
+const INSTRUCTOR_UID = 'atl-instructor';
+
+interface SeedLiveSession {
+  id: string;
+  title: string;
+  description: string;
+  type: 'meeting' | 'webinar';
+  status: 'scheduled' | 'live' | 'ended' | 'canceled';
+  /** ISO-8601 with offset, relative to NOW (2026-06-19T12:00Z). */
+  scheduledStart: string;
+  durationMin: number;
+  courseId?: string;
+  meetingId?: string;
+  joinUrl?: string;
+  passcode?: string;
+  recordingUrl?: string;
+  recordingId?: string;
+}
+
+/**
+ * Mock Zoom artifacts. With no `ZOOM_*` creds the real callables short-circuit
+ * to the fake adapter; these mirror the deterministic shapes it would produce
+ * so the learner UI has live/upcoming/past sessions to render out of the box.
+ */
+const SEED_LIVE_SESSIONS: SeedLiveSession[] = [
+  {
+    id: 'atl-ramp-safety-qa',
+    title: 'Ramp Safety Live Q&A',
+    description:
+      'Bring your toughest ramp and apron safety questions for a live Q&A with the ATL safety team. Linked to the Ramp & Apron Safety course.',
+    type: 'meeting',
+    status: 'scheduled',
+    // 3 days after NOW.
+    scheduledStart: '2026-06-22T15:00:00.000Z',
+    durationMin: 45,
+    courseId: RAMP_APRON_COURSE_ID,
+    meetingId: '910000111',
+    joinUrl: 'https://zoom.us/j/910000111?pwd=ramp-safety-qa-demo',
+    passcode: '482913',
+  },
+  {
+    id: 'atl-winter-deicing-briefing',
+    title: 'Winter De-Icing Briefing',
+    description:
+      'Live operational briefing on aircraft de-icing and winter ramp procedures. Join now from any device.',
+    type: 'webinar',
+    status: 'live',
+    // Started 15 minutes before NOW (in progress).
+    scheduledStart: '2026-06-19T11:45:00.000Z',
+    durationMin: 60,
+    meetingId: '920000222',
+    joinUrl: 'https://zoom.us/j/920000222?pwd=winter-deicing-demo',
+    passcode: '771204',
+  },
+  {
+    id: 'atl-fod-awareness-webinar',
+    title: 'FOD Awareness Webinar',
+    description:
+      'A recorded webinar on foreign object debris (FOD) prevention across the airfield. Watch the recording any time.',
+    type: 'webinar',
+    status: 'ended',
+    // 5 days before NOW.
+    scheduledStart: '2026-06-14T16:00:00.000Z',
+    durationMin: 50,
+    meetingId: '930000333',
+    recordingUrl: 'https://zoom.us/rec/share/atl-fod-awareness-webinar-demo',
+    recordingId: 'rec-930000333',
+  },
+];
+
+function buildLiveSession(s: SeedLiveSession): LiveSession {
+  // Omit undefined optional keys: firebase-admin throws on `undefined` values
+  // and zod keeps explicit `undefined` optional keys.
+  return liveSessionSchema.parse({
+    id: s.id,
+    tenantId: TENANT_ID,
+    title: s.title,
+    description: s.description,
+    type: s.type,
+    status: s.status,
+    scheduledStart: s.scheduledStart,
+    durationMin: s.durationMin,
+    hostUid: INSTRUCTOR_UID,
+    ...(s.courseId !== undefined ? { courseId: s.courseId } : {}),
+    ...(s.meetingId !== undefined ? { meetingId: s.meetingId } : {}),
+    ...(s.joinUrl !== undefined ? { joinUrl: s.joinUrl } : {}),
+    ...(s.passcode !== undefined ? { passcode: s.passcode } : {}),
+    ...(s.recordingUrl !== undefined ? { recordingUrl: s.recordingUrl } : {}),
+    ...(s.recordingId !== undefined ? { recordingId: s.recordingId } : {}),
+    createdAt: NOW,
+    updatedAt: NOW,
+  } satisfies LiveSession);
+}
 
 // ---------------------------------------------------------------------------
 // Enrollments (mix of completed and in-progress)
@@ -478,6 +585,14 @@ async function seedFirestore(db: Firestore): Promise<void> {
       .doc(`tenants/${TENANT_ID}/leaderboard/${period}`)
       .set(buildLeaderboard(period), { merge: true });
   }
+
+  // Live sessions (Zoom) — learner-readable docs only. The sensitive host
+  // `startUrl` lives in a private subdoc written by Cloud Functions, not here.
+  for (const session of SEED_LIVE_SESSIONS) {
+    await db
+      .doc(`tenants/${TENANT_ID}/liveSessions/${session.id}`)
+      .set(buildLiveSession(session), { merge: true });
+  }
 }
 
 /**
@@ -576,6 +691,11 @@ async function main(): Promise<void> {
   console.log(
     `Uploaded ${uploadedVideos} course video${uploadedVideos === 1 ? '' : 's'} to Storage ` +
       `(bucket ${SEED_STORAGE_BUCKET}).`,
+  );
+  // eslint-disable-next-line no-console
+  console.log(
+    `Seeded ${SEED_LIVE_SESSIONS.length} live sessions ` +
+      `(${SEED_LIVE_SESSIONS.map((s) => s.status).join(', ')}).`,
   );
   // eslint-disable-next-line no-console
   console.log('Done. Start the apps and sign in as any demo account above.');

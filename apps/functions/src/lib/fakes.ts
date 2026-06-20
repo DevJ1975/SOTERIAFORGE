@@ -1,7 +1,16 @@
 import type { AuditEvent, AuditLogPort } from './audit-log';
 import type { EnrollmentProjection } from './aggregate-progress.core';
 import type { BucketState } from './rate-limit.core';
-import type { AuthPort, CreateUserOptions, DbPort, EnrollmentRef, RateLimitPort } from './ports';
+import type {
+  AuthPort,
+  CreateMeetingOptions,
+  CreateMeetingResult,
+  CreateUserOptions,
+  DbPort,
+  EnrollmentRef,
+  RateLimitPort,
+  ZoomPort,
+} from './ports';
 
 /**
  * In-memory fakes for the ports. Used by the colocated jest specs — no emulator,
@@ -57,6 +66,12 @@ export class FakeDbPort implements DbPort {
   readonly members = new Map<string, Record<string, unknown>>();
   /** Enrollment projections keyed by `${tenantId}/${courseId}/${uid}`. */
   readonly enrollments = new Map<string, Partial<EnrollmentProjection>>();
+  /** Course docs keyed by `${tenantId}/${courseId}`. */
+  readonly courses = new Map<string, Record<string, unknown>>();
+  /** Learner-readable live-session docs keyed by `${tenantId}/${id}`. */
+  readonly liveSessions = new Map<string, Record<string, unknown>>();
+  /** Authoring-only private host subdocs keyed by `${tenantId}/${id}`. */
+  readonly liveSessionPrivate = new Map<string, Record<string, unknown>>();
 
   private memberKey(tenantId: string, uid: string): string {
     return `${tenantId}/${uid}`;
@@ -64,6 +79,15 @@ export class FakeDbPort implements DbPort {
 
   private enrollmentKey(ref: EnrollmentRef): string {
     return `${ref.tenantId}/${ref.courseId}/${ref.uid}`;
+  }
+
+  private pairKey(tenantId: string, id: string): string {
+    return `${tenantId}/${id}`;
+  }
+
+  /** Test helper: seed a course so scheduleLiveSession's courseId check passes. */
+  seedCourse(tenantId: string, courseId: string, data: Record<string, unknown> = {}): void {
+    this.courses.set(this.pairKey(tenantId, courseId), { id: courseId, tenantId, ...data });
   }
 
   async getTenant(tenantId: string): Promise<Record<string, unknown> | null> {
@@ -83,6 +107,45 @@ export class FakeDbPort implements DbPort {
     this.members.set(key, { ...(this.members.get(key) ?? {}), ...data });
   }
 
+  async getCourse(tenantId: string, courseId: string): Promise<Record<string, unknown> | null> {
+    return this.courses.get(this.pairKey(tenantId, courseId)) ?? null;
+  }
+
+  async getLiveSession(tenantId: string, id: string): Promise<Record<string, unknown> | null> {
+    return this.liveSessions.get(this.pairKey(tenantId, id)) ?? null;
+  }
+
+  async setLiveSession(
+    tenantId: string,
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const key = this.pairKey(tenantId, id);
+    this.liveSessions.set(key, { ...(this.liveSessions.get(key) ?? {}), ...data });
+  }
+
+  async setLiveSessionPrivate(
+    tenantId: string,
+    id: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const key = this.pairKey(tenantId, id);
+    this.liveSessionPrivate.set(key, { ...(this.liveSessionPrivate.get(key) ?? {}), ...data });
+  }
+
+  async getLiveSessionPrivate(
+    tenantId: string,
+    id: string,
+  ): Promise<Record<string, unknown> | null> {
+    return this.liveSessionPrivate.get(this.pairKey(tenantId, id)) ?? null;
+  }
+
+  async deleteLiveSession(tenantId: string, id: string): Promise<void> {
+    const key = this.pairKey(tenantId, id);
+    this.liveSessions.delete(key);
+    this.liveSessionPrivate.delete(key);
+  }
+
   async runEnrollmentTransaction(
     ref: EnrollmentRef,
     apply: (current: Partial<EnrollmentProjection> | null) => Partial<EnrollmentProjection> | null,
@@ -92,6 +155,47 @@ export class FakeDbPort implements DbPort {
     const patch = apply(current);
     if (patch === null) return; // guard ignored → no write
     this.enrollments.set(key, { ...(current ?? {}), ...patch });
+  }
+}
+
+/**
+ * Deterministic in-memory Zoom mock. meetingId is `zoom-<n>`; join/start urls and
+ * passcode derive from that id so specs can assert exact values. Records calls so
+ * tests can assert delete/best-effort behavior.
+ */
+export class FakeZoomPort implements ZoomPort {
+  readonly created: CreateMeetingOptions[] = [];
+  readonly deleted: string[] = [];
+  /** meetingId -> current status (for getMeeting). */
+  readonly statuses = new Map<string, string>();
+  /** When set, the next createMeeting rejects (simulate a Zoom API failure). */
+  failNextCreate = false;
+  private nextId = 1;
+
+  async createMeeting(opts: CreateMeetingOptions): Promise<CreateMeetingResult> {
+    if (this.failNextCreate) {
+      this.failNextCreate = false;
+      throw new Error('simulated Zoom create failure');
+    }
+    this.created.push(opts);
+    const meetingId = `zoom-${this.nextId++}`;
+    this.statuses.set(meetingId, 'waiting');
+    return {
+      meetingId,
+      joinUrl: `https://zoom.test/j/${meetingId}`,
+      startUrl: `https://zoom.test/s/${meetingId}`,
+      passcode: `pass-${meetingId}`,
+    };
+  }
+
+  async getMeeting(meetingId: string): Promise<{ status: string } | null> {
+    const status = this.statuses.get(meetingId);
+    return status ? { status } : null;
+  }
+
+  async deleteMeeting(meetingId: string): Promise<void> {
+    this.deleted.push(meetingId);
+    this.statuses.delete(meetingId);
   }
 }
 
@@ -129,6 +233,16 @@ export class FakeAuditLogPort implements AuditLogPort {
   }
 }
 
-export function makeFakes(): { auth: FakeAuthPort; db: FakeDbPort; audit: FakeAuditLogPort } {
-  return { auth: new FakeAuthPort(), db: new FakeDbPort(), audit: new FakeAuditLogPort() };
+export function makeFakes(): {
+  auth: FakeAuthPort;
+  db: FakeDbPort;
+  audit: FakeAuditLogPort;
+  zoom: FakeZoomPort;
+} {
+  return {
+    auth: new FakeAuthPort(),
+    db: new FakeDbPort(),
+    audit: new FakeAuditLogPort(),
+    zoom: new FakeZoomPort(),
+  };
 }

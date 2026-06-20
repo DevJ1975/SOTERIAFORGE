@@ -18,6 +18,7 @@ export class App {
     { label: 'Home', path: '/' },
     { label: 'Courses', path: '/courses' },
     { label: 'My Learning', path: '/my-learning' },
+    { label: 'Live sessions', path: '/live-sessions' },
     { label: 'Downloads', path: '/downloads' },
     { label: 'Hazard Hunter', path: '/games/hazard-hunter' },
     { label: 'PERIL!', path: '/games/peril' },

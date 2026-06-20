@@ -18,9 +18,24 @@ import { PwaInstall } from './pwa/pwa-install';
         <div class="hero-actions">
           <p-button label="Browse courses" routerLink="/courses" />
           <p-button label="My Learning" routerLink="/my-learning" severity="secondary" />
+          <p-button label="Live sessions" routerLink="/live-sessions" severity="secondary" />
           <app-pwa-install />
         </div>
       </section>
+
+      <article class="forge-card live-card">
+        <div class="live-art" aria-hidden="true">
+          <span class="live-emblem pi pi-video"></span>
+        </div>
+        <div class="live-body">
+          <h2>Live sessions</h2>
+          <p>
+            Join live Zoom webinars and Q&amp;A with ATL safety instructors, then catch up on
+            recordings of sessions you missed.
+          </p>
+          <p-button label="View live sessions" routerLink="/live-sessions" />
+        </div>
+      </article>
 
       <h2 class="arcade-title">ATL Safety Arcade</h2>
       <div class="game-grid">
@@ -74,6 +89,57 @@ import { PwaInstall } from './pwa/pwa-install';
       gap: 12px;
       margin-top: 20px;
       flex-wrap: wrap;
+    }
+
+    .live-card {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .live-art {
+      flex: 0 0 auto;
+      width: 96px;
+      height: 96px;
+      border-radius: var(--forge-radius);
+      display: grid;
+      place-items: center;
+      background: linear-gradient(
+        135deg,
+        var(--forge-accent),
+        var(--forge-accent-2, var(--forge-accent-hover))
+      );
+    }
+
+    .live-emblem {
+      font-size: 40px;
+      color: var(--forge-accent-fg, var(--forge-surface));
+    }
+
+    .live-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .live-body h2 {
+      margin: 0;
+    }
+
+    .live-body p {
+      color: var(--forge-text-subtle);
+      margin: 0;
+      max-width: 60ch;
+    }
+
+    @media (max-width: 560px) {
+      .live-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
 
     .arcade-title {

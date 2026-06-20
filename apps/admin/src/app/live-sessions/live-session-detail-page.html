@@ -1,0 +1,189 @@
+<div class="forge-page">
+  <button type="button" class="back-link" (click)="back()">
+    <span class="pi pi-arrow-left" aria-hidden="true"></span>
+    All live sessions
+  </button>
+
+  @if (loading()) {
+    <div class="state-card">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Loading…</p>
+    </div>
+  } @else if (notFound()) {
+    <div class="state-card">
+      <i class="pi pi-search"></i>
+      <h2>Session not found</h2>
+      <p>This live session doesn’t exist or is no longer available.</p>
+      <p-button label="Back to live sessions" icon="pi pi-arrow-left" (onClick)="back()" />
+    </div>
+  } @else {
+    <header class="detail-head">
+      <div>
+        <h1 class="detail-title">
+          {{ isNew() ? 'Schedule a live session' : session()?.title }}
+        </h1>
+        @if (isNew()) {
+          <p class="detail-sub">Set up a Zoom meeting or webinar for your tenant.</p>
+        }
+      </div>
+      @if (!isNew() && session(); as s) {
+        <span
+          class="status-chip"
+          [class.scheduled]="s.status === 'scheduled'"
+          [class.live]="s.status === 'live'"
+          [class.ended]="s.status === 'ended'"
+          [class.canceled]="s.status === 'canceled'"
+        >
+          {{ statusLabel(s.status) }}
+        </span>
+      }
+    </header>
+
+    @if (error(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    @if (!isNew() && session(); as s) {
+      <section class="forge-card host-zone" aria-labelledby="host-heading">
+        <h2 id="host-heading">Host controls</h2>
+        @if (canHost()) {
+          <p class="muted">
+            Start the session as the host. We’ll open your private Zoom host link in a new tab.
+          </p>
+          <p-button
+            label="Start as host"
+            icon="pi pi-video"
+            [loading]="startingHost()"
+            (onClick)="startAsHost()"
+          />
+        } @else {
+          <p class="muted">
+            This session is {{ statusLabel(s.status) | lowercase }} — host controls are unavailable.
+          </p>
+        }
+      </section>
+    }
+
+    @if (isNew()) {
+      <form class="forge-card schedule-form" (ngSubmit)="submit()">
+        <div class="field">
+          <label for="ls-title">Title</label>
+          <input
+            id="ls-title"
+            pInputText
+            name="title"
+            [(ngModel)]="title"
+            placeholder="e.g. Working at Heights — live Q&A"
+            autocomplete="off"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="ls-description">Description <span class="optional">(optional)</span></label>
+          <textarea
+            id="ls-description"
+            pTextarea
+            name="description"
+            [(ngModel)]="description"
+            rows="3"
+            placeholder="What will this session cover?"
+          ></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="ls-type">Type</label>
+            <p-select
+              inputId="ls-type"
+              name="type"
+              [options]="typeOptions"
+              optionLabel="label"
+              optionValue="value"
+              [(ngModel)]="type"
+              appendTo="body"
+            />
+          </div>
+
+          <div class="field">
+            <label for="ls-course">Course <span class="optional">(optional)</span></label>
+            <p-select
+              inputId="ls-course"
+              name="courseId"
+              [options]="courseOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [(ngModel)]="courseId"
+              appendTo="body"
+            />
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="ls-start">Start time</label>
+            <p-datepicker
+              inputId="ls-start"
+              name="scheduledStart"
+              [(ngModel)]="scheduledStart"
+              [showTime]="true"
+              hourFormat="12"
+              [minDate]="minDate"
+              appendTo="body"
+              placeholder="Pick a date and time"
+            />
+          </div>
+
+          <div class="field">
+            <label for="ls-duration">Duration (minutes)</label>
+            <p-inputnumber
+              inputId="ls-duration"
+              name="durationMin"
+              [(ngModel)]="durationMin"
+              [min]="1"
+              [max]="1440"
+              [showButtons]="true"
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <p-button
+            label="Cancel"
+            severity="secondary"
+            [text]="true"
+            type="button"
+            (onClick)="back()"
+          />
+          <p-button
+            label="Schedule session"
+            icon="pi pi-calendar-plus"
+            type="submit"
+            [loading]="saving()"
+          />
+        </div>
+      </form>
+    } @else if (session(); as s) {
+      <section class="forge-card detail-summary" aria-labelledby="details-heading">
+        <h2 id="details-heading">Details</h2>
+        @if (s.description) {
+          <p class="summary-desc">{{ s.description }}</p>
+        }
+        <dl class="summary-meta">
+          <div>
+            <dt>Type</dt>
+            <dd>{{ s.type === 'webinar' ? 'Webinar' : 'Meeting' }}</dd>
+          </div>
+          <div>
+            <dt>Starts</dt>
+            <dd>{{ s.scheduledStart | date: 'EEE, MMM d, y, h:mm a' }}</dd>
+          </div>
+          <div>
+            <dt>Duration</dt>
+            <dd>{{ s.durationMin }} min</dd>
+          </div>
+        </dl>
+      </section>
+    }
+  }
+</div>
