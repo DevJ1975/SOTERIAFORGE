@@ -143,6 +143,22 @@ maybe('firestore.rules', () => {
         entries: [],
         ...AUDIT,
       });
+      // Live (Zoom) sessions + the authoring-only private host subdoc.
+      await setDoc(doc(db, 'tenants/acme/liveSessions/sess-1'), {
+        id: 'sess-1',
+        tenantId: 'acme',
+        title: 'Live onboarding',
+        type: 'meeting',
+        status: 'scheduled',
+        scheduledStart: '2024-01-02T00:00:00.000Z',
+        durationMin: 60,
+        hostUid: 'instructor-1',
+        joinUrl: 'https://zoom.test/j/sess-1',
+        ...AUDIT,
+      });
+      await setDoc(doc(db, 'tenants/acme/liveSessions/sess-1/private/host'), {
+        startUrl: 'https://zoom.test/s/sess-1?host=1',
+      });
       // B2C.
       await setDoc(doc(db, 'b2c/store/catalog/prod-1'), {
         id: 'prod-1',
@@ -547,6 +563,58 @@ maybe('firestore.rules', () => {
       );
       await assertFails(
         updateDoc(doc(acmeAdmin(), 'tenants/acme/leaderboard/weekly'), { entries: [] }),
+      );
+    });
+  });
+
+  describe('/tenants/{tenantId}/liveSessions', () => {
+    const SESSION_PATH = 'tenants/acme/liveSessions/sess-1';
+    const PRIVATE_PATH = 'tenants/acme/liveSessions/sess-1/private/host';
+
+    it('allows tenant members (learner + instructor) to read a session', async () => {
+      await assertSucceeds(getDoc(doc(acmeLearner(), SESSION_PATH)));
+      await assertSucceeds(getDoc(doc(acmeInstructor(), SESSION_PATH)));
+    });
+
+    it('allows superadmin to read a session in any tenant', async () => {
+      await assertSucceeds(getDoc(doc(superadmin(), SESSION_PATH)));
+    });
+
+    it('denies cross-tenant session reads', async () => {
+      await assertFails(getDoc(doc(globexLearner(), SESSION_PATH)));
+    });
+
+    it('denies client writes to a session (Cloud Functions only)', async () => {
+      await assertFails(
+        setDoc(doc(acmeInstructor(), 'tenants/acme/liveSessions/sess-new'), {
+          id: 'sess-new',
+          tenantId: 'acme',
+          title: 'Nope',
+          type: 'meeting',
+          status: 'scheduled',
+          scheduledStart: '2024-01-03T00:00:00.000Z',
+          durationMin: 30,
+          hostUid: 'instructor-1',
+          ...AUDIT,
+        }),
+      );
+      await assertFails(updateDoc(doc(acmeAdmin(), SESSION_PATH), { title: 'Hacked' }));
+    });
+
+    it('denies a learner reading the private host subdoc', async () => {
+      await assertFails(getDoc(doc(acmeLearner(), PRIVATE_PATH)));
+    });
+
+    it('allows authoring users (instructor/admin) and superadmin to read the private host subdoc', async () => {
+      await assertSucceeds(getDoc(doc(acmeInstructor(), PRIVATE_PATH)));
+      await assertSucceeds(getDoc(doc(acmeAdmin(), PRIVATE_PATH)));
+      await assertSucceeds(getDoc(doc(superadmin(), PRIVATE_PATH)));
+    });
+
+    it('denies cross-tenant and client writes to the private host subdoc', async () => {
+      await assertFails(getDoc(doc(globexLearner(), PRIVATE_PATH)));
+      await assertFails(
+        setDoc(doc(acmeInstructor(), PRIVATE_PATH), { startUrl: 'https://zoom.test/hacked' }),
       );
     });
   });

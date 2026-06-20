@@ -8,6 +8,7 @@ import {
   courseDraft,
   enrollment,
   leaderboard,
+  liveSession,
   member,
   module as moduleSchema,
   progressEvent,
@@ -22,6 +23,7 @@ import type {
   Enrollment,
   Leaderboard,
   LeaderboardPeriod,
+  LiveSession,
   Member,
   Module,
   ProgressEvent,
@@ -57,6 +59,7 @@ const enrollmentConverter = zodConverter(enrollment);
 const progressEventConverter = zodConverter(progressEvent);
 const badgeConverter = zodConverter(badge);
 const leaderboardConverter = zodConverter(leaderboard);
+const liveSessionConverter = zodConverter(liveSession);
 const catalogProductConverter = zodConverter(catalogProduct);
 const b2cCustomerConverter = zodConverter(b2cCustomer);
 const courseContentConverter = zodConverter(courseDraft);
@@ -226,6 +229,23 @@ export function leaderboardDoc(
   period: LeaderboardPeriod,
 ): DocumentReference<Leaderboard> {
   return doc(leaderboardCol(db, tenantId), period);
+}
+
+/** /tenants/{tenantId}/liveSessions */
+export function liveSessionsCol(
+  db: Firestore,
+  tenantId: string,
+): CollectionReference<LiveSession> {
+  return collection(db, 'tenants', tenantId, 'liveSessions').withConverter(liveSessionConverter);
+}
+
+/** /tenants/{tenantId}/liveSessions/{sessionId} */
+export function liveSessionDoc(
+  db: Firestore,
+  tenantId: string,
+  sessionId: string,
+): DocumentReference<LiveSession> {
+  return doc(liveSessionsCol(db, tenantId), sessionId);
 }
 
 /** /b2c/store/catalog — public storefront products. */
