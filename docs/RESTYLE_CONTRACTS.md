@@ -7,6 +7,7 @@ language across all 4 apps + adds a net-new Certificate of Completion. **No prod
 `claude/nice-heisenberg-90bs5f` (even with `main`); new draft PR.
 
 Authoritative values (from the handoff `soteria-forge-brand.css`):
+
 ```
 --sf-ember #E8551F  --sf-ember-hot #FF7A3D  --sf-spark #FFB552  --sf-charcoal #1B1E23
 --sf-ink #1A1D22  --sf-steel #3A4048  --sf-cast #F6F1E9  --sf-surface #F6F5F6
@@ -17,11 +18,13 @@ radius: tile 24 / card 18 / chip 12     fonts: Oswald 700 (display), Barlow Semi
 wordmark: SOTERIA(--sf-ink) FORGE(--sf-ember) | reversed on dark: #F4F2EE / --sf-ember-hot
 tagline: SAFETY · COMPLIANCE · TRAINING (Barlow 600, 0.32em, uppercase, --sf-muted)
 ```
+
 Most `--sf-*` already exist in `libs/ui/src/lib/theme/spectrum.scss` (correct values). The 3 SVGs are
 already extracted to `libs/ui/src/assets/brand/{soteria-forge-mark,soteria-forge-mark-mono,
 soteria-forge-lockup-horizontal}.svg` (served at `/brand/*.svg` via the existing project.json assets glob).
 
 ## Constraint (must hold)
+
 Design tokens only in brand UI — never hardcode hex (game art excepted). All overridable values stay
 `--forge-*`/`--sf-*` so `ForgeTheming.applyBranding` (libs/auth) and the ATL navy/teal tenant still
 override at runtime. Default brand is the base. Prettier (single quotes/width 100/trailing commas);
@@ -29,13 +32,14 @@ standalone Angular 20 + OnPush + signals; nx boundaries.
 
 ## Lanes (no cross-lane edits; no git; orchestrator owns package.json/.github)
 
-### R1 — Theme tokens + PrimeNG preset (libs/ui/src/lib/theme/**)
+### R1 — Theme tokens + PrimeNG preset (libs/ui/src/lib/theme/\*\*)
+
 - `spectrum.scss`: add `--sf-grad-flame`; add radius scale `--forge-radius-tile:24px`,
   `--forge-radius-card:18px`, `--forge-radius-chip:12px` (keep `--forge-radius` as alias of card 18 +
   `--forge-radius-small` 4 legacy); retune `.forge-card` → `var(--forge-radius-card)` + `1px solid
-  var(--sf-hairline)` + `var(--forge-surface)`; `.forge-page` warm `var(--sf-page)`; `.forge-tagline`
+var(--sf-hairline)` + `var(--forge-surface)`; `.forge-page` warm `var(--sf-page)`; `.forge-tagline`
   per handoff (Barlow 600, ~0.72rem, 0.32em, uppercase, `--sf-muted`); add `::selection { background:
-  var(--sf-ember); color:#fff }`; focus-ring offset 2px. Ensure `--sf-grad-ember/flame` usable as
+var(--sf-ember); color:#fff }`; focus-ring offset 2px. Ensure `--sf-grad-ember/flame` usable as
   `background`.
 - `forge-preset.ts`: PrimeNG `components.card.borderRadius` → 18px, `components.button.borderRadius` →
   12px, `focusRing` offset → 2px. Keep ember primary ramp + charcoal/steel surface ramp.
@@ -43,6 +47,7 @@ standalone Angular 20 + OnPush + signals; nx boundaries.
   compiles + cascades).
 
 ### R2 — Brand assets/components + shell + favicons/manifests
+
 - `libs/ui/src/lib/brand/forge-mark.ts`: render the crisp **SVG** mark (`/brand/soteria-forge-mark.svg`)
   for the full-color variant; for `mono` use `/brand/soteria-forge-mark-mono.svg` (inline or `<img>`)
   honoring `currentColor` (charcoal/white via `color`); keep PNG srcset as fallback. Add standalone
@@ -50,7 +55,7 @@ standalone Angular 20 + OnPush + signals; nx boundaries.
   all from `libs/ui/src/index.ts`.
 - `libs/ui/src/lib/shell/shell.ts`: replace the 3 hardcoded hex — `.brand-name #f4f2ee` →
   `var(--sf-cast)` (cream on dark), `.shell-nav a #c4c9cf` → `var(--forge-text-subtle)`, `:hover
-  #2a2e35` → `var(--sf-steel)`. Keep the SOTERIA/FORGE split + `--sf-header`. Optionally render
+#2a2e35` → `var(--sf-steel)`. Keep the SOTERIA/FORGE split + `--sf-header`. Optionally render
   `<forge-tagline>` under the wordmark on wide widths.
 - `apps/*/src/index.html` (all 4): `theme-color` → `#15171b`.
 - Add `apps/{admin,superadmin,storefront}/public/manifest.webmanifest` mirroring
@@ -58,9 +63,10 @@ standalone Angular 20 + OnPush + signals; nx boundaries.
   `theme_color #15171b`, `background_color #1b1e23`) and link them in each index.html. Verify each
   app's project.json includes a `public` assets input (learner does — replicate if missing).
 - Self-check: `nx lint ui`, `nx test ui`, `nx build admin/superadmin/storefront/learner
-  --configuration=production` (SVG + manifests copied to dist/.../browser). firebase.json untouched.
+--configuration=production` (SVG + manifests copied to dist/.../browser). firebase.json untouched.
 
-### R3 — Certificate of Completion + learner restyle polish (apps/learner/src/app/**)
+### R3 — Certificate of Completion + learner restyle polish (apps/learner/src/app/\*\*)
+
 - New `features/certificate/certificate-page.ts` (route `certificate/:courseId`, `authGuard`, lazy):
   print-styled HTML (NO new dep; browser print→PDF). **Mono mark on `var(--sf-cast)` ground**, Oswald
   700 `CERTIFICATE OF COMPLETION`, learner `displayName`, course title, completion date, tenant name;
@@ -76,6 +82,7 @@ standalone Angular 20 + OnPush + signals; nx boundaries.
 - Self-check: `nx lint learner`, `nx test learner`, `nx build learner --configuration=production`.
 
 ## Cross-lane notes
+
 R1 defines token NAMES that R2/R3 reference in CSS (runtime resolution — not a compile dependency), so
 the lanes run in parallel. R2 edits `apps/*/src/index.html` + non-learner `public/manifest`; R3 edits
 `apps/learner/src/app/**` — disjoint files even within apps/learner. Orchestrator runs the full

@@ -51,11 +51,7 @@ import type { Course, Enrollment, Member, Tenant } from '@forge/shared';
             @if (error()) {
               <p-button label="Retry" icon="pi pi-refresh" (onClick)="retry()" />
             }
-            <p-button
-              label="Back to My Learning"
-              severity="secondary"
-              routerLink="/my-learning"
-            />
+            <p-button label="Back to My Learning" severity="secondary" routerLink="/my-learning" />
           </div>
         </section>
       } @else {
@@ -240,7 +236,9 @@ import type { Course, Enrollment, Member, Tenant } from '@forge/shared';
       display: grid;
       place-items: center;
       background: var(--sf-grad-ember, linear-gradient(150deg, #f69a3c, #d8451a));
-      box-shadow: 0 0 0 4px var(--sf-cast, #f6f1e9), 0 0 0 5px var(--sf-hairline, #dddcde);
+      box-shadow:
+        0 0 0 4px var(--sf-cast, #f6f1e9),
+        0 0 0 5px var(--sf-hairline, #dddcde);
     }
     .seal-emblem {
       font-size: 30px;
