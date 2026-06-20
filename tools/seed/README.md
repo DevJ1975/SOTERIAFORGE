@@ -3,8 +3,8 @@
 Populates the Firebase **emulators** with a complete, demo-ready slice for the
 Hartsfield-Jackson Atlanta (ATL) airport tenant: a branded tenant, members,
 four authored airport-safety courses (catalog metadata + rich `CourseDraft`
-player content), badges, enrollments, leaderboards, and the platform-hosted
-course videos uploaded to **Storage**.
+player content), badges, enrollments, leaderboards, a set of live Zoom sessions,
+and the platform-hosted course videos uploaded to **Storage**.
 
 Every Firestore document is validated through its `@forge/shared` zod schema
 before it is written, and the seed is **idempotent** — fixed document ids plus
@@ -102,3 +102,19 @@ leaderboard.
   mix of completed (with score) and in-progress (with `progressPct`).
 - **Leaderboards** `tenants/atl-airport/leaderboard/{daily|weekly|allTime}` —
   ranked from member xp.
+- **Live sessions** `tenants/atl-airport/liveSessions/{id}` — three demo Zoom
+  sessions hosted by the instructor (`atl-instructor`), each validated through
+  the `liveSession` schema, so the learner Live sessions page has one of each
+  state to render:
+
+  - `atl-ramp-safety-qa` — **Ramp Safety Live Q&A** (`scheduled`, ~3 days out,
+    linked to the Ramp & Apron Safety course, mock `joinUrl` + passcode).
+  - `atl-winter-deicing-briefing` — **Winter De-Icing Briefing** (`live` now,
+    mock `joinUrl` + passcode).
+  - `atl-fod-awareness-webinar` — **FOD Awareness Webinar** (`ended`, with a
+    mock `recordingUrl`).
+
+  These are learner-readable docs only; the sensitive host `startUrl` is never
+  seeded here (it lives in a Cloud-Functions-written private subdoc). The
+  `joinUrl`/`recordingUrl` values are mock links — with no `ZOOM_*` creds the
+  real callables use the fake adapter, so no live Zoom meeting is created.

@@ -127,6 +127,23 @@ service cloud.firestore {
         allow read: if isSuperadmin() || inTenant(tenantId);
         allow write: if false;
       }
+
+      // Live (Zoom) sessions: tenant-readable metadata (join links, status,
+      // recordings); all writes are Cloud-Functions-only. The host start_url is
+      // sensitive and lives in an authoring-only private subdoc, never on the
+      // learner-readable session document.
+      match /liveSessions/{sessionId} {
+        allow read: if isSuperadmin() || inTenant(tenantId);
+        allow write: if false;
+
+        // Authoring-only private host data (e.g. the host start_url). Readable
+        // by superadmin or an authoring role inside the tenant; learners may not
+        // read it. Written exclusively by Cloud Functions.
+        match /private/{docId} {
+          allow read: if isSuperadmin() || (inTenant(tenantId) && isAuthoring());
+          allow write: if false;
+        }
+      }
     }
 
     // -----------------------------------------------------------------------

@@ -25,6 +25,19 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./features/my-learning/my-learning').then((m) => m.MyLearning),
   },
   {
+    path: 'live-sessions',
+    pathMatch: 'full',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/live-sessions/live-sessions-page').then((m) => m.LiveSessionsPage),
+  },
+  {
+    path: 'live-sessions/:sessionId/join',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/live-sessions/join-session-page').then((m) => m.JoinSessionPage),
+  },
+  {
     path: 'downloads',
     canActivate: [authGuard],
     loadComponent: () => import('./features/downloads/downloads').then((m) => m.Downloads),

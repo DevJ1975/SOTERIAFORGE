@@ -4,7 +4,13 @@
  */
 
 /** Roles encoded as Firebase custom claims. */
-export const ROLES = ['superadmin', 'tenant_admin', 'instructor', 'learner', 'b2c_customer'] as const;
+export const ROLES = [
+  'superadmin',
+  'tenant_admin',
+  'instructor',
+  'learner',
+  'b2c_customer',
+] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Roles that may author content. */
@@ -41,6 +47,14 @@ export type PublishStatus = (typeof PUBLISH_STATUSES)[number];
 /** Leaderboard windows. */
 export const LEADERBOARD_PERIODS = ['daily', 'weekly', 'allTime'] as const;
 export type LeaderboardPeriod = (typeof LEADERBOARD_PERIODS)[number];
+
+/** Live (Zoom) session delivery types. */
+export const LIVE_SESSION_TYPES = ['meeting', 'webinar'] as const;
+export type LiveSessionType = (typeof LIVE_SESSION_TYPES)[number];
+
+/** Live session lifecycle states. */
+export const LIVE_SESSION_STATUSES = ['scheduled', 'live', 'ended', 'canceled'] as const;
+export type LiveSessionStatus = (typeof LIVE_SESSION_STATUSES)[number];
 
 /** Quiz question types. */
 export const QUESTION_TYPES = [

@@ -7,7 +7,8 @@ export type DomainErrorCode =
   | 'permission-denied'
   | 'not-found'
   | 'already-exists'
-  | 'resource-exhausted';
+  | 'resource-exhausted'
+  | 'unavailable';
 
 export class FunctionsDomainError extends Error {
   readonly code: DomainErrorCode;

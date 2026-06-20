@@ -1,0 +1,83 @@
+<div class="forge-page">
+  <header class="studio-header">
+    <div>
+      <h1 class="studio-title">Live <span class="ember">Sessions</span></h1>
+      <p class="studio-sub">Schedule Zoom meetings and webinars — host live, share recordings.</p>
+    </div>
+    <p-button label="Schedule session" icon="pi pi-plus" (onClick)="schedule()" />
+  </header>
+
+  @if (loading()) {
+    <div class="state-card">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Loading live sessions…</p>
+    </div>
+  } @else if (error()) {
+    <div class="state-card error" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <h2>Couldn't load live sessions</h2>
+      <p>We couldn't reach the live sessions just now. Please try again.</p>
+      <p-button label="Retry" icon="pi pi-refresh" (onClick)="load()" />
+    </div>
+  } @else if (sessions().length === 0) {
+    <div class="state-card">
+      <i class="pi pi-video"></i>
+      <h2>No live sessions yet</h2>
+      <p>
+        Schedule your first Zoom session — pick a time, host live, and share the recording after.
+      </p>
+      <p-button label="Schedule your first session" icon="pi pi-plus" (onClick)="schedule()" />
+    </div>
+  } @else {
+    <ul class="session-list">
+      @for (session of sessions(); track session.id) {
+        <li>
+          <article
+            class="session-row"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Open ' + session.title"
+            (click)="open(session)"
+            (keydown.enter)="open(session)"
+          >
+            <div class="row-main">
+              <div class="row-title">
+                <h3>{{ session.title }}</h3>
+                <span class="type-chip">{{ typeLabel(session.type) }}</span>
+              </div>
+              <p class="row-start">
+                <i class="pi pi-clock" aria-hidden="true"></i>
+                {{ formatStart(session.scheduledStart) }} · {{ session.durationMin }} min
+              </p>
+            </div>
+            <div class="row-side">
+              <span
+                class="status-chip"
+                [class.scheduled]="session.status === 'scheduled'"
+                [class.live]="session.status === 'live'"
+                [class.ended]="session.status === 'ended'"
+                [class.canceled]="session.status === 'canceled'"
+              >
+                {{ statusLabel(session.status) }}
+              </span>
+              @if (session.status === 'scheduled' || session.status === 'live') {
+                <button
+                  type="button"
+                  class="row-act danger"
+                  (click)="confirmCancel(session, $event)"
+                  pTooltip="Cancel session"
+                  tooltipPosition="top"
+                  [attr.aria-label]="'Cancel ' + session.title"
+                >
+                  <i class="pi pi-times-circle" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+          </article>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+<p-confirmdialog [style]="{ maxWidth: '440px' }" />

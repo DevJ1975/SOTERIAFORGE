@@ -1,0 +1,246 @@
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  margin-bottom: 16px;
+  cursor: pointer;
+  color: var(--forge-text-subtle);
+  font: inherit;
+  transition: color 130ms ease-out;
+
+  &:hover {
+    color: var(--forge-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--forge-accent);
+    outline-offset: 2px;
+    border-radius: var(--forge-radius-small, 4px);
+  }
+}
+
+.state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--forge-surface);
+  border: 1px dashed var(--forge-border);
+  border-radius: var(--forge-radius);
+  color: var(--forge-text-subtle);
+
+  > .pi {
+    font-size: 30px;
+    color: var(--forge-accent);
+    margin-bottom: 6px;
+  }
+
+  h2 {
+    margin: 0;
+  }
+
+  p {
+    margin: 0 0 12px;
+    max-width: 46ch;
+  }
+}
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-title {
+  margin: 0 0 4px;
+}
+
+.detail-sub {
+  margin: 0;
+  color: var(--forge-text-subtle);
+}
+
+.muted {
+  color: var(--forge-text-subtle);
+}
+
+.status-chip {
+  flex-shrink: 0;
+  padding: 3px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--forge-surface-dim);
+  border: 1px solid var(--forge-border);
+  color: var(--forge-text-subtle);
+
+  &.scheduled {
+    background: var(--forge-accent);
+    border-color: var(--forge-accent);
+    color: #fff;
+  }
+
+  &.live {
+    background: var(--forge-negative);
+    border-color: var(--forge-negative);
+    color: #fff;
+  }
+
+  &.ended {
+    background: var(--sf-steel, #3a4048);
+    border-color: var(--sf-steel, #3a4048);
+    color: #fff;
+  }
+}
+
+.error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--forge-radius);
+  background: color-mix(in srgb, var(--forge-negative) 10%, transparent);
+  border: 1px solid var(--forge-negative);
+  color: var(--forge-negative);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.forge-card {
+  background: var(--forge-surface);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--forge-radius);
+  box-shadow: var(--forge-shadow-emphasized);
+  padding: 20px 22px;
+}
+
+.host-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  p {
+    margin: 0;
+    max-width: 52ch;
+  }
+}
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--forge-text-subtle);
+  }
+
+  .optional {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 72px;
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 640px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+// PrimeNG form controls should fill their column.
+:host ::ng-deep {
+  p-select,
+  p-datepicker,
+  p-inputnumber {
+    width: 100%;
+  }
+
+  .p-select,
+  .p-datepicker,
+  .p-inputnumber,
+  .p-inputnumber-input {
+    width: 100%;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.detail-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+.summary-desc {
+  margin: 0;
+  color: var(--forge-text);
+  line-height: 1.55;
+}
+
+.summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0;
+
+  dt {
+    color: var(--forge-text-subtle);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  dd {
+    margin: 3px 0 0;
+    font-weight: 600;
+  }
+}

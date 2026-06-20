@@ -39,6 +39,21 @@ export interface DbPort {
   getMember(tenantId: string, uid: string): Promise<Record<string, unknown> | null>;
   /** Upsert (merge) a member document. */
   setMember(tenantId: string, uid: string, data: Record<string, unknown>): Promise<void>;
+  /** Read a course doc at `tenants/{t}/courses/{courseId}`, or `null` when absent. */
+  getCourse(tenantId: string, courseId: string): Promise<Record<string, unknown> | null>;
+  /** Read the learner-readable live-session doc, or `null` when absent. */
+  getLiveSession(tenantId: string, id: string): Promise<Record<string, unknown> | null>;
+  /** Upsert (merge) the learner-readable live-session doc. */
+  setLiveSession(tenantId: string, id: string, data: Record<string, unknown>): Promise<void>;
+  /**
+   * Upsert (merge) the authoring-only private subdoc holding the sensitive host
+   * `startUrl` at `tenants/{t}/liveSessions/{id}/private/host`.
+   */
+  setLiveSessionPrivate(tenantId: string, id: string, data: Record<string, unknown>): Promise<void>;
+  /** Read the private host subdoc, or `null` when absent. */
+  getLiveSessionPrivate(tenantId: string, id: string): Promise<Record<string, unknown> | null>;
+  /** Delete the live-session doc (and is best-effort on its private subdoc). */
+  deleteLiveSession(tenantId: string, id: string): Promise<void>;
   /**
    * Read-modify-write the enrollment projection under a single transaction.
    * `apply` receives the current projection (`null` if the enrollment doc does
@@ -69,6 +84,38 @@ export interface RateLimitPort {
   ): Promise<void>;
 }
 
+/** Options for creating a Zoom meeting/webinar. */
+export interface CreateMeetingOptions {
+  type: 'meeting' | 'webinar';
+  topic: string;
+  /** ISO-8601 scheduled start time. */
+  startTime: string;
+  durationMin: number;
+  tenantId: string;
+  hostUid: string;
+}
+
+/** What Zoom returns after creating a meeting/webinar. */
+export interface CreateMeetingResult {
+  meetingId: string;
+  /** Learner-facing join link. */
+  joinUrl: string;
+  /** Sensitive host start link (kept off the learner-readable doc). */
+  startUrl: string;
+  passcode?: string;
+}
+
+/**
+ * Zoom integration port. The real adapter (adapters.ts) talks to the Zoom REST
+ * API via Server-to-Server OAuth; tests use the deterministic FakeZoomPort.
+ */
+export interface ZoomPort {
+  createMeeting(opts: CreateMeetingOptions): Promise<CreateMeetingResult>;
+  /** Fetch a meeting's status, or `null` when it no longer exists. */
+  getMeeting(meetingId: string): Promise<{ status: string } | null>;
+  deleteMeeting(meetingId: string): Promise<void>;
+}
+
 export interface CorePorts {
   auth: AuthPort;
   db: DbPort;
@@ -77,4 +124,9 @@ export interface CorePorts {
    * about auditing keep working; privileged cores write to it best-effort.
    */
   audit?: AuditLogPort;
+  /**
+   * Zoom integration. Optional/null when Zoom is not configured (no `ZOOM_*`
+   * secrets) — `scheduleLiveSession` throws `unavailable` in that case.
+   */
+  zoom?: ZoomPort;
 }

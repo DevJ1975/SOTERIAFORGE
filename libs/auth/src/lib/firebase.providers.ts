@@ -2,6 +2,7 @@ import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 import { FirebaseOptions, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectAuthEmulator, getAuth, provideAuth } from '@angular/fire/auth';
 import { connectFirestoreEmulator, getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { connectFunctionsEmulator, getFunctions, provideFunctions } from '@angular/fire/functions';
 import { connectStorageEmulator, getStorage, provideStorage } from '@angular/fire/storage';
 import { provideForgeAppCheck } from './app-check.providers';
 
@@ -21,6 +22,8 @@ const FIRESTORE_EMULATOR_HOST = 'localhost';
 const FIRESTORE_EMULATOR_PORT = 8080;
 const STORAGE_EMULATOR_HOST = 'localhost';
 const STORAGE_EMULATOR_PORT = 9199;
+const FUNCTIONS_EMULATOR_HOST = 'localhost';
+const FUNCTIONS_EMULATOR_PORT = 5001;
 
 /** True when the app is served from a local dev host (use the emulators). */
 function isLocalHost(): boolean {
@@ -32,11 +35,12 @@ function isLocalHost(): boolean {
 let authEmulatorConnected = false;
 let firestoreEmulatorConnected = false;
 let storageEmulatorConnected = false;
+let functionsEmulatorConnected = false;
 
 /**
  * Composes Firebase app + Auth + Firestore providers for every Forge app.
  * On localhost the SDKs are pointed at the local emulator suite
- * (auth :9099, firestore :8080, storage :9199 — see workspace firebase.json).
+ * (auth :9099, firestore :8080, storage :9199, functions :5001 — see workspace firebase.json).
  *
  * App Check (CC6) is wired in via {@link provideForgeAppCheck} and is a no-op
  * unless a reCAPTCHA v3 site key is configured (env/`window`), so the local
@@ -87,6 +91,18 @@ export function provideForgeFirebase(
         }
       }
       return storage;
+    }),
+    provideFunctions(() => {
+      const functions = getFunctions();
+      if (isLocalHost() && !functionsEmulatorConnected) {
+        try {
+          connectFunctionsEmulator(functions, FUNCTIONS_EMULATOR_HOST, FUNCTIONS_EMULATOR_PORT);
+          functionsEmulatorConnected = true;
+        } catch {
+          // Already connected (e.g. hot reload) — safe to ignore.
+        }
+      }
+      return functions;
     }),
   ]);
 }
