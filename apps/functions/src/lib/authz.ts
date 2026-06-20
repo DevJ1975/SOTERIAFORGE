@@ -72,3 +72,31 @@ export function canManageRole(
   }
   return { allowed: false, reason: `Role '${caller.role}' may not manage roles` };
 }
+
+/**
+ * Decide whether `caller` may manage (schedule/cancel) live sessions in `tenantId`.
+ * - superadmin: anything.
+ * - tenant_admin / instructor: only within their own tenant.
+ * - everyone else (including unauthenticated): nothing.
+ */
+export function canManageLiveSession(
+  caller: CallerClaims | null,
+  tenantId: string,
+): AuthzDecision {
+  if (!caller) {
+    return { allowed: false, reason: 'Caller is unauthenticated or has no valid role claims' };
+  }
+  if (caller.role === 'superadmin') {
+    return { allowed: true };
+  }
+  if (caller.role === 'tenant_admin' || caller.role === 'instructor') {
+    if (caller.tenantId !== tenantId) {
+      return {
+        allowed: false,
+        reason: 'May only manage live sessions within their own tenant',
+      };
+    }
+    return { allowed: true };
+  }
+  return { allowed: false, reason: `Role '${caller.role}' may not manage live sessions` };
+}

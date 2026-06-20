@@ -232,10 +232,7 @@ export function leaderboardDoc(
 }
 
 /** /tenants/{tenantId}/liveSessions */
-export function liveSessionsCol(
-  db: Firestore,
-  tenantId: string,
-): CollectionReference<LiveSession> {
+export function liveSessionsCol(db: Firestore, tenantId: string): CollectionReference<LiveSession> {
   return collection(db, 'tenants', tenantId, 'liveSessions').withConverter(liveSessionConverter);
 }
 
