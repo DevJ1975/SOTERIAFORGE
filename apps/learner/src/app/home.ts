@@ -102,7 +102,7 @@ import { PwaInstall } from './pwa/pwa-install';
       flex: 0 0 auto;
       width: 96px;
       height: 96px;
-      border-radius: var(--forge-radius);
+      border-radius: var(--forge-radius-card);
       display: grid;
       place-items: center;
       background: linear-gradient(
@@ -178,7 +178,7 @@ import { PwaInstall } from './pwa/pwa-install';
 
     .game-art {
       height: 120px;
-      border-radius: var(--forge-radius);
+      border-radius: var(--forge-radius-tile);
       display: grid;
       place-items: center;
     }

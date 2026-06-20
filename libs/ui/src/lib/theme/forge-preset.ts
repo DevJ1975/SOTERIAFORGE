@@ -60,7 +60,7 @@ export const ForgePreset = definePreset(Aura, {
       width: '2px',
       style: 'solid',
       color: '{primary.600}',
-      offset: '1px',
+      offset: '2px',
     },
     formField: {
       borderRadius: '4px',
@@ -69,14 +69,14 @@ export const ForgePreset = definePreset(Aura, {
   components: {
     button: {
       root: {
-        borderRadius: '16px',
+        borderRadius: '12px',
         paddingX: '0.875rem',
         paddingY: '0.375rem',
       },
     },
     card: {
       root: {
-        borderRadius: '8px',
+        borderRadius: '18px',
       },
     },
   },

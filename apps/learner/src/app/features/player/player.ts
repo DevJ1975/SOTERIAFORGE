@@ -172,7 +172,20 @@ interface CompletionProjection {
               Live XP, levels, and badges are awarded by the platform when the rewards service runs
               (Phase 4).
             </p>
-            <p-button label="Back to My Learning" routerLink="/my-learning" />
+            <div class="celebrate-actions">
+              @if (enrollment()?.completed) {
+                <p-button
+                  label="View certificate"
+                  icon="pi pi-verified"
+                  [routerLink]="['/certificate', courseId()]"
+                />
+              }
+              <p-button
+                label="Back to My Learning"
+                severity="secondary"
+                routerLink="/my-learning"
+              />
+            </div>
           </div>
         }
       }
@@ -339,6 +352,13 @@ interface CompletionProjection {
     .confetti {
       font-size: 3rem;
     }
+    .celebrate-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 8px;
+    }
     .fine-print {
       color: var(--forge-text-subtle);
       font-size: 0.8rem;
@@ -361,7 +381,7 @@ export class Player {
   // flushed opportunistically. See ProgressSyncQueue.
   private readonly queue = inject(ProgressSyncQueue);
 
-  private readonly courseId = toSignal(
+  protected readonly courseId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('courseId') ?? '')),
     { initialValue: '' },
   );
