@@ -1,0 +1,8 @@
+# Soteria Assurance storefront — allow all crawlers.
+User-agent: *
+Allow: /
+
+# Authenticated/account areas carry no public SEO value.
+Disallow: /account
+
+Sitemap: https://soteriaforge.com/sitemap.xml

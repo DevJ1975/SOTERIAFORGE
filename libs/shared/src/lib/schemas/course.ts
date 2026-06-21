@@ -15,6 +15,14 @@ export const course = auditable.extend({
   xpReward: count.default(0),
   /** Optional: course shared from the global library (superadmin authored). */
   sourceLibraryId: docId.optional(),
+  /**
+   * Author opt-in (MO-07): when true, learners may download this course's
+   * cacheable content (uploaded/same-origin media, Firebase Storage assets) for
+   * offline use. Defaults to false so existing course docs validate unchanged.
+   * Non-cacheable modules (YouTube/Vimeo/iframe) are surfaced as "requires
+   * connection" in the learner UI rather than blocking the opt-in.
+   */
+  availableOffline: z.boolean().default(false),
 });
 export type Course = z.infer<typeof course>;
 
@@ -29,6 +37,18 @@ export const module = auditable.extend({
   /** Storage reference or external URL for the content asset. */
   assetRef: storageRef.optional(),
   externalUrl: z.string().url().optional(),
+  /**
+   * SCORM specification version for `scorm` modules. Detected from the package's
+   * imsmanifest.xml on upload (`scormPackages.scormVersion`) and copied here by
+   * the authoring flow; the player defaults to '2004' when absent.
+   */
+  scormVersion: z.enum(['1.2', '2004']).optional(),
+  /**
+   * Microlearning (MO-14): optional author-estimated time to complete this
+   * module, in whole minutes. Surfaced per-module and summed into a course-level
+   * total in the learner UI. Optional so existing module docs validate unchanged.
+   */
+  estimatedMinutes: z.number().int().min(0).optional(),
   xpReward: count.default(0),
   badgeRefs: z.array(docId).default([]),
   /** Completion criteria, e.g. minimum score or watch percentage. */

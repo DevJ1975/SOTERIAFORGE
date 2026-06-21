@@ -70,3 +70,63 @@ describe('CatalogComponent', () => {
     expect(checkoutSpy).toHaveBeenCalledWith('test-product-id');
   });
 });
+
+// MO-15: the gated SSR-dynamic-catalog mechanism. On the server, the product
+// list is fetched only when a real Firebase config is present; with an empty
+// apiKey the prerender must NOT attempt a Firestore read.
+describe('CatalogComponent SSR gating', () => {
+  const serverEnv = (apiKey: string): AssuranceEnvironment => ({
+    production: true,
+    rootDomain: 'soteriaforge.com',
+    firebase: {
+      apiKey,
+      authDomain: '',
+      projectId: '',
+      storageBucket: '',
+      messagingSenderId: '',
+      appId: '',
+    },
+  });
+
+  async function setup(apiKey: string, listPublished: jest.Mock) {
+    await TestBed.configureTestingModule({
+      imports: [CatalogComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ASSURANCE_ENV, useValue: serverEnv(apiKey) },
+        // Force SERVER platform to exercise the SSR branch.
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: CatalogRepository, useValue: { listPublished } },
+        { provide: CheckoutService, useValue: { startCheckout: jest.fn(), lastError: () => null } },
+      ],
+    }).compileComponents();
+    return TestBed.createComponent(CatalogComponent);
+  }
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('does NOT read Firestore during SSR when apiKey is empty', async () => {
+    const listPublished = jest.fn().mockResolvedValue([]);
+    const fixture = await setup('', listPublished);
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(listPublished).not.toHaveBeenCalled();
+  });
+
+  it('fetches the product list during SSR when a Firebase config is present', async () => {
+    const listPublished = jest.fn().mockResolvedValue([
+      {
+        id: 'p1',
+        title: 'SSR Course',
+        description: 'Rendered on the server',
+        mode: 'payment',
+      },
+    ]);
+    const fixture = await setup('real-key', listPublished);
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    expect(listPublished).toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('SSR Course');
+  });
+});

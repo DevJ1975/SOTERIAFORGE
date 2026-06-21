@@ -118,6 +118,56 @@ describe('Firestore rules — tenant isolation', () => {
       ),
     );
   });
+
+  it('a learner CANNOT forge xp / level via a member update (anti-cheat)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { xp: 999999, level: 99 },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT forge earnedBadgeIds (compliance-badge forgery)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { earnedBadgeIds: ['fire-safety-2026'] },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT forge their streak', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { streakDays: 365 },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT write fcmTokens directly (server/callable only)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { fcmTokens: ['stolen-token'] },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CAN update their own profile (displayName / avatarUrl)', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { displayName: 'Jamil', avatarUrl: 'https://example.test/a.png' },
+        { merge: true },
+      ),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -179,62 +229,221 @@ describe('Firestore rules — B2C catalog', () => {
 // 3. Enrollment self-write
 // ---------------------------------------------------------------------------
 describe('Firestore rules — enrollment self-write', () => {
+  const ENROLL = 'tenants/acme/courses/c1/enrollments/u-learner';
+  const OTHER_ENROLL = 'tenants/acme/courses/c1/enrollments/u-other-learner';
+
+  /** Seed the learner's own enrollment in a given state (rules disabled). */
+  const seedOwnEnrollment = (data: Record<string, unknown>) =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), ENROLL), {
+        uid: 'u-learner',
+        courseId: 'c1',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+        ...data,
+      });
+    });
+
   beforeEach(async () => {
     // Seed another user's enrollment so "cannot write other" tests have a doc to target.
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'tenants/acme/courses/c1/enrollments/u-other-learner'), {
+      await setDoc(doc(ctx.firestore(), OTHER_ENROLL), {
         uid: 'u-other-learner',
+        courseId: 'c1',
         tenantId: 'acme',
-        progress: 0,
+        progressPct: 0,
+        completed: false,
       });
     });
   });
 
-  it('a learner CAN create their OWN enrollment with matching tenantId', async () => {
+  // --- create ---------------------------------------------------------------
+
+  it('a learner CAN create a zero-progress enrollment for themselves', async () => {
     await assertSucceeds(
-      setDoc(doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner'), {
+      setDoc(doc(learnerAcme(), ENROLL), {
         uid: 'u-learner',
+        courseId: 'c1',
         tenantId: 'acme',
-        progress: 0,
+        progressPct: 0,
+        completed: false,
       }),
     );
   });
 
-  it('a learner CAN update their OWN enrollment with matching tenantId', async () => {
-    // Seed own enrollment first.
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'tenants/acme/courses/c1/enrollments/u-learner'), {
+  it('a learner CANNOT create an enrollment with completed:true (forgery)', async () => {
+    await assertFails(
+      setDoc(doc(learnerAcme(), ENROLL), {
         uid: 'u-learner',
+        courseId: 'c1',
         tenantId: 'acme',
-        progress: 0,
-      });
-    });
+        progressPct: 100,
+        completed: true,
+      }),
+    );
+  });
+
+  it('a learner CANNOT create an enrollment carrying a score (forgery)', async () => {
+    await assertFails(
+      setDoc(doc(learnerAcme(), ENROLL), {
+        uid: 'u-learner',
+        courseId: 'c1',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+        score: 90,
+      }),
+    );
+  });
+
+  it('a learner CANNOT create an enrollment seeding cmi.completedModuleIds (forgery)', async () => {
+    // The server trusts existing cmi.completedModuleIds as the prior-progress
+    // baseline, so a seeded list at create time would let one real completion
+    // inflate to full course credit. Even with progressPct:0/completed:false the
+    // create must be rejected.
+    await assertFails(
+      setDoc(doc(learnerAcme(), ENROLL), {
+        uid: 'u-learner',
+        courseId: 'c1',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+        cmi: { completedModuleIds: ['mod-1', 'mod-2', 'mod-3'] },
+      }),
+    );
+  });
+
+  it('a learner CAN create a zero-progress enrollment carrying only cmi.runtime', async () => {
+    // Runtime/bookmark state is not credit-bearing, so seeding it at create is fine
+    // as long as completedModuleIds is empty/absent.
+    await assertSucceeds(
+      setDoc(doc(learnerAcme(), ENROLL), {
+        uid: 'u-learner',
+        courseId: 'c1',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+        cmi: { runtime: { 'mod-1': { suspend_data: 'x' } } },
+      }),
+    );
+  });
+
+  it('a learner CANNOT create an enrollment without matching tenantId', async () => {
+    await assertFails(
+      setDoc(doc(learnerAcme(), ENROLL), {
+        uid: 'u-learner',
+        courseId: 'c1',
+        tenantId: 'bravo', // wrong tenantId
+        progressPct: 0,
+        completed: false,
+      }),
+    );
+  });
+
+  // --- update: saveCmi-shaped (runtime/bookmark) is allowed -----------------
+
+  it('a learner CAN saveCmi (write cmi.runtime, preserve credit fields)', async () => {
+    await seedOwnEnrollment({ progressPct: 25, cmi: { runtime: { 'mod-1': { foo: 1 } } } });
     await assertSucceeds(
       setDoc(
-        doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner'),
-        { uid: 'u-learner', tenantId: 'acme', progress: 50 },
+        doc(learnerAcme(), ENROLL),
+        {
+          // saveCmi rewrites the whole cmi map (runtime changes), keeping
+          // progressPct/completed/score unchanged and completedModuleIds absent.
+          cmi: { runtime: { 'mod-1': { foo: 2, suspend_data: 'abc' } } },
+          lastActivityAt: '2026-06-20T00:00:00.000Z',
+          updatedAt: '2026-06-20T00:00:00.000Z',
+        },
         { merge: true },
       ),
     );
   });
 
-  it('a learner CANNOT create an enrollment without matching tenantId in the written data', async () => {
-    await assertFails(
-      setDoc(doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner'), {
-        uid: 'u-learner',
-        tenantId: 'bravo', // wrong tenantId
-        progress: 0,
-      }),
+  it('a learner CAN saveCmi after a server-set completion (completion preserved)', async () => {
+    // Server-authoritative state: completed module recorded + a score.
+    await seedOwnEnrollment({
+      progressPct: 50,
+      completed: false,
+      score: 80,
+      cmi: { completedModuleIds: ['mod-1'], runtime: { 'mod-1': { foo: 1 } } },
+    });
+    await assertSucceeds(
+      setDoc(
+        doc(learnerAcme(), ENROLL),
+        {
+          // Runtime change for mod-2; completedModuleIds + score unchanged.
+          cmi: { completedModuleIds: ['mod-1'], runtime: { 'mod-2': { suspend_data: 'x' } } },
+          lastActivityAt: '2026-06-20T01:00:00.000Z',
+          updatedAt: '2026-06-20T01:00:00.000Z',
+        },
+        { merge: true },
+      ),
     );
   });
 
+  // --- update: credit-bearing forgeries are denied --------------------------
+
+  it('a learner CANNOT update completed to true (forgery)', async () => {
+    await seedOwnEnrollment({ progressPct: 50, completed: false });
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), ENROLL),
+        { completed: true, updatedAt: '2026-06-20T00:00:00.000Z' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT change progressPct (forgery)', async () => {
+    await seedOwnEnrollment({ progressPct: 10, completed: false });
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), ENROLL),
+        { progressPct: 100, updatedAt: '2026-06-20T00:00:00.000Z' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT set a score (forgery)', async () => {
+    await seedOwnEnrollment({ progressPct: 50, completed: false });
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), ENROLL),
+        { score: 99, updatedAt: '2026-06-20T00:00:00.000Z' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT change cmi.completedModuleIds (forgery)', async () => {
+    await seedOwnEnrollment({
+      progressPct: 50,
+      completed: false,
+      cmi: { completedModuleIds: ['mod-1'], runtime: {} },
+    });
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), ENROLL),
+        {
+          cmi: { completedModuleIds: ['mod-1', 'mod-2'], runtime: {} },
+          updatedAt: '2026-06-20T00:00:00.000Z',
+        },
+        { merge: true },
+      ),
+    );
+  });
+
+  // --- update: other users -------------------------------------------------
+
   it("a learner CANNOT write another user's enrollment doc", async () => {
     await assertFails(
-      setDoc(doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-other-learner'), {
-        uid: 'u-other-learner',
-        tenantId: 'acme',
-        progress: 100,
-      }),
+      setDoc(
+        doc(learnerAcme(), OTHER_ENROLL),
+        { progressPct: 100, completed: true },
+        { merge: true },
+      ),
     );
   });
 });

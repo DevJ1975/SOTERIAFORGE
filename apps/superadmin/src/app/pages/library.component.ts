@@ -250,6 +250,7 @@ export class LibraryComponent implements OnInit {
         badgeRefs: [],
         tags: [],
         xpReward: 0,
+        availableOffline: false,
         createdAt: now,
       };
       await this.libraryRepo.setCourse(c);

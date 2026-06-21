@@ -19,3 +19,4 @@ export * from './lib/util/quiz-grading';
 export * from './lib/util/vector';
 export * from './lib/util/gamification';
 export * from './lib/util/csv';
+export * from './lib/util/indexed-db';

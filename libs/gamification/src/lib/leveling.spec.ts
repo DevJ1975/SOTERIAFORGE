@@ -1,3 +1,7 @@
+import {
+  levelFromXp as serverLevelFromXp,
+  xpForLevel as sharedXpForLevel,
+} from '@assurance/shared';
 import { levelForXp, xpForLevel, LevelCurve } from './leveling';
 
 describe('xpForLevel', () => {
@@ -163,5 +167,22 @@ describe('levelForXp', () => {
     it('throws for negative XP', () => {
       expect(() => levelForXp(-1)).toThrow(RangeError);
     });
+  });
+});
+
+// MO-13a — single source of truth: the UI's default curve IS the shared/server
+// curve, so the displayed level can never disagree with the authoritative level
+// (no more flicker at thresholds like xp=282).
+describe('client/server curve consistency', () => {
+  it('default xpForLevel delegates to the shared canonical curve', () => {
+    for (let n = 1; n <= 50; n++) {
+      expect(xpForLevel(n)).toBe(sharedXpForLevel(n));
+    }
+  });
+
+  it('levelForXp(xp).level === server levelFromXp(xp) for every xp in 0..5000', () => {
+    for (let xp = 0; xp <= 5000; xp++) {
+      expect(levelForXp(xp).level).toBe(serverLevelFromXp(xp));
+    }
   });
 });

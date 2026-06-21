@@ -9,9 +9,32 @@ import {
   inject,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
+
+/**
+ * Validate a SCORM launch URL before it is assigned to `iframe.src`.
+ *
+ * The `src` is set imperatively, bypassing Angular's template sanitiser, under a
+ * `allow-scripts allow-same-origin` sandbox — so a hostile `externalUrl`
+ * (`z.string().url()`, author-controlled) must be screened here. We resolve the
+ * raw value against the current origin and allow **only** `http:`/`https:`,
+ * rejecting `javascript:`, `data:`, `blob:`, `file:`, etc. Returns the resolved
+ * absolute URL string when safe, or `null` when it must not be loaded.
+ */
+export function safeScormUrl(raw: string, base?: string): string | null {
+  if (!raw) return null;
+  try {
+    const origin = base ?? (typeof location !== 'undefined' ? location.origin : undefined);
+    const url = new URL(raw, origin);
+    if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * ScormPlayerComponent
@@ -33,6 +56,11 @@ import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="assurance-scorm-player__wrapper">
+      @if (error()) {
+        <div class="assurance-scorm-player__error" role="alert">
+          <p>This SCORM content could not be loaded because its launch URL is not allowed.</p>
+        </div>
+      }
       <iframe
         #scormFrame
         class="assurance-scorm-player__frame"
@@ -63,6 +91,16 @@ import { ScormRuntimeService, ScormVersion } from './scorm-runtime.service';
         height: 100%;
         border: none;
       }
+      .assurance-scorm-player__error {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        color: #fff;
+        text-align: center;
+      }
     `,
   ],
 })
@@ -92,6 +130,9 @@ export class ScormPlayerComponent implements OnDestroy {
 
   /** Emits completion status and optional score when the SCO finishes. */
   readonly completed = output<{ completed: boolean; score?: number }>();
+
+  /** True when the launch URL was rejected as unsafe (renders an error state). */
+  readonly error = signal(false);
 
   // ---------------------------------------------------------------------------
   // Private state
@@ -145,12 +186,20 @@ export class ScormPlayerComponent implements OnDestroy {
 
     // 2. Now point the iframe at the SCO — the SCORM API is already on window.
     // We set `src` imperatively so that the SCORM window API is mounted before
-    // the content begins loading.  Direct DOM assignment bypasses Angular
-    // template sanitisation, which is intentional: the URL originates from the
-    // platform's own content-management layer and is validated upstream.
+    // the content begins loading. Direct DOM assignment bypasses Angular's
+    // template sanitiser, so we MUST validate the URL ourselves first: under the
+    // `allow-scripts allow-same-origin` sandbox a `javascript:`/`data:` URL would
+    // be a sanitizer-bypass sink. Only http(s) is allowed (FIX-5).
+    const safe = safeScormUrl(this.launchUrl());
+    if (!safe) {
+      this.error.set(true);
+      console.error('[ScormPlayerComponent] Refusing to load unsafe SCORM launch URL.');
+      return;
+    }
     const frame = this.frameRef?.nativeElement;
     if (frame) {
-      frame.src = this.launchUrl();
+      this.error.set(false);
+      frame.src = safe;
     }
   }
 }

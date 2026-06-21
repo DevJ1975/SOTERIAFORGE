@@ -7,12 +7,12 @@ import {
   AuthService,
   TenantService,
 } from '@assurance/auth';
-import { ModuleRepository, EnrollmentRepository } from '@assurance/data-access';
+import { ModuleRepository, EnrollmentRepository, CourseRepository } from '@assurance/data-access';
 import { EnrollmentService } from '@assurance/lms-core';
-import { PlayerProgressService } from '@assurance/player';
+import { PlayerProgressService, DownloadService } from '@assurance/player';
 import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
 import { CourseDetailComponent } from './course-detail.component';
-import type { Enrollment, Module, ChatMessage } from '@assurance/shared';
+import type { Course, Enrollment, Module, ChatMessage } from '@assurance/shared';
 import { of } from 'rxjs';
 
 const testEnv: AssuranceEnvironment = {
@@ -36,11 +36,46 @@ const mockModule: Module = {
   order: 1,
   contentType: 'video',
   externalUrl: 'https://www.youtube.com/watch?v=test',
+  estimatedMinutes: 5,
   xpReward: 0,
   badgeRefs: [],
   completion: {},
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+};
+
+const mockModule2: Module = {
+  id: 'mod-2',
+  courseId: 'course-1',
+  tenantId: 'tenant-1',
+  title: 'Lesson 2',
+  order: 2,
+  contentType: 'video',
+  externalUrl: 'https://www.youtube.com/watch?v=test2',
+  estimatedMinutes: 7,
+  xpReward: 0,
+  badgeRefs: [],
+  completion: {},
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const mockCourse: Course = {
+  id: 'course-1',
+  tenantId: 'tenant-1',
+  title: 'Test Course',
+  description: '',
+  status: 'published',
+  tags: [],
+  badgeRefs: [],
+  xpReward: 0,
+  availableOffline: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const mockCourseRepository: Partial<CourseRepository> = {
+  getById: jest.fn().mockResolvedValue(mockCourse),
 };
 
 const mockEnrollment: Enrollment = {
@@ -54,7 +89,7 @@ const mockEnrollment: Enrollment = {
 };
 
 const mockModuleRepository: Partial<ModuleRepository> = {
-  listOrdered: jest.fn().mockResolvedValue([mockModule]),
+  listOrdered: jest.fn().mockResolvedValue([mockModule, mockModule2]),
 };
 
 const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
@@ -106,6 +141,7 @@ describe('CourseDetailComponent', () => {
         { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: ModuleRepository, useValue: mockModuleRepository },
         { provide: EnrollmentRepository, useValue: mockEnrollmentRepository },
+        { provide: CourseRepository, useValue: mockCourseRepository },
         { provide: EnrollmentService, useValue: mockEnrollmentService },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
@@ -161,5 +197,113 @@ describe('CourseDetailComponent', () => {
     fixture.detectChanges();
 
     expect(mockEnrollmentService.enroll).not.toHaveBeenCalled();
+  });
+
+  it('shows the offline download control for an offline-available course (MO-07)', async () => {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Download for offline');
+  });
+
+  it('flags YouTube/Vimeo modules as "Requires connection" (MO-07)', async () => {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance as unknown as {
+      requiresConnection(id: string): boolean;
+      cacheableCount(): number;
+    };
+    // mockModule is a YouTube URL → not cacheable.
+    expect(comp.requiresConnection('mod-1')).toBe(true);
+    expect(comp.cacheableCount()).toBe(0);
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Requires connection');
+  });
+
+  // ----- MO-14: estimated duration + stepped/focused mode -----
+
+  async function load(): Promise<void> {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+  }
+
+  it('renders the per-module estimated duration (MO-14)', async () => {
+    await load();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('5 min');
+    expect(el.textContent).toContain('7 min');
+  });
+
+  it('sums module minutes into a course-level total (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as { totalEstimatedMinutes(): number };
+    expect(comp.totalEstimatedMinutes()).toBe(12);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Total: 12 min');
+  });
+
+  it('toggles into stepped/focused mode showing "1 of M" and large controls (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      stepped(): boolean;
+    };
+    comp.toggleStepped();
+    fixture.detectChanges();
+
+    expect(comp.stepped()).toBe(true);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('1 of 2');
+    expect(el.textContent).toContain('Continue');
+    expect(el.textContent).toContain('Back');
+  });
+
+  it('advances and rewinds steps with Next/Back, keeping selection in sync (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      nextStep(): void;
+      prevStep(): void;
+      stepIndex(): number;
+      isFirstStep(): boolean;
+      isLastStep(): boolean;
+      selectedModule(): Module | null;
+    };
+    comp.toggleStepped();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(0);
+    expect(comp.isFirstStep()).toBe(true);
+
+    comp.nextStep();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(1);
+    expect(comp.isLastStep()).toBe(true);
+    // The player follows the step.
+    expect(comp.selectedModule()?.id).toBe('mod-2');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 of 2');
+
+    comp.prevStep();
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(0);
+    expect(comp.selectedModule()?.id).toBe('mod-1');
+  });
+
+  it('does not advance past the last step (MO-14)', async () => {
+    await load();
+    const comp = fixture.componentInstance as unknown as {
+      toggleStepped(): void;
+      nextStep(): void;
+      stepIndex(): number;
+    };
+    comp.toggleStepped();
+    comp.nextStep();
+    comp.nextStep(); // already last — should be a no-op
+    fixture.detectChanges();
+    expect(comp.stepIndex()).toBe(1);
   });
 });

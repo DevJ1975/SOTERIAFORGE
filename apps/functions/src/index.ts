@@ -24,3 +24,5 @@ export { launchCmi5 } from './cmi5/launch';
 export { cmi5Fetch } from './cmi5/fetch';
 export { xapi } from './cmi5/xapi';
 export { exportUserData, deleteUserData } from './compliance/data-rights';
+export { resetDailyLeaderboards, resetWeeklyLeaderboards } from './scheduled/leaderboard-reset';
+export { sendStreakReminders } from './scheduled/streak-reminders';

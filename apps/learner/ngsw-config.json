@@ -20,6 +20,26 @@
   ],
   "dataGroups": [
     {
+      "name": "api-catalog",
+      "urls": ["/api/catalog/**", "/api/courses/**"],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 100,
+        "maxAge": "1d",
+        "timeout": "5s"
+      }
+    },
+    {
+      "name": "api-dynamic",
+      "urls": ["/api/**", "/**/*cloudfunctions.net/**", "/**/run.app/**"],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 100,
+        "maxAge": "1h",
+        "timeout": "5s"
+      }
+    },
+    {
       "name": "content-media",
       "urls": [
         "/**/*.mp4",

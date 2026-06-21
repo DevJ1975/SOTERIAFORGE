@@ -16,6 +16,7 @@ import {
   Cmi5LaunchResult,
   ScormPlayerComponent,
   Cmi5LauncherComponent,
+  type ScormVersion,
 } from '@assurance/standards';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 import { VideoPlayerComponent } from './video-player.component';
@@ -58,7 +59,8 @@ import { GamePlayerComponent } from './game-player.component';
           @if (contentUrl(); as url) {
             <assurance-scorm-player
               [launchUrl]="url"
-              [scormVersion]="'2004'"
+              [scormVersion]="scormVersion()"
+              [initialCmi]="scormInitialCmi()"
               (commit)="onScormCommit($event)"
               (completed)="onScormCompleted($event)"
             />
@@ -196,6 +198,15 @@ export class ModulePlayerComponent {
   /** URL for SCORM modules. */
   readonly contentUrl = computed(() => this.module().externalUrl ?? this.module().assetRef);
 
+  /** Real SCORM version for the module (defaults to 2004 when unset). */
+  readonly scormVersion = computed<ScormVersion>(() => this.module().scormVersion ?? '2004');
+
+  /**
+   * Saved SCORM runtime/bookmark state for resume (MO-09), loaded from the
+   * enrollment's `cmi.runtime[<moduleId>]`. `undefined` until loaded / when none.
+   */
+  readonly scormInitialCmi = signal<Record<string, unknown> | undefined>(undefined);
+
   /** Server-issued cmi5 launch parameters (null until resolved). */
   readonly cmi5Params = signal<Cmi5LaunchResult | null>(null);
 
@@ -209,14 +220,34 @@ export class ModulePlayerComponent {
   readonly actorJson = computed(() => JSON.stringify(this.cmi5Params()?.actor ?? null));
 
   constructor() {
-    // Trigger a cmi5 launch-params fetch on first render, but only in the
-    // browser (guards against SSR / prerender calling a Firebase function).
+    // Trigger content-specific setup on first render, but only in the browser
+    // (guards against SSR / prerender calling Firebase / touching IndexedDB).
     afterNextRender(() => {
       const type = this.module().contentType;
       if (type === 'cmi5' || type === 'unity') {
         void this._fetchCmi5Params();
+      } else if (type === 'scorm') {
+        void this._loadScormResume();
       }
     });
+  }
+
+  /**
+   * Load the learner's saved SCORM runtime state and feed it to the player as
+   * `initialCmi` so the SCO resumes at the saved bookmark/suspend_data (MO-09).
+   * Browser-only; with MO-01 the underlying read works offline from cache.
+   */
+  private async _loadScormResume(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const cmi = await this.enrollmentService.getRuntimeCmi(
+      this.tenantId(),
+      this.courseId(),
+      this.uid(),
+      this.module().id,
+    );
+    if (cmi) {
+      this.scormInitialCmi.set(cmi);
+    }
   }
 
   // ---------------------------------------------------------------------------

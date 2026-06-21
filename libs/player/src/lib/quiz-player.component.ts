@@ -1,15 +1,19 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
+  PLATFORM_ID,
   computed,
   inject,
   input,
   signal,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuizRepository } from '@assurance/data-access';
 import { QuizSubmissionService } from '@assurance/lms-core';
+import { IndexedDbStore, isIndexedDbAvailable } from '@assurance/shared';
 import type { Quiz, QuizGrade, QuizQuestion, QuizResponse } from '@assurance/shared';
 
 /** Per-question local UI state used to collect responses. */
@@ -25,6 +29,58 @@ interface QuestionState {
   orderIds: string[];
   /** For matching: map left-option-id → chosen right-option-id. */
   matchMap: Map<string, string>;
+}
+
+/** Serialisable per-question draft (Set/Map flattened to arrays for IndexedDB). */
+interface QuestionDraft {
+  questionId: string;
+  selectedSingle: string;
+  selectedMulti: string[];
+  fillText: string;
+  orderIds: string[];
+  matchPairs: Array<[string, string]>;
+}
+
+/** A persisted in-progress quiz attempt. */
+interface QuizDraft {
+  key: string;
+  savedAt: string;
+  answers: QuestionDraft[];
+}
+
+// Own database (a single store): every offline feature uses a dedicated IndexedDB
+// database to avoid the multi-store-same-version footgun (see IndexedDbStore).
+const DRAFT_DB = 'assurance.quiz-drafts';
+const DRAFT_STORE = 'quiz-drafts';
+const AUTOSAVE_DEBOUNCE_MS = 600;
+
+function stateToDraft(s: QuestionState): QuestionDraft {
+  return {
+    questionId: s.question.id,
+    selectedSingle: s.selectedSingle,
+    selectedMulti: [...s.selectedMulti],
+    fillText: s.fillText,
+    orderIds: [...s.orderIds],
+    matchPairs: [...s.matchMap.entries()],
+  };
+}
+
+/** Re-apply a saved draft onto freshly-built question states (in place). */
+function applyDraft(states: QuestionState[], draft: QuizDraft): void {
+  const byId = new Map(draft.answers.map((a) => [a.questionId, a]));
+  for (const st of states) {
+    const a = byId.get(st.question.id);
+    if (!a) continue;
+    st.selectedSingle = a.selectedSingle;
+    st.selectedMulti = new Set(a.selectedMulti);
+    st.fillText = a.fillText;
+    // Only trust a saved order that still matches the question's option set.
+    if (a.orderIds.length === st.orderIds.length) {
+      const valid = new Set(st.orderIds);
+      if (a.orderIds.every((id) => valid.has(id))) st.orderIds = [...a.orderIds];
+    }
+    st.matchMap = new Map(a.matchPairs);
+  }
 }
 
 function makeState(q: QuizQuestion): QuestionState {
@@ -101,6 +157,7 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                       [value]="opt.id"
                       [disabled]="submitted()"
                       [(ngModel)]="qs.selectedSingle"
+                      (ngModelChange)="scheduleAutosave()"
                     />
                     {{ opt.text }}
                   </label>
@@ -115,6 +172,7 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                       [value]="opt.id"
                       [disabled]="submitted()"
                       [(ngModel)]="qs.selectedSingle"
+                      (ngModelChange)="scheduleAutosave()"
                     />
                     {{ opt.text }}
                   </label>
@@ -141,6 +199,7 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                   placeholder="Your answer…"
                   [disabled]="submitted()"
                   [(ngModel)]="qs.fillText"
+                  (ngModelChange)="scheduleAutosave()"
                 />
               }
               @case ('ordering') {
@@ -230,6 +289,12 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
           </div>
         }
 
+        @if (queuedOffline()) {
+          <p class="quiz-player__queued" role="status" aria-live="polite">
+            Submitted — will sync when you're back online.
+          </p>
+        }
+
         @if (submitError()) {
           <p class="quiz-player__error">{{ submitError() }}</p>
         }
@@ -300,8 +365,16 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
         gap: 0.25rem;
       }
       .quiz-player__order-controls button {
-        padding: 0.125rem 0.375rem;
+        /* >= 44x44px touch target (MO-03). */
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.25rem 0.5rem;
+        font-size: 1rem;
         cursor: pointer;
+      }
+      .quiz-player__order-controls button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }
       .quiz-player__match-row {
         display: flex;
@@ -371,6 +444,14 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
       .quiz-player__error {
         color: var(--assurance-error, #ef4444);
       }
+      .quiz-player__queued {
+        margin-top: 1rem;
+        padding: 0.625rem 0.875rem;
+        border-radius: 0.375rem;
+        background: var(--assurance-info-bg, #1e3a8a);
+        color: #fff;
+        font-size: 0.875rem;
+      }
     `,
   ],
 })
@@ -383,6 +464,8 @@ export class QuizPlayerComponent implements OnInit {
 
   private readonly quizRepo = inject(QuizRepository);
   private readonly submissionSvc = inject(QuizSubmissionService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly draftStore = new IndexedDbStore<QuizDraft>(DRAFT_DB, DRAFT_STORE);
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -392,6 +475,36 @@ export class QuizPlayerComponent implements OnInit {
   protected readonly submitted = signal(false);
   protected readonly submitError = signal<string | null>(null);
   protected readonly grade = signal<QuizGrade | null>(null);
+  /** Set when an attempt is queued offline (shows the sync notice). */
+  protected readonly queuedOffline = signal(false);
+
+  /** Debounce handle for autosave. */
+  private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+
+    // When an attempt that was queued offline is later graded on reconnect,
+    // reconcile the displayed grade for THIS quiz so the learner sees their
+    // real score without a reload (FIX-6).
+    const unsubscribe = this.submissionSvc.onReconciled((quizId, grade) => {
+      if (quizId === this.quizId()) {
+        this.grade.set(grade);
+        this.queuedOffline.set(false);
+        this.submitted.set(true);
+      }
+    });
+
+    destroyRef.onDestroy(() => {
+      unsubscribe();
+      if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+    });
+  }
+
+  /** Stable draft key: tenantId:uid:quizId (per the MO-08 spec). */
+  private draftKey(): string {
+    return `${this.tenantId()}:${this.uid()}:${this.quizId()}`;
+  }
 
   protected readonly correctnessMap = computed(() => {
     const g = this.grade();
@@ -411,13 +524,60 @@ export class QuizPlayerComponent implements OnInit {
         return;
       }
       this.quiz.set(q);
-      this.questionStates.set(q.questions.map(makeState));
+      const states = q.questions.map(makeState);
+
+      // Restore an in-progress draft saved in a prior session (MO-08).
+      if (this.isBrowser && isIndexedDbAvailable()) {
+        try {
+          const draft = await this.draftStore.get(this.draftKey());
+          if (draft) applyDraft(states, draft);
+        } catch (err) {
+          console.warn('[QuizPlayerComponent] Failed to restore draft', err);
+        }
+      }
+
+      this.questionStates.set(states);
     } catch (err) {
       console.error('[QuizPlayerComponent] Failed to load quiz', err);
       this.error.set('Failed to load quiz. Please try again.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Schedule a debounced autosave of the current answers to IndexedDB. */
+  protected scheduleAutosave(): void {
+    // Never re-arm an autosave once a submit is in flight or done: otherwise a
+    // late `ngModelChange` could schedule a `saveDraft` that runs AFTER
+    // `clearDraft()` and resurrect a submitted attempt on next load (FIX-4).
+    if (!this.isBrowser || this.submitting() || this.submitted()) return;
+    if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+    this.autosaveTimer = setTimeout(() => void this.saveDraft(), AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  /** Persist the current answer state now. Safe no-op without IndexedDB. */
+  private async saveDraft(): Promise<void> {
+    // Guard again at write time: a timer scheduled just before submit could fire
+    // during the in-flight submit, after the draft was (or is about to be) cleared.
+    if (this.submitting() || this.submitted()) return;
+    if (!isIndexedDbAvailable()) return;
+    const draft: QuizDraft = {
+      key: this.draftKey(),
+      savedAt: new Date().toISOString(),
+      answers: this.questionStates().map(stateToDraft),
+    };
+    try {
+      await this.draftStore.put(draft.key, draft);
+    } catch {
+      // Quota / unavailable — drop the autosave silently; the volatile state is
+      // still intact and a later autosave may succeed.
+    }
+  }
+
+  /** Remove the saved draft (called after a successful or queued submit). */
+  private async clearDraft(): Promise<void> {
+    if (!isIndexedDbAvailable()) return;
+    await this.draftStore.delete(this.draftKey()).catch(() => undefined);
   }
 
   protected toggleMulti(qs: QuestionState, optId: string, checked: boolean): void {
@@ -428,6 +588,7 @@ export class QuizPlayerComponent implements OnInit {
     }
     // Trigger signal update by replacing the array
     this.questionStates.update((states) => [...states]);
+    this.scheduleAutosave();
   }
 
   protected moveUp(qs: QuestionState, index: number): void {
@@ -436,6 +597,7 @@ export class QuizPlayerComponent implements OnInit {
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
     qs.orderIds = ids;
     this.questionStates.update((states) => [...states]);
+    this.scheduleAutosave();
   }
 
   protected moveDown(qs: QuestionState, index: number): void {
@@ -444,6 +606,7 @@ export class QuizPlayerComponent implements OnInit {
     [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
     qs.orderIds = ids;
     this.questionStates.update((states) => [...states]);
+    this.scheduleAutosave();
   }
 
   protected setMatch(qs: QuestionState, leftId: string, value: string): void {
@@ -453,6 +616,7 @@ export class QuizPlayerComponent implements OnInit {
       qs.matchMap.delete(leftId);
     }
     this.questionStates.update((states) => [...states]);
+    this.scheduleAutosave();
   }
 
   protected labelForOptionId(q: QuizQuestion, optId: string): string {
@@ -469,19 +633,36 @@ export class QuizPlayerComponent implements OnInit {
     const states = this.questionStates();
     const responses: QuizResponse[] = states.map(stateToResponse);
 
+    // Cancel any pending autosave; we're about to finalise the attempt.
+    if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
+
     this.submitting.set(true);
     this.submitError.set(null);
 
     try {
-      const grade = await this.submissionSvc.submit({
+      const outcome = await this.submissionSvc.submitWithOutbox({
         tenantId: this.tenantId(),
         courseId: this.courseId(),
         moduleId: this.moduleId(),
         quizId: this.quizId(),
         responses,
       });
-      this.grade.set(grade);
+
+      if (outcome.graded && outcome.grade) {
+        this.grade.set(outcome.grade);
+      } else if (outcome.queued) {
+        // Offline / transient failure: the attempt is safely queued and will be
+        // graded on reconnect (grading stays server-authoritative).
+        this.queuedOffline.set(true);
+      } else {
+        // Neither graded nor durably persisted (IndexedDB absent/quota): do NOT
+        // claim durability. Keep the draft and let the learner retry (FIX-8).
+        this.submitError.set('Could not save your attempt. Please try again.');
+        return;
+      }
       this.submitted.set(true);
+      // The attempt is now either graded or durably queued — drop the draft.
+      await this.clearDraft();
     } catch (err) {
       console.error('[QuizPlayerComponent] Submit failed', err);
       this.submitError.set('Submission failed. Please try again.');

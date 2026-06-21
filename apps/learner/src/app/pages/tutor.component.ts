@@ -33,12 +33,17 @@ import { TutorChatComponent } from '@assurance/ai-tutor';
         padding: 0 1rem;
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 6rem);
+        /* dvh tracks the dynamic viewport so iOS browser chrome / the keyboard
+           doesn't clip the chat (MO-03). */
+        height: calc(100dvh - 6rem);
       }
       .tutor-page__nav {
         margin-bottom: 1rem;
       }
       .tutor-page__nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         color: var(--assurance-primary, #0b5fff);
         text-decoration: none;
       }

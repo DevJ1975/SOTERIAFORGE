@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap of the public storefront routes.
+  Per-product (dynamic catalog) entries are a future enhancement: they require a
+  real public Firebase config at build/render time to enumerate published
+  products (the current environment has an empty apiKey, so the catalog is
+  fetched browser-side only). See catalog.component.ts for details.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://soteriaforge.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://soteriaforge.com/catalog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://soteriaforge.com/auth</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>

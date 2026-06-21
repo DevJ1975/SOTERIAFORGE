@@ -1,49 +1,104 @@
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, type Signal, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { IndexedDbStore, isIndexedDbAvailable } from '@assurance/shared';
 import type { XapiStatement } from '@assurance/shared';
 
 /**
- * Key used in localStorage for the pending xAPI statement queue.
+ * IndexedDB database + store for the pending xAPI statement queue.
  *
- * TODO: Migrate to IndexedDB for higher-volume queues (localStorage is
- * limited to ~5 MB and is synchronous). The service API surface (`enqueue`,
- * `peekAll`, `flush`) can remain identical; only the persistence layer needs
- * to change.
+ * Its own database (a single store) on purpose: `IndexedDbStore` only creates
+ * object stores during `onupgradeneeded`, so multiple stores sharing one database
+ * at the same version — each instance declaring only its own store in `allStores`
+ * — would leave the sibling stores uncreated (the multi-store footgun). Every
+ * offline feature therefore uses a dedicated database (cf. the quiz outbox/drafts,
+ * completion outbox, and downloads), so the upgrade is unambiguous.
  */
-const QUEUE_KEY = 'forge.xapi.queue';
+const DB_NAME = 'assurance.xapi-queue';
+const STORE_NAME = 'xapi-queue';
 
 /**
- * Offline-first xAPI statement queue.
+ * A queued statement plus a stable id used as the IndexedDB key (so statements
+ * can be deleted individually after a successful send without rewriting the
+ * whole queue).
+ */
+interface QueuedItem {
+  id: string;
+  stmt: XapiStatement;
+}
+
+function makeId(): string {
+  // crypto.randomUUID is available in modern browsers; fall back for safety.
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* fall through */
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * Offline-first xAPI statement queue (MO-05).
  *
- * When the learner goes offline (or a network send fails), statements are
- * persisted to `localStorage` under `forge.xapi.queue`. When connectivity is
- * restored a `window` `online` event triggers an automatic flush.
+ * Durable across reloads: statements are persisted to **IndexedDB** (via the
+ * shared {@link IndexedDbStore}; previously this was localStorage, which is
+ * ~5 MB, synchronous, and silently dropped statements on quota). An in-memory
+ * mirror is hydrated from IndexedDB on construction so the synchronous
+ * `peekAll()` / `size()` API callers depend on still works.
  *
- * SSR / test safety:
- *  - All `window`, `navigator`, and `localStorage` access is guarded by
- *    `isPlatformBrowser` or `typeof` checks so the service is a no-op in
- *    server-side and non-browser test environments where those globals are
- *    absent. (jsdom used by Jest *does* expose `localStorage`, so queue logic
- *    is fully exercisable in unit tests.)
+ * Draining:
+ *  - on the `window` `online` event, and
+ *  - on **startup** (when `registerSender` is called while already online), so a
+ *    queue persisted in a previous session drains when the app reopens online —
+ *    not only on a live offline→online transition.
+ *
+ * Data-loss safety:
+ *  - On IndexedDB quota/write error the statement is **retained** in memory (and
+ *    a retry of the persist is attempted on the next mutation/flush) rather than
+ *    silently dropped.
+ *  - A failed send keeps the statement queued for the next flush.
+ *
+ * SSR / test safety: all browser-only access (`window`, `navigator`,
+ * `indexedDB`) is guarded; the service is a safe no-op on the server and in
+ * non-browser environments. The public API is unchanged from the localStorage
+ * implementation so `XapiClient` and the learner shell need no changes.
  *
  * @Injectable({ providedIn: 'root' }) — a single queue instance for the app.
  */
 @Injectable({ providedIn: 'root' })
 export class OfflineXapiQueue {
   private readonly isBrowser: boolean;
+  private readonly db: IndexedDbStore<QueuedItem>;
+
+  /** In-memory mirror of the persisted queue (source for sync reads). */
+  private items: QueuedItem[] = [];
+
+  /** Resolves once the initial hydrate from IndexedDB has completed. */
+  private readonly ready: Promise<void>;
+
   /** Sender registered by XapiClient; called during automatic flush. */
   private registeredSender: ((s: XapiStatement) => Promise<void>) | null = null;
-  /** Guards against overlapping flushes (e.g. concurrent `online` events). */
-  private flushing = false;
+
   /**
-   * In-memory fallback used only after a `localStorage` quota error, so queued
-   * statements are not silently dropped within the session. (Cross-reload
-   * durability still requires the IndexedDB migration noted above.)
+   * In-flight flush promise (re-entrancy guard). The startup flush and the
+   * `window:online` listener can both fire on reconnect-during-boot; a second
+   * caller awaits the running drain and then does one fresh pass, so no item's
+   * send is ever attempted twice concurrently while statements queued meanwhile
+   * are still drained (FIX-3).
    */
-  private memory: XapiStatement[] | null = null;
+  private inFlight: Promise<void> | null = null;
+
+  /** Number of statements awaiting send (for the offline banner — MO-04). */
+  private readonly _pendingCount = signal(0);
+  readonly pendingCount: Signal<number> = this._pendingCount.asReadonly();
 
   constructor() {
     this.isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+    this.db = new IndexedDbStore<QueuedItem>(DB_NAME, STORE_NAME);
+
+    // Hydrate the in-memory mirror from IndexedDB once at startup.
+    this.ready = this.hydrate();
 
     if (this.isBrowser) {
       window.addEventListener('online', () => {
@@ -55,105 +110,120 @@ export class OfflineXapiQueue {
   }
 
   /**
-   * Register the sender callback that will be used during automatic
-   * (window `online` event) flushes. Called once by `XapiClient`.
+   * Register the sender callback used during automatic flushes (window `online`
+   * event and startup). Called once by `XapiClient`.
+   *
+   * Triggers a **startup flush**: if the app reopens already-online with a queue
+   * persisted from a prior session, that queue is drained immediately rather
+   * than waiting for a live offline→online transition.
    */
   registerSender(sender: (s: XapiStatement) => Promise<void>): void {
     this.registeredSender = sender;
+    if (!this.isBrowser) return;
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    if (online) {
+      void this.flush(sender);
+    }
   }
 
   /**
-   * Persist a statement to the queue.
-   * No-op when `localStorage` is unavailable.
+   * Persist a statement to the queue. Updates the in-memory mirror synchronously
+   * and writes through to IndexedDB. On IndexedDB error the statement is kept in
+   * memory (never silently dropped).
    */
   enqueue(stmt: XapiStatement): void {
-    if (typeof localStorage === 'undefined') return;
-    const queue = this._read();
-    queue.push(stmt);
-    this._write(queue);
+    const item: QueuedItem = { id: makeId(), stmt };
+    this.items.push(item);
+    this.updateCount();
+    void this.persistItem(item);
   }
 
-  /**
-   * Return all queued statements without removing them.
-   */
+  /** Return all queued statements without removing them (synchronous mirror). */
   peekAll(): XapiStatement[] {
-    if (typeof localStorage === 'undefined') return [];
-    return this._read();
+    return this.items.map((i) => i.stmt);
   }
 
-  /**
-   * Number of statements currently queued.
-   */
+  /** Number of statements currently queued (synchronous mirror). */
   size(): number {
-    return this.peekAll().length;
+    return this.items.length;
   }
 
   /**
    * Attempt to send every queued statement via `sender`.
    *
-   * Statements that send successfully are removed from the queue.
-   * Statements whose send rejects are kept for the next flush attempt so
+   * Successfully-sent statements are removed from both the mirror and
+   * IndexedDB. Statements whose send rejects are kept for the next flush so
    * partial connectivity does not lose data.
    *
    * @param sender Async function that transmits a single statement; should
    *               reject on network/server error.
    */
   async flush(sender: (s: XapiStatement) => Promise<void>): Promise<void> {
-    if (typeof localStorage === 'undefined') return;
-    if (this.flushing) return; // an in-flight flush will drain the queue
-    this.flushing = true;
+    await this.ready;
+    // Serialise overlapping flushes: wait for any running drain, then do one
+    // fresh pass. This never sends a statement twice concurrently, yet still
+    // drains statements enqueued while the prior drain ran.
+    while (this.inFlight) await this.inFlight;
+    this.inFlight = this.drain(sender);
     try {
-      const snapshot = this._read();
-      if (snapshot.length === 0) return;
-
-      const failed: XapiStatement[] = [];
-      for (const stmt of snapshot) {
-        try {
-          await sender(stmt);
-          // Success — drained.
-        } catch {
-          failed.push(stmt);
-        }
-      }
-
-      // Re-read so statements `enqueue`d during the awaited sends (which append
-      // to the end) are preserved rather than overwritten by the stale snapshot.
-      const current = this._read();
-      const addedDuringFlush = current.slice(snapshot.length);
-      this._write([...failed, ...addedDuringFlush]);
+      await this.inFlight;
     } finally {
-      this.flushing = false;
+      this.inFlight = null;
     }
+  }
+
+  private async drain(sender: (s: XapiStatement) => Promise<void>): Promise<void> {
+    if (this.items.length === 0) return;
+    // Snapshot to iterate; mutate `this.items` as sends succeed.
+    const snapshot = [...this.items];
+    for (const item of snapshot) {
+      try {
+        await sender(item.stmt);
+        // Success — drain from mirror + IndexedDB.
+        this.items = this.items.filter((i) => i.id !== item.id);
+        await this.db.delete(item.id).catch(() => undefined);
+      } catch {
+        // Keep for next flush; stop trying further if we appear offline again.
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) break;
+      }
+    }
+    this.updateCount();
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private _read(): XapiStatement[] {
-    // Once in fallback mode, the in-memory queue is authoritative for the session.
-    if (this.memory !== null) return [...this.memory];
-    try {
-      const raw = localStorage.getItem(QUEUE_KEY);
-      if (!raw) return [];
-      return JSON.parse(raw) as XapiStatement[];
-    } catch {
-      return [];
-    }
-  }
-
-  private _write(queue: XapiStatement[]): void {
-    if (this.memory !== null) {
-      this.memory = [...queue];
+  /** Load the persisted queue into the in-memory mirror. Safe no-op off-browser. */
+  private async hydrate(): Promise<void> {
+    if (!isIndexedDbAvailable()) {
+      this.updateCount();
       return;
     }
     try {
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+      const persisted = await this.db.getAll();
+      // Preserve any items enqueued before hydrate resolved (avoid losing them).
+      const existingIds = new Set(this.items.map((i) => i.id));
+      const merged = [...persisted.filter((p) => !existingIds.has(p.id)), ...this.items];
+      this.items = merged;
     } catch {
-      // Storage quota exceeded — switch to an in-memory queue for the rest of
-      // the session so statements are retained (not dropped) and can still be
-      // flushed. Durability across reloads needs the IndexedDB migration.
-      this.memory = [...queue];
+      // If hydrate fails, keep whatever is already in memory.
     }
+    this.updateCount();
+  }
+
+  /** Write a single item to IndexedDB; retain in memory on failure. */
+  private async persistItem(item: QueuedItem): Promise<void> {
+    if (!isIndexedDbAvailable()) return;
+    try {
+      await this.db.put(item.id, item);
+    } catch {
+      // Quota / write error: do NOT drop. The item stays in the in-memory mirror
+      // and will be retried by the next persist or sent on the next flush.
+    }
+  }
+
+  private updateCount(): void {
+    this._pendingCount.set(this.items.length);
   }
 }

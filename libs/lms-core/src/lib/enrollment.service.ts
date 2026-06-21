@@ -33,6 +33,27 @@ export class EnrollmentService {
   }
 
   /**
+   * Read the saved SCORM/cmi5 runtime state for a single module, so the player
+   * can resume from the learner's bookmark/suspend_data (MO-09). Returns the
+   * per-module `cmi.runtime[moduleId]` map, or `undefined` if there is no saved
+   * state. With Firestore offline persistence (MO-01) this read is served from
+   * the IndexedDB cache when offline.
+   */
+  async getRuntimeCmi(
+    tenantId: string,
+    courseId: string,
+    uid: string,
+    moduleId: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const existing = await this.enrollmentRepo.get(tenantId, courseId, uid);
+    const runtime = existing?.cmi?.['runtime'] as Record<string, unknown> | undefined;
+    const moduleCmi = runtime?.[moduleId];
+    return moduleCmi && typeof moduleCmi === 'object'
+      ? (moduleCmi as Record<string, unknown>)
+      : undefined;
+  }
+
+  /**
    * Persist SCORM/cmi5 runtime data for a module under the enrollment's `cmi`
    * map, namespaced per module so multiple SCORM modules don't collide. Called
    * by the SCORM runtime on commit/finish.
