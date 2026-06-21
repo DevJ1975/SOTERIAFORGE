@@ -80,6 +80,15 @@ export class OfflineXapiQueue {
   /** Sender registered by XapiClient; called during automatic flush. */
   private registeredSender: ((s: XapiStatement) => Promise<void>) | null = null;
 
+  /**
+   * In-flight flush promise (re-entrancy guard). The startup flush and the
+   * `window:online` listener can both fire on reconnect-during-boot; a second
+   * caller awaits the running drain and then does one fresh pass, so no item's
+   * send is ever attempted twice concurrently while statements queued meanwhile
+   * are still drained (FIX-3).
+   */
+  private inFlight: Promise<void> | null = null;
+
   /** Number of statements awaiting send (for the offline banner — MO-04). */
   private readonly _pendingCount = signal(0);
   readonly pendingCount: Signal<number> = this._pendingCount.asReadonly();
@@ -151,8 +160,20 @@ export class OfflineXapiQueue {
    */
   async flush(sender: (s: XapiStatement) => Promise<void>): Promise<void> {
     await this.ready;
-    if (this.items.length === 0) return;
+    // Serialise overlapping flushes: wait for any running drain, then do one
+    // fresh pass. This never sends a statement twice concurrently, yet still
+    // drains statements enqueued while the prior drain ran.
+    while (this.inFlight) await this.inFlight;
+    this.inFlight = this.drain(sender);
+    try {
+      await this.inFlight;
+    } finally {
+      this.inFlight = null;
+    }
+  }
 
+  private async drain(sender: (s: XapiStatement) => Promise<void>): Promise<void> {
+    if (this.items.length === 0) return;
     // Snapshot to iterate; mutate `this.items` as sends succeed.
     const snapshot = [...this.items];
     for (const item of snapshot) {

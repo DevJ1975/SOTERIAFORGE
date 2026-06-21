@@ -93,11 +93,16 @@ that ignores them will be rejected by Firestore rules or diverge from the web:
 - Add a player screen that hosts a WebView (`WebView` on Android, `WKWebView` on iOS)
   pointed at the learner PWA's module route (e.g.
   `https://<tenant>.soteriaforge.com/courses/{courseId}` deep-linked to the module).
-- **Auth bridge**: the WebView must be authenticated as the same user. Options, in
-  order of preference: (1) Firebase Auth web session inside the WebView via a
-  short-lived custom token minted by a callable, then `signInWithCustomToken` in a tiny
-  bridge page; or (2) pass the ID token to a thin web entry that re-establishes the
-  session. Ensure the GCIP tenant id is set before sign-in (same as native).
+- **Auth bridge**: the WebView must be authenticated as the same user. Strongly
+  prefer (1) a Firebase Auth web session inside the WebView via a short-lived custom
+  token minted by a callable, then `signInWithCustomToken` in a tiny bridge page. If a
+  token must instead be handed to a thin web entry (2), it MUST be delivered over an
+  in-memory channel only — `WKWebView.evaluateJavaScript` / Android
+  `evaluateJavascript`, or `postMessage` to the bridge page over HTTPS — and **never**
+  placed in the URL (query/fragment/path) or any logged location, since URL-borne
+  tokens leak via history, referrers, server/proxy access logs, and crash reports.
+  Treat any token as short-lived and single-use. Ensure the GCIP tenant id is set
+  before sign-in (same as native).
 - Because the player is the **web** player, SCORM/cmi5/video/quiz/game, the offline
   xAPI queue, the quiz outbox, the completion outbox, Firestore persistence, and
   download-for-offline all work **inside the WebView** with zero native duplication.

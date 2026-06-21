@@ -234,4 +234,41 @@ describe('QuizSubmissionService — offline outbox (MO-08)', () => {
     expect(callableImpl).toHaveBeenCalledWith('submitQuiz', input);
     expect(svc.pendingCount()).toBe(0);
   });
+
+  it('concurrent flushOutbox calls send each attempt once (re-entrancy guard — FIX-3)', async () => {
+    setOnline(false);
+    const svc = TestBed.inject(QuizSubmissionService);
+    await svc.submitWithOutbox(input);
+    // Let the constructor's (empty) startup flush settle so we isolate the two
+    // explicit concurrent flushes below.
+    await flushMicrotasks();
+    expect(svc.pendingCount()).toBe(1);
+
+    // Slow callable keeps the first flush in flight while the second begins,
+    // mirroring the startup-flush vs window:online race on reconnect.
+    setOnline(true);
+    callableImpl.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ data: mockGrade }), 10)),
+    );
+
+    await Promise.all([svc.flushOutbox(), svc.flushOutbox()]);
+
+    expect(callableImpl).toHaveBeenCalledTimes(1);
+    expect(svc.pendingCount()).toBe(0);
+  });
+
+  it('reports queued:false when persistence fails so the caller does not claim durability (FIX-8)', async () => {
+    setOnline(false);
+    const svc = TestBed.inject(QuizSubmissionService);
+
+    // Force the outbox write to reject as if IndexedDB quota were exceeded.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jest.spyOn((svc as any).outbox, 'put').mockRejectedValue(new Error('QuotaExceededError'));
+
+    const outcome = await svc.submitWithOutbox(input);
+
+    expect(outcome.graded).toBe(false);
+    // Not durable → the player must keep the draft and surface an error.
+    expect(outcome.queued).toBe(false);
+  });
 });

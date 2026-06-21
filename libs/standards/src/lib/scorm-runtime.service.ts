@@ -49,18 +49,27 @@ export class ScormRuntimeService {
     this._opts = opts;
     this._version = opts.version;
 
+    // A later SCO reuses this root-singleton service; clear any prior session's
+    // status before seeding the new one so stale completion/score never leaks.
+    this.completed.set(false);
+    this.score.set(null);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod: any = await import('scorm-again');
 
     const settings = {
       autocommit: false,
       lmsCommitUrl: false as unknown as string, // disable HTTP commits — we handle via callback
-      ...(opts.initialCmi ? { datastring: JSON.stringify(opts.initialCmi) } : {}),
     };
 
     if (opts.version === '1.2') {
       const api = new mod.Scorm12API(settings) as unknown as Scorm12APIShape;
       this._api = api;
+
+      // Seed saved resume state (suspend_data/bookmark/status) BEFORE the SCO
+      // loads. The iframe `src` is set later by `scorm-player`, so here is the
+      // correct moment for the SCO to read the restored CMI on first access.
+      this._seedResume(api, opts.initialCmi);
 
       // SCORM 1.2 mounts on window.API
       (window as WindowWithScorm).API = api;
@@ -78,6 +87,9 @@ export class ScormRuntimeService {
       const api = new mod.Scorm2004API(settings) as unknown as Scorm2004APIShape;
       this._api = api;
 
+      // Seed saved resume state BEFORE the SCO loads (see the 1.2 branch above).
+      this._seedResume(api, opts.initialCmi);
+
       // SCORM 2004 mounts on window.API_1484_11
       (window as WindowWithScorm).API_1484_11 = api;
 
@@ -93,6 +105,33 @@ export class ScormRuntimeService {
     }
   }
 
+  /**
+   * Restore previously-saved CMI into the freshly-constructed API so the SCO
+   * resumes at its saved bookmark/suspend_data (MO-09).
+   *
+   * `scorm-again`'s `BaseAPI` exposes `loadFromJSON(json)`; the matching producer
+   * is `renderCMIToJSONObject()` (used by `saveCmi`), which returns a *nested*
+   * shape `{ cmi: { core?, score?, ... } }`. `loadFromJSON` expects the inner CMI
+   * object, so we unwrap the `cmi` key before loading. Guarded on a non-empty
+   * object so a fresh enrolment (no saved state) is a no-op.
+   *
+   * There is no `datastring` setting in `scorm-again` — passing it is silently
+   * ignored — which is why this explicit load is required.
+   */
+  private _seedResume(
+    api: Scorm12APIShape | Scorm2004APIShape,
+    initialCmi: Record<string, unknown> | undefined,
+  ): void {
+    if (!initialCmi) return;
+    const nested = initialCmi['cmi'];
+    const body = (nested && typeof nested === 'object' ? nested : initialCmi) as Record<
+      string,
+      unknown
+    >;
+    if (Object.keys(body).length === 0) return;
+    api.loadFromJSON(body);
+  }
+
   /** Tear down the SCORM runtime and remove the global API object. */
   terminate(): void {
     const win = window as WindowWithScorm;
@@ -104,6 +143,10 @@ export class ScormRuntimeService {
     this._api = null;
     this._version = null;
     this._opts = null;
+    // Reset completion/score so a later SCO mounted on this root singleton does
+    // not read the previous session's stale state (MO-09).
+    this.completed.set(false);
+    this.score.set(null);
   }
 
   // ---------------------------------------------------------------------------
@@ -192,11 +235,15 @@ function clamp01(n: number): number {
 interface Scorm12APIShape {
   on(event: string, callback: () => void): void;
   renderCMIToJSONObject(): Record<string, unknown>;
+  /** Restore a CMI object (the inner `cmi` payload) for session resume. */
+  loadFromJSON(json: Record<string, unknown>, CMIElement?: string): void;
 }
 
 interface Scorm2004APIShape {
   on(event: string, callback: () => void): void;
   renderCMIToJSONObject(): Record<string, unknown>;
+  /** Restore a CMI object (the inner `cmi` payload) for session resume. */
+  loadFromJSON(json: Record<string, unknown>, CMIElement?: string): void;
 }
 
 interface WindowWithScorm {

@@ -231,7 +231,12 @@ describe('ModulePlayerComponent', () => {
   });
 
   it('loads saved runtime CMI and exposes it as initialCmi for scorm modules', async () => {
-    const savedCmi = { 'cmi.core.lesson_status': 'incomplete', 'cmi.suspend_data': 'page-3' };
+    // The real producer (`renderCMIToJSONObject`, used by `saveCmi`) returns a
+    // NESTED shape `{ cmi: { ... } }`; the resume path unwraps the `cmi` key
+    // before `loadFromJSON`. Keep the test consistent with that shape (FIX-1).
+    const savedCmi = {
+      cmi: { core: { lesson_status: 'incomplete' }, suspend_data: 'page-3' },
+    };
     (mockEnrollmentService.getRuntimeCmi as jest.Mock).mockResolvedValueOnce(savedCmi);
 
     const scormModule: Module = {

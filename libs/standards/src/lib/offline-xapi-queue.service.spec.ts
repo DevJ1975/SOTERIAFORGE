@@ -138,6 +138,23 @@ describe('OfflineXapiQueue (IndexedDB-backed)', () => {
       expect(sender).not.toHaveBeenCalled();
     });
 
+    it('concurrent flushes only send each statement once (re-entrancy guard — FIX-3)', async () => {
+      const queue = TestBed.inject(OfflineXapiQueue);
+      // A slow sender keeps the first flush in-flight while the second starts,
+      // mirroring the startup-flush vs `window:online` race on reconnect.
+      const sender = jest
+        .fn()
+        .mockImplementation(() => new Promise<void>((resolve) => setTimeout(resolve, 10)));
+      queue.enqueue(makeStmt('once-1'));
+      queue.enqueue(makeStmt('once-2'));
+
+      await Promise.all([queue.flush(sender), queue.flush(sender)]);
+
+      // Without the guard the second flush would re-send the same two items.
+      expect(sender).toHaveBeenCalledTimes(2);
+      expect(queue.size()).toBe(0);
+    });
+
     it('removes drained statements from IndexedDB (survives reload)', async () => {
       const queue = TestBed.inject(OfflineXapiQueue);
       const sender = jest.fn().mockResolvedValue(undefined);

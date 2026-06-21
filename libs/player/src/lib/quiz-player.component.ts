@@ -478,7 +478,21 @@ export class QuizPlayerComponent implements OnInit {
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => {
+    const destroyRef = inject(DestroyRef);
+
+    // When an attempt that was queued offline is later graded on reconnect,
+    // reconcile the displayed grade for THIS quiz so the learner sees their
+    // real score without a reload (FIX-6).
+    const unsubscribe = this.submissionSvc.onReconciled((quizId, grade) => {
+      if (quizId === this.quizId()) {
+        this.grade.set(grade);
+        this.queuedOffline.set(false);
+        this.submitted.set(true);
+      }
+    });
+
+    destroyRef.onDestroy(() => {
+      unsubscribe();
       if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
     });
   }
@@ -529,13 +543,19 @@ export class QuizPlayerComponent implements OnInit {
 
   /** Schedule a debounced autosave of the current answers to IndexedDB. */
   protected scheduleAutosave(): void {
-    if (!this.isBrowser || this.submitted()) return;
+    // Never re-arm an autosave once a submit is in flight or done: otherwise a
+    // late `ngModelChange` could schedule a `saveDraft` that runs AFTER
+    // `clearDraft()` and resurrect a submitted attempt on next load (FIX-4).
+    if (!this.isBrowser || this.submitting() || this.submitted()) return;
     if (this.autosaveTimer) clearTimeout(this.autosaveTimer);
     this.autosaveTimer = setTimeout(() => void this.saveDraft(), AUTOSAVE_DEBOUNCE_MS);
   }
 
   /** Persist the current answer state now. Safe no-op without IndexedDB. */
   private async saveDraft(): Promise<void> {
+    // Guard again at write time: a timer scheduled just before submit could fire
+    // during the in-flight submit, after the draft was (or is about to be) cleared.
+    if (this.submitting() || this.submitted()) return;
     if (!isIndexedDbAvailable()) return;
     const draft: QuizDraft = {
       key: this.draftKey(),
@@ -630,6 +650,11 @@ export class QuizPlayerComponent implements OnInit {
         // Offline / transient failure: the attempt is safely queued and will be
         // graded on reconnect (grading stays server-authoritative).
         this.queuedOffline.set(true);
+      } else {
+        // Neither graded nor durably persisted (IndexedDB absent/quota): do NOT
+        // claim durability. Keep the draft and let the learner retry (FIX-8).
+        this.submitError.set('Could not save your attempt. Please try again.');
+        return;
       }
       this.submitted.set(true);
       // The attempt is now either graded or durably queued — drop the draft.

@@ -180,4 +180,25 @@ describe('ModuleCompletionService — offline outbox (MO-10)', () => {
     expect(callableImpl).toHaveBeenCalledWith('completeModule', input);
     expect(svc.pendingCount()).toBe(0);
   });
+
+  it('concurrent flushOutbox calls send each completion once (re-entrancy guard — FIX-3)', async () => {
+    setOnline(false);
+    const svc = TestBed.inject(ModuleCompletionService);
+    await svc.completeWithOutbox(input);
+    // Let the constructor's (empty) startup flush settle so we isolate the two
+    // explicit concurrent flushes below.
+    await flushMicrotasks();
+    expect(svc.pendingCount()).toBe(1);
+
+    // Slow callable keeps the first flush in flight while the second begins.
+    setOnline(true);
+    callableImpl.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ data: mockResult }), 10)),
+    );
+
+    await Promise.all([svc.flushOutbox(), svc.flushOutbox()]);
+
+    expect(callableImpl).toHaveBeenCalledTimes(1);
+    expect(svc.pendingCount()).toBe(0);
+  });
 });

@@ -1,3 +1,28 @@
+// Mock `scorm-again` (dynamically imported by the service) so we can assert how
+// the API is constructed and seeded without loading the real SCORM engine.
+const scorm12Instances: MockApi[] = [];
+const scorm2004Instances: MockApi[] = [];
+
+class MockApi {
+  on = jest.fn();
+  loadFromJSON = jest.fn();
+  renderCMIToJSONObject = jest.fn(() => ({ cmi: {} }));
+  constructor(public settings: Record<string, unknown>) {}
+}
+
+jest.mock('scorm-again', () => ({
+  Scorm12API: jest.fn().mockImplementation((settings: Record<string, unknown>) => {
+    const api = new MockApi(settings);
+    scorm12Instances.push(api);
+    return api;
+  }),
+  Scorm2004API: jest.fn().mockImplementation((settings: Record<string, unknown>) => {
+    const api = new MockApi(settings);
+    scorm2004Instances.push(api);
+    return api;
+  }),
+}));
+
 import { TestBed } from '@angular/core/testing';
 import { ScormRuntimeService } from './scorm-runtime.service';
 
@@ -56,6 +81,81 @@ describe('ScormRuntimeService — score scaling (MO-09)', () => {
   it('leaves the score signal unchanged when no score data is present', () => {
     expect(svc.score()).toBeNull();
     updateSignals({ cmi: {} });
+    expect(svc.score()).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MO-09 — resume seeding via loadFromJSON (FIX-1)
+// ---------------------------------------------------------------------------
+
+describe('ScormRuntimeService — resume seeding (MO-09)', () => {
+  let svc: ScormRuntimeService;
+
+  beforeEach(() => {
+    scorm12Instances.length = 0;
+    scorm2004Instances.length = 0;
+    TestBed.configureTestingModule({});
+    svc = TestBed.inject(ScormRuntimeService);
+  });
+
+  afterEach(() => {
+    svc.terminate();
+    jest.clearAllMocks();
+  });
+
+  it('calls loadFromJSON with the UNWRAPPED cmi (2004) before the SCO loads', async () => {
+    const initialCmi = {
+      cmi: { suspend_data: 'page-3', score: { scaled: 0.5 } },
+    };
+    await svc.initialize({ version: '2004', initialCmi, persist: () => undefined });
+
+    const api = scorm2004Instances[0];
+    expect(api).toBeDefined();
+    // Seeded with the inner cmi object, not the nested wrapper.
+    expect(api.loadFromJSON).toHaveBeenCalledTimes(1);
+    expect(api.loadFromJSON).toHaveBeenCalledWith({
+      suspend_data: 'page-3',
+      score: { scaled: 0.5 },
+    });
+    // No invalid `datastring` setting is passed to the API constructor.
+    expect(api.settings).not.toHaveProperty('datastring');
+  });
+
+  it('calls loadFromJSON for SCORM 1.2 with the unwrapped cmi', async () => {
+    const initialCmi = { cmi: { core: { lesson_location: 'slide-7' } } };
+    await svc.initialize({ version: '1.2', initialCmi, persist: () => undefined });
+
+    const api = scorm12Instances[0];
+    expect(api.loadFromJSON).toHaveBeenCalledTimes(1);
+    expect(api.loadFromJSON).toHaveBeenCalledWith({ core: { lesson_location: 'slide-7' } });
+  });
+
+  it('accepts an already-flat cmi object (no nested cmi key)', async () => {
+    const initialCmi = { suspend_data: 'flat' };
+    await svc.initialize({ version: '2004', initialCmi, persist: () => undefined });
+
+    expect(scorm2004Instances[0].loadFromJSON).toHaveBeenCalledWith({ suspend_data: 'flat' });
+  });
+
+  it('does NOT call loadFromJSON when initialCmi is undefined', async () => {
+    await svc.initialize({ version: '2004', persist: () => undefined });
+    expect(scorm2004Instances[0].loadFromJSON).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call loadFromJSON for an empty cmi object', async () => {
+    await svc.initialize({ version: '2004', initialCmi: { cmi: {} }, persist: () => undefined });
+    expect(scorm2004Instances[0].loadFromJSON).not.toHaveBeenCalled();
+  });
+
+  it('resets completed/score signals on terminate (no stale state for the next SCO)', async () => {
+    await svc.initialize({ version: '2004', persist: () => undefined });
+    svc.completed.set(true);
+    svc.score.set(0.9);
+
+    svc.terminate();
+
+    expect(svc.completed()).toBe(false);
     expect(svc.score()).toBeNull();
   });
 });

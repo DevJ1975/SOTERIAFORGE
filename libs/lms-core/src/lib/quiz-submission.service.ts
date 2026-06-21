@@ -18,7 +18,12 @@ export interface QuizSubmitOutcome {
   graded: boolean;
   /** Present when `graded` is true. */
   grade?: QuizGrade;
-  /** True when the attempt was persisted to the offline outbox for later sync. */
+  /**
+   * True when the attempt was **durably** persisted to the offline outbox for
+   * later sync. False when persistence itself failed (IndexedDB absent/quota),
+   * so the caller must NOT claim durability (e.g. keep the draft, surface an
+   * error) — mirrors {@link ModuleCompletionService.completeWithOutbox}.
+   */
   queued: boolean;
 }
 
@@ -68,6 +73,15 @@ export class QuizSubmissionService {
   /** Listeners notified when a queued attempt is graded on later sync. */
   private readonly reconcileListeners = new Set<(quizId: string, grade: QuizGrade) => void>();
 
+  /**
+   * In-flight flush promise (re-entrancy guard). The startup flush and the
+   * `window:online` listener can both fire on reconnect-during-boot; a second
+   * caller awaits the running drain and then does one fresh pass, so no item's
+   * callable is ever sent twice concurrently while items queued meanwhile are
+   * still drained (FIX-3).
+   */
+  private inFlight: Promise<void> | null = null;
+
   constructor() {
     if (this.isBrowser) {
       void this.refreshCount();
@@ -110,8 +124,8 @@ export class QuizSubmissionService {
       }
     }
 
-    await this.enqueue(input);
-    return { graded: false, queued: true };
+    const persisted = await this.enqueue(input);
+    return { graded: false, queued: persisted };
   }
 
   /**
@@ -127,7 +141,21 @@ export class QuizSubmissionService {
   /** Attempt to send every queued submission; drained ones are removed. */
   async flushOutbox(): Promise<void> {
     if (!this.fns || !isIndexedDbAvailable()) return;
-    const items = await this.outbox.getAll();
+    // Serialise overlapping flushes: wait for any running drain, then do one
+    // fresh pass. This never sends an item twice concurrently, yet still drains
+    // items that were queued while the prior drain ran (its `getAll` is fresh).
+    while (this.inFlight) await this.inFlight;
+    this.inFlight = this.drain();
+    try {
+      await this.inFlight;
+    } finally {
+      this.inFlight = null;
+    }
+  }
+
+  private async drain(): Promise<void> {
+    // A transient IndexedDB rejection must not become an unhandled rejection.
+    const items = await this.outbox.getAll().catch(() => [] as OutboxItem[]);
     for (const item of items) {
       try {
         const grade = await this.submit(item.input);
@@ -141,17 +169,21 @@ export class QuizSubmissionService {
     await this.refreshCount();
   }
 
-  private async enqueue(input: QuizSubmitInput): Promise<void> {
+  /** Persist an attempt to the outbox; returns true when it durably persisted. */
+  private async enqueue(input: QuizSubmitInput): Promise<boolean> {
     const id = outboxKey(input);
     const item: OutboxItem = { id, input, queuedAt: new Date().toISOString() };
+    let persisted = false;
     try {
       await this.outbox.put(id, item);
+      persisted = isIndexedDbAvailable();
     } catch {
-      // IndexedDB unavailable/quota — surface count optimistically; the attempt
-      // is not lost to the caller (it gets `queued:true`) but cannot persist
-      // across reloads in this degraded environment.
+      // IndexedDB unavailable/quota — cannot guarantee durability across reload,
+      // so report the failure to the caller (it must not claim "will sync").
+      persisted = false;
     }
     await this.refreshCount();
+    return persisted;
   }
 
   private async refreshCount(): Promise<void> {
@@ -159,6 +191,7 @@ export class QuizSubmissionService {
       this._pendingCount.set(0);
       return;
     }
-    this._pendingCount.set(await this.outbox.count());
+    // A transient IndexedDB rejection must not become an unhandled rejection.
+    this._pendingCount.set(await this.outbox.count().catch(() => 0));
   }
 }

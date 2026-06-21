@@ -88,6 +88,15 @@ export class ModuleCompletionService {
     (input: CompleteModuleInput, result: CompleteModuleResult) => void
   >();
 
+  /**
+   * In-flight flush promise (re-entrancy guard). The startup flush and the
+   * `window:online` listener can both fire on reconnect-during-boot; a second
+   * caller awaits the running drain and then does one fresh pass, so no item's
+   * callable is ever sent twice concurrently while items queued meanwhile are
+   * still drained (FIX-3).
+   */
+  private inFlight: Promise<void> | null = null;
+
   constructor() {
     if (this.isBrowser) {
       void this.refreshCount();
@@ -150,7 +159,21 @@ export class ModuleCompletionService {
   /** Attempt to send every queued completion; drained ones are removed. */
   async flushOutbox(): Promise<void> {
     if (!this.fns || !isIndexedDbAvailable()) return;
-    const items = await this.outbox.getAll();
+    // Serialise overlapping flushes: wait for any running drain, then do one
+    // fresh pass. This never sends an item twice concurrently, yet still drains
+    // items that were queued while the prior drain ran (its `getAll` is fresh).
+    while (this.inFlight) await this.inFlight;
+    this.inFlight = this.drain();
+    try {
+      await this.inFlight;
+    } finally {
+      this.inFlight = null;
+    }
+  }
+
+  private async drain(): Promise<void> {
+    // A transient IndexedDB rejection must not become an unhandled rejection.
+    const items = await this.outbox.getAll().catch(() => [] as OutboxItem[]);
     for (const item of items) {
       try {
         const result = await this.callComplete(item.input);
@@ -192,6 +215,7 @@ export class ModuleCompletionService {
       this._pendingCount.set(0);
       return;
     }
-    this._pendingCount.set(await this.outbox.count());
+    // A transient IndexedDB rejection must not become an unhandled rejection.
+    this._pendingCount.set(await this.outbox.count().catch(() => 0));
   }
 }

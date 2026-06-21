@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   type Signal,
+  computed,
   inject,
   PLATFORM_ID,
   signal,
@@ -9,6 +10,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TenantService } from '@assurance/auth';
+import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
 import { OfflineXapiQueue } from '@assurance/standards';
 import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@assurance/ui';
 
@@ -133,16 +135,24 @@ export class AppComponent {
   protected readonly tenant = inject(TenantService);
   protected readonly year = new Date().getFullYear();
 
-  /** Pending offline xAPI statements, surfaced in the offline banner. */
+  /**
+   * Total pending offline work surfaced in the offline banner: the sum of the
+   * xAPI statement queue, the quiz-submission outbox, and the module-completion
+   * outbox. Previously only the xAPI count was shown, so queued quiz attempts
+   * and completions were invisible to the learner (FIX-6).
+   */
   protected readonly pendingCount: Signal<number>;
 
   constructor() {
-    // Eagerly inject OfflineXapiQueue (browser only) so its window `online`
-    // listener is registered for the lifetime of the app, enabling automatic
-    // xAPI statement flush on reconnect, and mirror its pending count for the
-    // offline banner. On the server there is no queue → constant 0.
+    // Eagerly inject the three offline services (browser only) so their window
+    // `online` listeners are registered for the lifetime of the app (automatic
+    // flush on reconnect) and aggregate their pending counts for the banner. On
+    // the server there is no offline work → constant 0.
     if (isPlatformBrowser(inject(PLATFORM_ID))) {
-      this.pendingCount = inject(OfflineXapiQueue).pendingCount;
+      const xapi = inject(OfflineXapiQueue).pendingCount;
+      const quiz = inject(QuizSubmissionService).pendingCount;
+      const completion = inject(ModuleCompletionService).pendingCount;
+      this.pendingCount = computed(() => xapi() + quiz() + completion());
     } else {
       this.pendingCount = signal(0).asReadonly();
     }
