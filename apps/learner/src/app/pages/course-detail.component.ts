@@ -1,12 +1,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   computed,
   inject,
   input,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ModulePlayerComponent, DownloadService, formatBytes } from '@assurance/player';
@@ -553,6 +555,7 @@ export class CourseDetailComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly tenantSvc = inject(TenantService);
   private readonly downloadSvc = inject(DownloadService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly modules = signal<Module[]>([]);
   protected readonly selectedModule = signal<Module | null>(null);
@@ -607,7 +610,7 @@ export class CourseDetailComponent implements OnInit {
   protected readonly tenantId = computed(() => this.tenantSvc.tenantId() ?? null);
   protected readonly uid = computed(() => this.auth.principal()?.uid ?? null);
 
-  /** Live enrollment stream piped through toSignal (null until loaded). */
+  /** Live enrollment state; fed by a watch() subscription scoped to the component. */
   private readonly enrollment = signal<Enrollment | null | undefined>(undefined);
 
   protected readonly progressPct = computed(() => this.enrollment()?.progressPct ?? 0);
@@ -657,12 +660,16 @@ export class CourseDetailComponent implements OnInit {
         this.enrollment.set(existing);
       }
 
-      // Subscribe to live enrollment updates
-      this.enrollmentRepo.watch(tenantId, courseId, uid).subscribe((e) => {
-        if (e !== undefined) {
-          this.enrollment.set(e);
-        }
-      });
+      // Subscribe to live enrollment updates; auto-unsubscribe on destroy so the
+      // Firestore listener doesn't leak on navigation away.
+      this.enrollmentRepo
+        .watch(tenantId, courseId, uid)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((e) => {
+          if (e !== undefined) {
+            this.enrollment.set(e);
+          }
+        });
     } catch (err) {
       console.error('[CourseDetailComponent] Failed to load course data', err);
     } finally {

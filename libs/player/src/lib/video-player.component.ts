@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   PLATFORM_ID,
   ViewChild,
@@ -103,6 +104,7 @@ export class VideoPlayerComponent {
 
   private readonly sanitizer = inject(DomSanitizer);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
 
   get kind(): 'youtube' | 'vimeo' | 'file' {
     return detectVideoKind(this.url());
@@ -124,14 +126,20 @@ export class VideoPlayerComponent {
     const el = this.videoEl?.nativeElement;
     if (!el) return;
 
-    el.addEventListener('timeupdate', () => {
+    const onTimeUpdate = (): void => {
       if (!el.duration || isNaN(el.duration)) return;
       const pct = Math.round((el.currentTime / el.duration) * 100);
       this.progress.emit(pct);
-    });
+    };
+    const onEnded = (): void => this.completed.emit();
 
-    el.addEventListener('ended', () => {
-      this.completed.emit();
+    el.addEventListener('timeupdate', onTimeUpdate);
+    el.addEventListener('ended', onEnded);
+
+    // Avoid leaking the listeners (and their capturing closures) on destroy.
+    this.destroyRef.onDestroy(() => {
+      el.removeEventListener('timeupdate', onTimeUpdate);
+      el.removeEventListener('ended', onEnded);
     });
   }
 }

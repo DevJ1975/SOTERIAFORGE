@@ -39,6 +39,8 @@ import { CardModule } from 'primeng/card';
               type="email"
               autocomplete="email"
               required
+              [attr.aria-invalid]="errorMessage() ? true : null"
+              [attr.aria-describedby]="errorMessage() ? 'auth-error' : null"
               [(ngModel)]="email"
               [disabled]="loading()"
             />
@@ -53,14 +55,16 @@ import { CardModule } from 'primeng/card';
               type="password"
               [autocomplete]="isSignUp() ? 'new-password' : 'current-password'"
               required
+              [attr.aria-invalid]="errorMessage() ? true : null"
+              [attr.aria-describedby]="errorMessage() ? 'auth-error' : null"
               [(ngModel)]="password"
               [disabled]="loading()"
             />
           </div>
 
-          <div aria-live="polite" class="auth__error" role="status">
+          <div aria-live="assertive" class="auth__error" role="alert">
             @if (errorMessage()) {
-              <p>{{ errorMessage() }}</p>
+              <p id="auth-error">{{ errorMessage() }}</p>
             }
           </div>
 

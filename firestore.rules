@@ -88,8 +88,8 @@ service cloud.firestore {
           // create time would let one real completion inflate to full course credit.
           allow create: if isSelf(uid) && inTenant(tenantId)
             && request.resource.data.tenantId == tenantId
-            && request.resource.data.progressPct == 0
-            && request.resource.data.completed == false
+            && request.resource.data.get('progressPct', 0) == 0
+            && request.resource.data.get('completed', false) == false
             && !('score' in request.resource.data)
             && request.resource.data.get('cmi', {}).get('completedModuleIds', []) == [];
           // Self may update ONLY runtime/bookmark state; credit-bearing fields are
@@ -97,8 +97,8 @@ service cloud.firestore {
           // completedModuleIds) compare safely whether or not they are present.
           allow update: if isSelf(uid) && inTenant(tenantId)
             && request.resource.data.tenantId == resource.data.tenantId
-            && request.resource.data.progressPct == resource.data.progressPct
-            && request.resource.data.completed == resource.data.completed
+            && request.resource.data.get('progressPct', 0) == resource.data.get('progressPct', 0)
+            && request.resource.data.get('completed', false) == resource.data.get('completed', false)
             && request.resource.data.get('score', -1) == resource.data.get('score', -1)
             && request.resource.data.get('cmi', {}).get('completedModuleIds', [])
                == resource.data.get('cmi', {}).get('completedModuleIds', []);

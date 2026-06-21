@@ -28,7 +28,6 @@ const mockPlayerProgressService: Partial<PlayerProgressService> = {
 
 const mockEnrollmentService: Partial<EnrollmentService> = {
   saveCmi: jest.fn().mockResolvedValue(undefined),
-  markModuleComplete: jest.fn().mockResolvedValue(undefined),
   getRuntimeCmi: jest.fn().mockResolvedValue(undefined),
 };
 

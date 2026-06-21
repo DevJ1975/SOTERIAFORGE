@@ -22,7 +22,10 @@ import { AuthService } from '@assurance/auth';
           type="email"
           placeholder="you@example.com"
           autocomplete="email"
+          required
           aria-required="true"
+          [attr.aria-invalid]="error() ? true : null"
+          [attr.aria-describedby]="error() ? 'login-error' : null"
           [(ngModel)]="email"
         />
       </div>
@@ -35,7 +38,10 @@ import { AuthService } from '@assurance/auth';
           type="password"
           placeholder="Password"
           autocomplete="current-password"
+          required
           aria-required="true"
+          [attr.aria-invalid]="error() ? true : null"
+          [attr.aria-describedby]="error() ? 'login-error' : null"
           [(ngModel)]="password"
         />
       </div>
@@ -43,11 +49,16 @@ import { AuthService } from '@assurance/auth';
       <!-- aria-live region is always present so screen readers announce errors promptly -->
       <div aria-live="polite" aria-atomic="true" class="login__error-region">
         @if (error()) {
-          <p class="login__error" role="alert">{{ error() }}</p>
+          <p id="login-error" class="login__error" role="alert">{{ error() }}</p>
         }
       </div>
 
-      <p-button label="Sign in" [loading]="loading()" (onClick)="submit()" />
+      <p-button
+        label="Sign in"
+        [loading]="loading()"
+        [disabled]="!email || !password"
+        (onClick)="submit()"
+      />
     </section>
   `,
   styles: [

@@ -211,7 +211,9 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                         <span class="quiz-player__order-controls">
                           <button
                             type="button"
-                            aria-label="Move up"
+                            [attr.aria-label]="
+                              'Move ' + labelForOptionId(qs.question, optId) + ' up'
+                            "
                             [disabled]="j === 0"
                             (click)="moveUp(qs, j)"
                           >
@@ -219,7 +221,9 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                           </button>
                           <button
                             type="button"
-                            aria-label="Move down"
+                            [attr.aria-label]="
+                              'Move ' + labelForOptionId(qs.question, optId) + ' down'
+                            "
                             [disabled]="j === qs.orderIds.length - 1"
                             (click)="moveDown(qs, j)"
                           >

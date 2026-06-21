@@ -1,6 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { XAPI_TENANT_EXTENSION } from '@assurance/shared';
+import { XAPI_TENANT_EXTENSION, xapiStatement } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { verifyToken } from './token';
@@ -28,24 +28,37 @@ export const xapi = onRequest({ secrets: [CMI5_SECRET], cors: true }, async (req
     return;
   }
 
-  const body = req.body as Record<string, unknown> | Record<string, unknown>[];
-  const statements = Array.isArray(body) ? body : [body];
-  const ids: string[] = [];
+  const body = req.body as unknown;
+  const rawStatements = Array.isArray(body) ? body : [body];
+  // Bound the batch: reject oversized submissions (Firestore batches cap at 500;
+  // we cap lower to limit storage-cost / DoS abuse from a single auth token).
+  if (rawStatements.length === 0 || rawStatements.length > 100) {
+    res.status(400).send('Between 1 and 100 statements per request');
+    return;
+  }
 
+  const ids: string[] = [];
   const batch = db.batch();
-  for (const raw of statements) {
-    const id = (typeof raw['id'] === 'string' && raw['id']) || randomUUID();
-    const ctx = (raw['context'] as { extensions?: Record<string, unknown> } | undefined) ?? {};
+  for (const raw of rawStatements) {
+    // Validate against the xAPI schema; never persist arbitrary client fields.
+    const parsed = xapiStatement.safeParse(raw);
+    if (!parsed.success) {
+      res.status(400).send('Invalid xAPI statement');
+      return;
+    }
+    const stmt = parsed.data;
+    const id = stmt.id ?? randomUUID();
+    const ctx = stmt.context ?? {};
     batch.set(db.doc(`lrs/${id}`), {
-      ...raw,
+      ...stmt,
       id,
       tenantId: payload.t, // authoritative — from the signed token, not the body
       actorUid: payload.u,
-      timestamp: (raw['timestamp'] as string) ?? new Date().toISOString(),
+      timestamp: stmt.timestamp ?? new Date().toISOString(),
       context: {
         ...ctx,
         registration: payload.r,
-        extensions: { ...ctx.extensions, [XAPI_TENANT_EXTENSION]: payload.t },
+        extensions: { ...(ctx.extensions ?? {}), [XAPI_TENANT_EXTENSION]: payload.t },
       },
     });
     ids.push(id);

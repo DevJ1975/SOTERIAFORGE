@@ -1,7 +1,13 @@
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  PLATFORM_ID,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { toObservable } from '@angular/core/rxjs-interop';
 import { AuthService } from '@assurance/auth';
 
 @Component({
@@ -10,7 +16,8 @@ import { AuthService } from '@assurance/auth';
   imports: [RouterOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="store-header">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <header class="store-header" role="banner">
       <a routerLink="/" class="store-header__brand">Soteria Assurance</a>
       <button
         type="button"
@@ -37,7 +44,9 @@ import { AuthService } from '@assurance/auth';
         }
       </nav>
     </header>
-    <router-outlet />
+    <main id="main-content" tabindex="-1">
+      <router-outlet />
+    </main>
     <footer class="store-footer">
       <span>© {{ year }} Soteria Assurance</span>
       <span>Powered by Trainovation Technologies, LLC</span>
@@ -45,6 +54,18 @@ import { AuthService } from '@assurance/auth';
   `,
   styles: [
     `
+      .skip-link {
+        position: absolute;
+        left: -999px;
+        top: 0;
+        background: #fff;
+        color: #000;
+        padding: 0.5rem 1rem;
+        z-index: 100;
+      }
+      .skip-link:focus {
+        left: 0;
+      }
       .store-header {
         display: flex;
         align-items: center;
@@ -152,7 +173,8 @@ export class AppComponent {
       const router = inject(Router);
       this.authSvc = auth;
       this.routerSvc = router;
-      toObservable(auth.isAuthenticated).subscribe((v) => this.authenticated.set(v));
+      // Mirror the auth signal; effect auto-disposes with the component (no leak).
+      effect(() => this.authenticated.set(auth.isAuthenticated()));
     }
   }
 

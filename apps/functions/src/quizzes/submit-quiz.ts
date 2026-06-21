@@ -1,6 +1,12 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { z } from 'zod';
-import { type QuizResponse, XAPI_TENANT_EXTENSION, XAPI_VERBS, gradeQuiz } from '@assurance/shared';
+import {
+  type QuizResponse,
+  XAPI_TENANT_EXTENSION,
+  XAPI_VERBS,
+  gradeQuiz,
+  quiz as quizSchema,
+} from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { recordModuleCompletion } from '../lib/completion';
@@ -42,7 +48,11 @@ export const submitQuiz = onCall(async (request) => {
 
   const quizSnap = await db.doc(`tenants/${input.tenantId}/quizzes/${input.quizId}`).get();
   if (!quizSnap.exists) throw new HttpsError('not-found', 'Quiz not found.');
-  const quiz = { id: quizSnap.id, ...quizSnap.data() } as Parameters<typeof gradeQuiz>[0];
+  // Validate the stored quiz against the schema before grading — a malformed or
+  // tampered quiz doc must not be graded silently (anti-cheat).
+  const parsedQuiz = quizSchema.safeParse({ id: quizSnap.id, ...quizSnap.data() });
+  if (!parsedQuiz.success) throw new HttpsError('failed-precondition', 'Quiz is malformed.');
+  const quiz = parsedQuiz.data;
   const maxAttempts = quizSnap.get('maxAttempts') as number | undefined;
 
   const uid = caller.uid;
@@ -51,33 +61,36 @@ export const submitQuiz = onCall(async (request) => {
     `tenants/${input.tenantId}/courses/${input.courseId}/enrollments/${uid}`,
   );
 
-  // Enforce attempts limit (tracked per quiz on the enrollment).
-  const enrollSnap = await enrollRef.get();
-  const attemptsMap = (enrollSnap.get('cmi.quizAttempts') as Record<string, number>) ?? {};
-  const usedAttempts = attemptsMap[input.quizId] ?? 0;
-  if (maxAttempts !== undefined && usedAttempts >= maxAttempts) {
-    throw new HttpsError('resource-exhausted', 'No quiz attempts remaining.');
-  }
-
-  // Authoritative server-side grade.
+  // Authoritative server-side grade (pure; no side effects).
   const grade = gradeQuiz(quiz, input.responses as QuizResponse[]);
 
-  // Record the attempt + score on the enrollment.
-  await enrollRef.set(
-    {
-      uid,
-      courseId: input.courseId,
-      tenantId: input.tenantId,
-      score: grade.scorePct,
-      lastActivityAt: now,
-      updatedAt: now,
-      cmi: {
-        ...(enrollSnap.get('cmi') ?? {}),
-        quizAttempts: { ...attemptsMap, [input.quizId]: usedAttempts + 1 },
+  // Enforce attempts limit + record the attempt atomically so concurrent
+  // submissions can't both read the same count and exceed `maxAttempts`.
+  const usedAttempts = await db.runTransaction(async (tx) => {
+    const enrollSnap = await tx.get(enrollRef);
+    const attemptsMap = (enrollSnap.get('cmi.quizAttempts') as Record<string, number>) ?? {};
+    const used = attemptsMap[input.quizId] ?? 0;
+    if (maxAttempts !== undefined && used >= maxAttempts) {
+      throw new HttpsError('resource-exhausted', 'No quiz attempts remaining.');
+    }
+    tx.set(
+      enrollRef,
+      {
+        uid,
+        courseId: input.courseId,
+        tenantId: input.tenantId,
+        score: grade.scorePct,
+        lastActivityAt: now,
+        updatedAt: now,
+        cmi: {
+          ...(enrollSnap.get('cmi') ?? {}),
+          quizAttempts: { ...attemptsMap, [input.quizId]: used + 1 },
+        },
       },
-    },
-    { merge: true },
-  );
+      { merge: true },
+    );
+    return used;
+  });
 
   // On pass, complete the module (grants module XP + quiz XP + badges + streak +
   // leaderboard, idempotently) via the shared completion path.

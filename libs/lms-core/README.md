@@ -8,7 +8,7 @@ Course, module, and enrollment domain logic for Soteria Assurance.
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | `progress.ts`           | Pure functions: `computeCourseProgress`, `isModuleComplete`, `nextIncompleteModule` |
 | `course.store.ts`       | NgRx SignalStore `CourseStore` — state, computed signals, async load methods        |
-| `enrollment.service.ts` | `EnrollmentService` — `enroll()` and `markModuleComplete()`                         |
+| `enrollment.service.ts` | `EnrollmentService` — `enroll()` and `saveCmi()` (completion is server-side)        |
 
 ## Usage
 
@@ -46,7 +46,9 @@ Computed signals: `store.progressPct()`, `store.nextModule()`, `store.isComplete
 const svc = inject(EnrollmentService);
 
 await svc.enroll(tenantId, courseId, uid);
-await svc.markModuleComplete(tenantId, courseId, uid, moduleId, totalModules, score);
+// Module completion / score is server-authoritative: emitted by the players and
+// recorded via the `completeModule` / `submitQuiz` Cloud Functions, not the client.
+await svc.saveCmi(tenantId, courseId, uid, moduleId, cmi); // SCORM runtime state only
 ```
 
 ## Tests

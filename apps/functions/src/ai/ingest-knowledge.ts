@@ -1,10 +1,19 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { z } from 'zod';
 import { chunkText } from '@assurance/shared';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { getProviders } from './providers';
 
 const MAX_TEXT = 500_000;
+
+const ingestInput = z.object({
+  tenantId: z.string().min(1),
+  sourceId: z.string().min(1),
+  text: z.string().max(MAX_TEXT),
+  label: z.string().max(300).optional(),
+  moduleId: z.string().max(200).optional(),
+});
 
 /**
  * Ingest a knowledge source into a tenant's vector index: chunk → embed → write
@@ -19,28 +28,18 @@ export const ingestKnowledge = onCall(async (request) => {
   const caller = request.auth;
   if (!caller) throw new HttpsError('unauthenticated', 'Sign-in required.');
 
-  const data = request.data as {
-    tenantId?: string;
-    sourceId?: string;
-    text?: string;
-    label?: string;
-    moduleId?: string;
-  };
-  const tenantId = String(data.tenantId ?? '');
-  const sourceId = String(data.sourceId ?? '');
-  const text = String(data.text ?? '');
+  const parsed = ingestInput.safeParse(request.data);
+  if (!parsed.success) {
+    throw new HttpsError('invalid-argument', 'tenantId, sourceId and bounded text are required.');
+  }
+  const data = parsed.data;
+  const { tenantId, sourceId, text } = data;
 
   const isSuper = caller.token['role'] === 'superadmin';
   const isOwnTenantAdmin =
     caller.token['role'] === 'tenant_admin' && caller.token['tenantId'] === tenantId;
   if (!isSuper && !isOwnTenantAdmin) {
     throw new HttpsError('permission-denied', 'Not allowed to ingest for this tenant.');
-  }
-  if (!tenantId || !sourceId) {
-    throw new HttpsError('invalid-argument', 'tenantId and sourceId are required.');
-  }
-  if (text.length > MAX_TEXT) {
-    throw new HttpsError('invalid-argument', 'Source text too large.');
   }
 
   const sourceRef = db.doc(`tenants/${tenantId}/knowledgeBase/${sourceId}`);
