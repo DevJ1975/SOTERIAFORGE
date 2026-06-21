@@ -50,12 +50,17 @@ service cloud.firestore {
       // members: a user reads their own member doc + admins read all in-tenant.
       match /members/{uid} {
         allow read: if isSelf(uid) ? inTenant(tenantId) : isTenantAdmin(tenantId);
-        // Role/status changes are claim-bearing => Cloud Functions only.
-        // Learners may update a constrained set of self fields (profile, activity).
+        // A learner may update ONLY profile fields on their own doc. Everything
+        // else is server-only (Cloud Functions / Admin SDK): role/status/tenantId
+        // (claim-bearing), the gamification + credit state (xp, level, streakDays,
+        // earnedBadgeIds — the Open-Badges compliance record), fcmTokens (set via
+        // the registerFcmToken callable), and lastStreakReminderAt. An allowlist
+        // (default-deny) is used so any new server-owned field stays protected
+        // automatically — a learner must not be able to forge XP, levels,
+        // completion badges, streaks, or push tokens.
         allow update: if isSelf(uid) && inTenant(tenantId)
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.status == resource.data.status
-          && request.resource.data.tenantId == resource.data.tenantId;
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['displayName', 'avatarUrl', 'updatedAt']);
         allow create, delete: if false;
       }
 

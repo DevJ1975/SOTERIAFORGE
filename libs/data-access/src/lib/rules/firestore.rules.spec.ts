@@ -118,6 +118,56 @@ describe('Firestore rules — tenant isolation', () => {
       ),
     );
   });
+
+  it('a learner CANNOT forge xp / level via a member update (anti-cheat)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { xp: 999999, level: 99 },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT forge earnedBadgeIds (compliance-badge forgery)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { earnedBadgeIds: ['fire-safety-2026'] },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT forge their streak', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { streakDays: 365 },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CANNOT write fcmTokens directly (server/callable only)', async () => {
+    await assertFails(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { fcmTokens: ['stolen-token'] },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('a learner CAN update their own profile (displayName / avatarUrl)', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(learnerAcme(), 'tenants/acme/members/u-learner'),
+        { displayName: 'Jamil', avatarUrl: 'https://example.test/a.png' },
+        { merge: true },
+      ),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
