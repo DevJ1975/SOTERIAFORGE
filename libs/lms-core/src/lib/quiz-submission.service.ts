@@ -29,7 +29,10 @@ interface OutboxItem {
   queuedAt: string;
 }
 
-const DB_NAME = 'assurance.offline';
+// Own database (a single store): every offline feature uses a dedicated IndexedDB
+// database to avoid the multi-store-same-version footgun (see IndexedDbStore — only
+// `onupgradeneeded` creates stores, so siblings sharing one DB go uncreated).
+const DB_NAME = 'assurance.quiz-outbox';
 const STORE_NAME = 'quiz-outbox';
 
 function outboxKey(input: QuizSubmitInput): string {

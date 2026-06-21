@@ -40,15 +40,15 @@ interface OutboxItem {
 }
 
 /**
- * Own database, distinct from the quiz/xAPI outboxes (`assurance.offline`).
+ * Own database with a single store — the footgun-safe pattern shared by every
+ * offline feature here.
  *
  * Why a dedicated database: `IndexedDbStore` only creates object stores during
- * `onupgradeneeded`. Two stores sharing one database at the same version where
- * each instance declares only its own store will leave a sibling store
- * uncreated (the multi-store footgun). The quiz outbox and xAPI queue already
- * coexist in `assurance.offline`; rather than coordinate a version bump + a
- * shared `allStores` declaration across three services, this outbox gets its own
- * database so there is exactly one store in it and the upgrade is unambiguous.
+ * `onupgradeneeded`, so multiple stores sharing one database at the same version
+ * (each instance declaring only its own store) would leave siblings uncreated
+ * (the multi-store footgun). Each offline feature — xAPI queue, quiz outbox, quiz
+ * drafts, this completion outbox, and downloads — therefore uses its own database,
+ * so there is exactly one store per database and every upgrade is unambiguous.
  */
 const DB_NAME = 'assurance.completion-outbox';
 const STORE_NAME = 'completion-outbox';

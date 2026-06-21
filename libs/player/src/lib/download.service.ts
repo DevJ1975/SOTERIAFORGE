@@ -29,8 +29,8 @@ import type { Module } from '@assurance/shared';
  * ## IndexedDB placement / footgun-safety
  *
  * The manifest store uses its **own database** `assurance.downloads` (store
- * `manifests`), separate from the existing `assurance.offline` and
- * `assurance.completion-outbox` databases. IndexedDB object stores can only be
+ * `manifests`), separate from the other per-feature databases (xAPI queue, quiz
+ * outbox, quiz drafts, completion outbox). IndexedDB object stores can only be
  * created during `onupgradeneeded`; sharing a database across unrelated services
  * means every one of them must declare every sibling store and coordinate the
  * version number. Giving downloads its own database removes that cross-service

@@ -3,8 +3,17 @@ import { isPlatformBrowser } from '@angular/common';
 import { IndexedDbStore, isIndexedDbAvailable } from '@assurance/shared';
 import type { XapiStatement } from '@assurance/shared';
 
-/** IndexedDB database + store names for the pending xAPI statement queue. */
-const DB_NAME = 'assurance.offline';
+/**
+ * IndexedDB database + store for the pending xAPI statement queue.
+ *
+ * Its own database (a single store) on purpose: `IndexedDbStore` only creates
+ * object stores during `onupgradeneeded`, so multiple stores sharing one database
+ * at the same version — each instance declaring only its own store in `allStores`
+ * — would leave the sibling stores uncreated (the multi-store footgun). Every
+ * offline feature therefore uses a dedicated database (cf. the quiz outbox/drafts,
+ * completion outbox, and downloads), so the upgrade is unambiguous.
+ */
+const DB_NAME = 'assurance.xapi-queue';
 const STORE_NAME = 'xapi-queue';
 
 /**

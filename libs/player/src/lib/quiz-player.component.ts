@@ -48,7 +48,9 @@ interface QuizDraft {
   answers: QuestionDraft[];
 }
 
-const DRAFT_DB = 'assurance.offline';
+// Own database (a single store): every offline feature uses a dedicated IndexedDB
+// database to avoid the multi-store-same-version footgun (see IndexedDbStore).
+const DRAFT_DB = 'assurance.quiz-drafts';
 const DRAFT_STORE = 'quiz-drafts';
 const AUTOSAVE_DEBOUNCE_MS = 600;
 

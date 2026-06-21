@@ -53,6 +53,16 @@ function requestToPromise<T>(req: IDBRequest<T>): Promise<T> {
  * the same database are created up-front via {@link IndexedDbStore.open} so that
  * the `onupgradeneeded` handler can declare them all (IndexedDB only allows
  * schema changes during a version upgrade).
+ *
+ * **Codebase convention — one database per offline feature.** Prefer giving each
+ * feature its **own database** (a single store) over sharing one database across
+ * services. Sharing is only safe if *every* instance passes the same `version`
+ * AND the same complete `allStores` list; if one instance opens the shared
+ * database first declaring only its own store, the siblings are silently never
+ * created and their transactions throw `NotFoundError` at runtime (a bug unit
+ * tests miss, since each test uses a fresh database). The offline features here —
+ * xAPI queue, quiz outbox, quiz drafts, completion outbox, downloads — each use a
+ * dedicated database for exactly this reason.
  */
 export class IndexedDbStore<V = unknown> {
   private dbPromise: Promise<IDBDatabase> | null = null;
