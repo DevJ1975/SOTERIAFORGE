@@ -69,12 +69,30 @@ service cloud.firestore {
           allow write: if canAuthor(tenantId);
         }
 
-        // enrollments: a learner reads/writes only their own progress doc.
+        // enrollments: a learner reads/writes only their own progress doc, but
+        // the anti-cheat fields (progressPct / completed / score /
+        // completedModuleIds) are server-authoritative — set only by Cloud
+        // Functions (admin SDK bypasses rules), never trusted from the client.
         match /enrollments/{uid} {
           allow read: if isSelf(uid) ? inTenant(tenantId) : isTenantAdmin(tenantId);
-          allow create, update: if isSelf(uid) && inTenant(tenantId)
-            && request.resource.data.tenantId == tenantId;
-          // Score-bearing completion is validated server-side (anti-cheat).
+
+          // Self-enroll: a learner may create only a zero-progress doc.
+          allow create: if isSelf(uid) && inTenant(tenantId)
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.get('progressPct', 0) == 0
+            && request.resource.data.get('completed', false) == false
+            && !('score' in request.resource.data);
+
+          // Self-update: may touch activity / SCORM runtime state, but must NOT
+          // change the server-authoritative completion/score fields.
+          allow update: if isSelf(uid) && inTenant(tenantId)
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.get('progressPct', 0) == resource.data.get('progressPct', 0)
+            && request.resource.data.get('completed', false) == resource.data.get('completed', false)
+            && request.resource.data.get('score', -1) == resource.data.get('score', -1)
+            && request.resource.data.get(['cmi', 'completedModuleIds'], [])
+               == resource.data.get(['cmi', 'completedModuleIds'], []);
+
           allow delete: if isTenantAdmin(tenantId);
         }
       }

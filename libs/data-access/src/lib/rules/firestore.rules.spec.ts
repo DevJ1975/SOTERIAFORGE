@@ -240,6 +240,74 @@ describe('Firestore rules — enrollment self-write', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 3b. Enrollment anti-cheat: completion/score are server-authoritative
+// ---------------------------------------------------------------------------
+describe('Firestore rules — enrollment anti-cheat fields are server-only', () => {
+  const ownDoc = () => doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner');
+
+  beforeEach(async () => {
+    // Seed the learner's own zero-progress enrollment (as self-enroll would).
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'tenants/acme/courses/c1/enrollments/u-learner'), {
+        uid: 'u-learner',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+      });
+    });
+  });
+
+  it('a learner CANNOT self-create an already-completed enrollment', async () => {
+    await assertFails(
+      setDoc(doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner'), {
+        uid: 'u-learner',
+        tenantId: 'acme',
+        progressPct: 100,
+        completed: true,
+      }),
+    );
+  });
+
+  it('a learner CANNOT self-create with a score', async () => {
+    await assertFails(
+      setDoc(doc(learnerAcme(), 'tenants/acme/courses/c1/enrollments/u-learner-2'), {
+        uid: 'u-learner-2',
+        tenantId: 'acme',
+        progressPct: 0,
+        completed: false,
+        score: 100,
+      }),
+    );
+  });
+
+  it('a learner CANNOT mark their own enrollment completed', async () => {
+    await assertFails(setDoc(ownDoc(), { completed: true }, { merge: true }));
+  });
+
+  it('a learner CANNOT bump their own progressPct', async () => {
+    await assertFails(setDoc(ownDoc(), { progressPct: 100 }, { merge: true }));
+  });
+
+  it('a learner CANNOT set their own score', async () => {
+    await assertFails(setDoc(ownDoc(), { score: 95 }, { merge: true }));
+  });
+
+  it('a learner CANNOT inject completedModuleIds', async () => {
+    await assertFails(setDoc(ownDoc(), { cmi: { completedModuleIds: ['m1'] } }, { merge: true }));
+  });
+
+  it('a learner CAN update SCORM runtime state + activity (allowed fields)', async () => {
+    await assertSucceeds(
+      setDoc(
+        ownDoc(),
+        { lastActivityAt: new Date().toISOString(), cmi: { runtime: { m1: { location: '3' } } } },
+        { merge: true },
+      ),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 4. AI conversations isolation
 // ---------------------------------------------------------------------------
 describe('Firestore rules — AI conversation isolation', () => {

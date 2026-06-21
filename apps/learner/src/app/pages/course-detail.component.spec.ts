@@ -65,7 +65,6 @@ const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
 
 const mockEnrollmentService: Partial<EnrollmentService> = {
   enroll: jest.fn().mockResolvedValue(mockEnrollment),
-  markModuleComplete: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockAuthService = {

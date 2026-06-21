@@ -44,9 +44,7 @@ const mockPlayerProgressService: Partial<PlayerProgressService> = {
   recordCompletion: jest.fn().mockResolvedValue(undefined),
 };
 
-const mockEnrollmentService: Partial<EnrollmentService> = {
-  markModuleComplete: jest.fn().mockResolvedValue(undefined),
-};
+const mockEnrollmentService: Partial<EnrollmentService> = {};
 
 const mockXapiClient: Partial<XapiClient> = {
   buildStatement: jest.fn().mockReturnValue({ actor: {}, verb: {}, object: {} }),
