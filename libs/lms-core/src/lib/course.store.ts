@@ -11,6 +11,7 @@ export interface CourseStoreState {
   modules: Module[];
   enrollment: Enrollment | null;
   loading: boolean;
+  error: string | null;
 }
 
 const initialState: CourseStoreState = {
@@ -20,6 +21,7 @@ const initialState: CourseStoreState = {
   modules: [],
   enrollment: null,
   loading: false,
+  error: null,
 };
 
 /**
@@ -68,7 +70,7 @@ export const CourseStore = signalStore(
        * from a resolver or a dedicated ModuleRepository.
        */
       async load(tenantId: string, courseId: string, uid: string): Promise<void> {
-        patchState(store, { loading: true, tenantId, courseId });
+        patchState(store, { loading: true, error: null, tenantId, courseId });
 
         try {
           const [course, enrollment] = await Promise.all([
@@ -77,8 +79,11 @@ export const CourseStore = signalStore(
           ]);
 
           patchState(store, { course, enrollment, loading: false });
-        } catch {
-          patchState(store, { loading: false });
+        } catch (err) {
+          // Surface the failure instead of silently rendering an empty course.
+          const message = err instanceof Error ? err.message : 'Failed to load course.';
+          console.error('CourseStore.load failed', err);
+          patchState(store, { loading: false, error: message });
         }
       },
 

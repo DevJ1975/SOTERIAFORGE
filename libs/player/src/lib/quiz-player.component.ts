@@ -150,11 +150,21 @@ function matchOptions(q: QuizQuestion): { lefts: string[]; rights: string[] } {
                       <span>{{ labelForOptionId(qs.question, optId) }}</span>
                       @if (!submitted()) {
                         <span class="quiz-player__order-controls">
-                          <button type="button" [disabled]="j === 0" (click)="moveUp(qs, j)">
+                          <button
+                            type="button"
+                            [attr.aria-label]="
+                              'Move ' + labelForOptionId(qs.question, optId) + ' up'
+                            "
+                            [disabled]="j === 0"
+                            (click)="moveUp(qs, j)"
+                          >
                             ↑
                           </button>
                           <button
                             type="button"
+                            [attr.aria-label]="
+                              'Move ' + labelForOptionId(qs.question, optId) + ' down'
+                            "
                             [disabled]="j === qs.orderIds.length - 1"
                             (click)="moveDown(qs, j)"
                           >

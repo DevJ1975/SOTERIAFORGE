@@ -1,9 +1,22 @@
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { logger } from 'firebase-functions/v2';
 import AdmZip from 'adm-zip';
+import * as path from 'node:path';
 import { getStorage } from 'firebase-admin/storage';
 import { db } from '../lib/admin';
 import { parseManifestXml } from './manifest-node';
+
+/**
+ * Reject zip entries / manifest hrefs that would escape the destination prefix
+ * (zip-slip / path traversal). Returns the safe relative path, or throws.
+ */
+function safeRelativePath(rel: string, label: string): string {
+  const norm = path.posix.normalize(rel.replace(/\\/g, '/'));
+  if (norm.startsWith('../') || norm.startsWith('/') || norm === '..' || norm.includes('\0')) {
+    throw new Error(`Unsafe ${label} in SCORM package: ${rel}`);
+  }
+  return norm;
+}
 
 /**
  * Unzip-on-upload for SCORM packages. When a `.zip` lands under
@@ -44,12 +57,13 @@ export const onScormUpload = onObjectFinalized({ memory: '512MiB' }, async (even
     await Promise.all(
       entries
         .filter((e) => !e.isDirectory && e.entryName.startsWith(baseDir))
-        .map((e) =>
-          bucket.file(`${destPrefix}${e.entryName.slice(baseDir.length)}`).save(e.getData()),
-        ),
+        .map((e) => {
+          const rel = safeRelativePath(e.entryName.slice(baseDir.length), 'entry');
+          return bucket.file(`${destPrefix}${rel}`).save(e.getData());
+        }),
     );
 
-    const launchPath = `${destPrefix}${manifest.launchHref}`;
+    const launchPath = `${destPrefix}${safeRelativePath(manifest.launchHref, 'launch href')}`;
     await recordRef.set(
       {
         status: 'ready',

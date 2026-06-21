@@ -39,6 +39,8 @@ export class ScormRuntimeService {
   private _api: unknown = null;
   private _version: ScormVersion | null = null;
   private _opts: ScormRuntimeOptions | null = null;
+  /** Detaches the event handlers registered in `initialize`. */
+  private _detach: (() => void) | null = null;
 
   /**
    * Initialize the SCORM runtime.
@@ -46,6 +48,10 @@ export class ScormRuntimeService {
    * window so that SCORM content inside an <iframe> can reach it.
    */
   async initialize(opts: ScormRuntimeOptions): Promise<void> {
+    // Tear down any previous SCO so handlers/instances don't accumulate on the
+    // root singleton across successive launches.
+    if (this._api) this.terminate();
+
     this._opts = opts;
     this._version = opts.version;
 
@@ -66,14 +72,14 @@ export class ScormRuntimeService {
       (window as WindowWithScorm).API = api;
 
       // Wire commit event — scorm-again fires "LMSCommit" on commit
-      api.on('LMSCommit', () => {
-        void this._handleCommit();
-      });
-
-      // Wire finish event
-      api.on('LMSFinish', () => {
-        void this._handleFinish();
-      });
+      const onCommit = (): void => void this._handleCommit();
+      const onFinish = (): void => void this._handleFinish();
+      api.on('LMSCommit', onCommit);
+      api.on('LMSFinish', onFinish);
+      this._detach = () => {
+        api.off?.('LMSCommit', onCommit);
+        api.off?.('LMSFinish', onFinish);
+      };
     } else {
       const api = new mod.Scorm2004API(settings) as unknown as Scorm2004APIShape;
       this._api = api;
@@ -82,19 +88,21 @@ export class ScormRuntimeService {
       (window as WindowWithScorm).API_1484_11 = api;
 
       // Wire commit event — scorm-again fires "Commit" on commit
-      api.on('Commit', () => {
-        void this._handleCommit();
-      });
-
-      // Wire finish/terminate event
-      api.on('Terminate', () => {
-        void this._handleFinish();
-      });
+      const onCommit = (): void => void this._handleCommit();
+      const onTerminate = (): void => void this._handleFinish();
+      api.on('Commit', onCommit);
+      api.on('Terminate', onTerminate);
+      this._detach = () => {
+        api.off?.('Commit', onCommit);
+        api.off?.('Terminate', onTerminate);
+      };
     }
   }
 
   /** Tear down the SCORM runtime and remove the global API object. */
   terminate(): void {
+    this._detach?.();
+    this._detach = null;
     const win = window as WindowWithScorm;
     if (this._version === '1.2') {
       delete win.API;
@@ -162,11 +170,13 @@ export class ScormRuntimeService {
 
 interface Scorm12APIShape {
   on(event: string, callback: () => void): void;
+  off?(event: string, callback: () => void): void;
   renderCMIToJSONObject(): Record<string, unknown>;
 }
 
 interface Scorm2004APIShape {
   on(event: string, callback: () => void): void;
+  off?(event: string, callback: () => void): void;
   renderCMIToJSONObject(): Record<string, unknown>;
 }
 

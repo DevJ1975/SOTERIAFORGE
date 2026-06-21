@@ -18,6 +18,12 @@ data class Principal(
     val isSuperadmin: Boolean get() = role == "superadmin"
 }
 
+/** Module completion criteria (mirrors module.completion in the schema). */
+data class Completion(
+    val minScore: Double? = null,
+    val minProgressPct: Double? = null,
+)
+
 /** /tenants/{tenantId}/courses/{courseId} */
 data class Course(
     @DocumentId val id: String = "",
@@ -26,7 +32,11 @@ data class Course(
     val description: String = "",
     val status: String = "draft",
     val tags: List<String> = emptyList(),
+    val badgeRefs: List<String> = emptyList(),
     val xpReward: Long = 0,
+    val sourceLibraryId: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
 )
 
 /** /tenants/{tenantId}/courses/{courseId}/modules/{moduleId} */
@@ -37,8 +47,13 @@ data class Module(
     val title: String = "",
     val order: Long = 0,
     val contentType: String = "video",
+    val assetRef: String? = null,
     val externalUrl: String? = null,
     val xpReward: Long = 0,
+    val badgeRefs: List<String> = emptyList(),
+    val completion: Completion = Completion(),
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
 )
 
 /** /tenants/{tenantId}/courses/{courseId}/enrollments/{uid} */
@@ -49,4 +64,12 @@ data class Enrollment(
     val progressPct: Double = 0.0,
     val completed: Boolean = false,
     val score: Double? = null,
+    val lastActivityAt: String? = null,
+    val assigned: Boolean? = null,
+    val assignedBy: String? = null,
+    val assignedAt: String? = null,
+    val dueAt: String? = null,
+    val cmi: Map<String, Any?> = emptyMap(),
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
 )

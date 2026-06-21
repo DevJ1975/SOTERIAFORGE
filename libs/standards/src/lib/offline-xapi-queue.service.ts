@@ -33,6 +33,14 @@ export class OfflineXapiQueue {
   private readonly isBrowser: boolean;
   /** Sender registered by XapiClient; called during automatic flush. */
   private registeredSender: ((s: XapiStatement) => Promise<void>) | null = null;
+  /** Guards against overlapping flushes (e.g. concurrent `online` events). */
+  private flushing = false;
+  /**
+   * In-memory fallback used only after a `localStorage` quota error, so queued
+   * statements are not silently dropped within the session. (Cross-reload
+   * durability still requires the IndexedDB migration noted above.)
+   */
+  private memory: XapiStatement[] | null = null;
 
   constructor() {
     this.isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -92,20 +100,30 @@ export class OfflineXapiQueue {
    */
   async flush(sender: (s: XapiStatement) => Promise<void>): Promise<void> {
     if (typeof localStorage === 'undefined') return;
-    const queue = this._read();
-    if (queue.length === 0) return;
+    if (this.flushing) return; // an in-flight flush will drain the queue
+    this.flushing = true;
+    try {
+      const snapshot = this._read();
+      if (snapshot.length === 0) return;
 
-    const remaining: XapiStatement[] = [];
-    for (const stmt of queue) {
-      try {
-        await sender(stmt);
-        // Success — do NOT add to `remaining`; statement is drained.
-      } catch {
-        // Keep for next flush.
-        remaining.push(stmt);
+      const failed: XapiStatement[] = [];
+      for (const stmt of snapshot) {
+        try {
+          await sender(stmt);
+          // Success — drained.
+        } catch {
+          failed.push(stmt);
+        }
       }
+
+      // Re-read so statements `enqueue`d during the awaited sends (which append
+      // to the end) are preserved rather than overwritten by the stale snapshot.
+      const current = this._read();
+      const addedDuringFlush = current.slice(snapshot.length);
+      this._write([...failed, ...addedDuringFlush]);
+    } finally {
+      this.flushing = false;
     }
-    this._write(remaining);
   }
 
   // ---------------------------------------------------------------------------
@@ -113,6 +131,8 @@ export class OfflineXapiQueue {
   // ---------------------------------------------------------------------------
 
   private _read(): XapiStatement[] {
+    // Once in fallback mode, the in-memory queue is authoritative for the session.
+    if (this.memory !== null) return [...this.memory];
     try {
       const raw = localStorage.getItem(QUEUE_KEY);
       if (!raw) return [];
@@ -123,11 +143,17 @@ export class OfflineXapiQueue {
   }
 
   private _write(queue: XapiStatement[]): void {
+    if (this.memory !== null) {
+      this.memory = [...queue];
+      return;
+    }
     try {
       localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
     } catch {
-      // Storage quota exceeded — silently drop; statements will still be sent
-      // by the in-memory fallback on the next flush attempt.
+      // Storage quota exceeded — switch to an in-memory queue for the rest of
+      // the session so statements are retained (not dropped) and can still be
+      // flushed. Durability across reloads needs the IndexedDB migration.
+      this.memory = [...queue];
     }
   }
 }

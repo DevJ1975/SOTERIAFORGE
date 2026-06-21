@@ -31,5 +31,6 @@ struct CoursesView: View {
                 .refreshable { viewModel.refresh() }
             }
         }
+        .task { viewModel.refresh() }
     }
 }

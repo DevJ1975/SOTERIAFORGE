@@ -30,10 +30,17 @@ export const stripeWebhook = onRequest(
       return;
     }
 
-    // Idempotency: process each event id at most once.
+    // Idempotency: atomically claim the event before doing any work. `create()`
+    // fails if the doc already exists, so concurrent/retried deliveries of the
+    // same event can never both pass this guard and double-grant.
     const eventRef = db.doc(`stripeEvents/${event.id}`);
-    const already = await eventRef.get();
-    if (already.exists) {
+    try {
+      await eventRef.create({
+        eventId: event.id,
+        type: event.type,
+        receivedAt: new Date().toISOString(),
+      });
+    } catch {
       res.status(200).send('Already processed');
       return;
     }
@@ -48,11 +55,7 @@ export const stripeWebhook = onRequest(
       }
     }
 
-    await eventRef.set({
-      eventId: event.id,
-      type: event.type,
-      processedAt: new Date().toISOString(),
-    });
+    await eventRef.set({ processedAt: new Date().toISOString() }, { merge: true });
 
     res.status(200).send('ok');
   },

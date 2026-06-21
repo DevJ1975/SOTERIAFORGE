@@ -1,8 +1,11 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { db } from '../lib/admin';
 import { getProviders } from './providers';
 import { retrieveTopK } from './retrieval';
+
+const askInput = z.object({ question: z.string().min(1).max(4000) });
 
 /**
  * Per-tenant RAG tutor. Hard isolation invariant: retrieval is scoped to the
@@ -15,7 +18,9 @@ export const askTutor = onCall(async (request) => {
   const tenantId = caller.token['tenantId'] as string | undefined;
   if (!tenantId) throw new HttpsError('failed-precondition', 'No tenant scope on caller.');
 
-  const question = String((request.data as { question?: unknown })?.question ?? '').trim();
+  const parsed = askInput.safeParse(request.data);
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'A valid question is required.');
+  const question = parsed.data.question.trim();
   if (!question) throw new HttpsError('invalid-argument', 'A question is required.');
 
   const { embedding, llm } = await getProviders();

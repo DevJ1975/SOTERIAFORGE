@@ -11,7 +11,8 @@ final class CoursesViewModel: ObservableObject {
 
     init(principal: Principal) {
         self.principal = principal
-        refresh()
+        // Initial load is triggered by the view's `.task`, not here, to avoid
+        // side-effecting async work during init (and during SwiftUI previews).
     }
 
     func refresh() {

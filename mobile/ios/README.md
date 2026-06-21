@@ -9,7 +9,7 @@ Native iOS client (Swift · SwiftUI · firebase-ios-sdk).
 ## Prerequisites
 
 - Xcode 15+ (iOS 16 deployment target)
-- [XcodeGen](https://github.com/yonixx/XcodeGen) (`brew install xcodegen`) to
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) to
   generate the `.xcodeproj` from `project.yml`
 - A Firebase project with **Identity Platform multi-tenancy** + Email/Password.
 

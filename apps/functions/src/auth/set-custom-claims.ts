@@ -36,16 +36,20 @@ export const setMemberRole = onCall(async (request) => {
   if (!tenantSnap.exists) throw new HttpsError('not-found', 'Tenant does not exist.');
   const gcipTenantId = tenantSnap.get('gcipTenantId') as string | undefined;
 
-  const claims = {
-    role: input.role,
-    tenantId: input.role === 'superadmin' ? undefined : input.tenantId,
-    entitlements: [],
-    gcipTenantId,
-  };
-
   const authClient = gcipTenantId
     ? adminAuth.tenantManager().authForTenant(gcipTenantId)
     : adminAuth;
+
+  // Merge into existing claims so a role change never wipes B2C entitlements
+  // (which are written to claims only by the verified Stripe webhook).
+  const existing = (await authClient.getUser(input.uid)).customClaims ?? {};
+  const claims = {
+    ...existing,
+    role: input.role,
+    tenantId: input.role === 'superadmin' ? undefined : input.tenantId,
+    entitlements: (existing['entitlements'] as string[] | undefined) ?? [],
+    gcipTenantId,
+  };
 
   await authClient.setCustomUserClaims(input.uid, claims);
   await db.doc(`tenants/${input.tenantId}/members/${input.uid}`).set(
