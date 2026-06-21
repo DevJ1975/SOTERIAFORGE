@@ -11,7 +11,7 @@ jest.mock('firebase-functions/params', () => ({
   defineSecret: () => ({ value: () => 'test-secret' }),
 }));
 jest.mock('firebase-admin/firestore', () => ({
-  FieldValue: { arrayUnion: (...args: unknown[]) => ({ __arrayUnion: args }) },
+  FieldValue: require('../test/fake-firestore').FakeFieldValue,
 }));
 jest.mock('stripe', () => ({
   __esModule: true,
@@ -92,5 +92,57 @@ describe('stripeWebhook (entitlement integrity)', () => {
     expect(res2.body).toBe('Already processed');
     // The grant side effect ran for the first delivery only.
     expect(mockAuth.setCustomUserClaims).toHaveBeenCalledTimes(1);
+  });
+
+  it('revokes the entitlement when a subscription is cancelled', async () => {
+    // 1. Grant via a subscription checkout (records the subscription -> product map).
+    mockConstructEvent.mockReturnValue({
+      id: 'evt_grant',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          client_reference_id: 'u1',
+          metadata: { productId: 'prod_x' },
+          customer: 'cus_1',
+          subscription: 'sub_1',
+          amount_total: 1000,
+          currency: 'usd',
+        },
+      },
+    });
+    await call(req(), makeRes());
+    expect((mockDb.store.get('customers/u1') as Record<string, unknown>)['entitlements']).toEqual([
+      'prod_x',
+    ]);
+
+    // 2. Cancel the subscription.
+    mockConstructEvent.mockReturnValue({
+      id: 'evt_cancel',
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_1', customer: 'cus_1' } },
+    });
+    const res = makeRes();
+    await call(req(), res);
+
+    expect(res.statusCode).toBe(200);
+    const cust = mockDb.store.get('customers/u1') as Record<string, unknown>;
+    expect(cust['entitlements']).toEqual([]);
+    expect(cust['subscriptions']).toEqual({});
+    const lastClaims = mockAuth.setCustomUserClaims.mock.calls.at(-1)?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(lastClaims['entitlements']).toEqual([]);
+  });
+
+  it('subscription.deleted for an unknown customer is a safe no-op', async () => {
+    mockConstructEvent.mockReturnValue({
+      id: 'evt_unknown',
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_9', customer: 'cus_unknown' } },
+    });
+    const res = makeRes();
+    await call(req(), res);
+    expect(res.statusCode).toBe(200);
   });
 });

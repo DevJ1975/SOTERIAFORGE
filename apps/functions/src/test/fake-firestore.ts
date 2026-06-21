@@ -24,13 +24,27 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
-function deepMerge(target: Data, src: Data): Data {
-  const out: Data = { ...target };
-  for (const [k, v] of Object.entries(src)) {
-    if (isPlainObject(v) && isPlainObject(out[k])) {
-      out[k] = deepMerge(out[k] as Data, v);
+type Sentinel = { __op: 'arrayUnion' | 'arrayRemove' | 'delete'; vals?: unknown[] };
+function isSentinel(v: unknown): v is Sentinel {
+  return isPlainObject(v) && typeof (v as Record<string, unknown>)['__op'] === 'string';
+}
+const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Deep-merges `patch` into `base`, resolving FieldValue sentinels. */
+function applyWrite(base: Data, patch: Data): Data {
+  const out: Data = { ...base };
+  for (const [k, v] of Object.entries(patch)) {
+    if (isSentinel(v)) {
+      const cur = Array.isArray(out[k]) ? (out[k] as unknown[]) : [];
+      if (v.__op === 'delete') delete out[k];
+      else if (v.__op === 'arrayUnion')
+        out[k] = [...cur, ...(v.vals ?? []).filter((x) => !cur.some((c) => eq(c, x)))];
+      else if (v.__op === 'arrayRemove')
+        out[k] = cur.filter((c) => !(v.vals ?? []).some((x) => eq(c, x)));
+    } else if (isPlainObject(v) && isPlainObject(out[k])) {
+      out[k] = applyWrite(out[k] as Data, v);
     } else {
-      out[k] = v;
+      out[k] = clone(v);
     }
   }
   return out;
@@ -68,23 +82,20 @@ class FakeDocRef {
     return new FakeSnapshot(this.docId, this.store.get(this.path));
   }
   async set(data: Data, opts?: { merge?: boolean }): Promise<void> {
-    const next =
-      opts?.merge && this.store.has(this.path)
-        ? deepMerge(this.store.get(this.path) as Data, clone(data))
-        : clone(data);
-    this.store.set(this.path, next);
+    const base = opts?.merge ? ((this.store.get(this.path) as Data) ?? {}) : {};
+    this.store.set(this.path, applyWrite(base, data));
   }
   async create(data: Data): Promise<void> {
     if (this.store.has(this.path)) {
       throw Object.assign(new Error(`ALREADY_EXISTS: ${this.path}`), { code: 6 });
     }
-    this.store.set(this.path, clone(data));
+    this.store.set(this.path, applyWrite({}, data));
   }
   async update(data: Data): Promise<void> {
     if (!this.store.has(this.path)) {
       throw Object.assign(new Error(`NOT_FOUND: ${this.path}`), { code: 5 });
     }
-    this.store.set(this.path, deepMerge(this.store.get(this.path) as Data, clone(data)));
+    this.store.set(this.path, applyWrite(this.store.get(this.path) as Data, data));
   }
   async delete(): Promise<void> {
     this.store.delete(this.path);
@@ -169,6 +180,13 @@ class FakeWriteBatch {
     for (const op of this.ops) await op();
   }
 }
+
+/** Mirrors firebase-admin/firestore FieldValue (resolved by applyWrite). */
+export const FakeFieldValue = {
+  arrayUnion: (...vals: unknown[]) => ({ __op: 'arrayUnion' as const, vals }),
+  arrayRemove: (...vals: unknown[]) => ({ __op: 'arrayRemove' as const, vals }),
+  delete: () => ({ __op: 'delete' as const }),
+};
 
 /** Minimal in-memory Firebase Auth fake (incl. GCIP tenant manager). */
 export function makeFakeAuth(seedUsers: Record<string, { customClaims?: Data }> = {}) {

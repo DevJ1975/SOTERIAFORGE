@@ -53,6 +53,14 @@ export const stripeWebhook = onRequest(
       if (uid && productId) {
         await grantEntitlement(uid, productId, event.id, session);
       }
+    } else if (event.type === 'customer.subscription.deleted') {
+      // Subscription ended (cancellation/lapse) — revoke the entitlement it
+      // granted so access doesn't persist after payment stops.
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
+      if (customerId) {
+        await revokeSubscription(sub.id, customerId);
+      }
     }
 
     await eventRef.set({ processedAt: new Date().toISOString() }, { merge: true });
@@ -61,6 +69,14 @@ export const stripeWebhook = onRequest(
   },
 );
 
+/** Re-derive a user's custom claims from the canonical Firestore entitlements. */
+async function syncEntitlementClaims(uid: string): Promise<void> {
+  const snap = await db.doc(`customers/${uid}`).get();
+  const entitlements = (snap.get('entitlements') as string[]) ?? [];
+  const existing = (await adminAuth.getUser(uid)).customClaims ?? {};
+  await adminAuth.setCustomUserClaims(uid, { ...existing, entitlements });
+}
+
 async function grantEntitlement(
   uid: string,
   productId: string,
@@ -68,11 +84,15 @@ async function grantEntitlement(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const customerRef = db.doc(`customers/${uid}`);
+  const subscriptionId = typeof session.subscription === 'string' ? session.subscription : null;
   await customerRef.set(
     {
       uid,
       stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
       entitlements: FieldValue.arrayUnion(productId),
+      // Map the subscription -> product so a later cancellation revokes the
+      // right entitlement.
+      ...(subscriptionId ? { subscriptions: { [subscriptionId]: productId } } : {}),
       purchaseHistory: FieldValue.arrayUnion({
         productId,
         stripeEventId: eventId,
@@ -85,8 +105,30 @@ async function grantEntitlement(
   );
 
   // Reflect entitlements into custom claims (B2C users live in the b2c tenant).
-  const snap = await customerRef.get();
-  const entitlements = (snap.get('entitlements') as string[]) ?? [productId];
-  const existing = (await adminAuth.getUser(uid)).customClaims ?? {};
-  await adminAuth.setCustomUserClaims(uid, { ...existing, entitlements });
+  await syncEntitlementClaims(uid);
+}
+
+/**
+ * Revoke the entitlement a subscription granted. Looks up the customer by Stripe
+ * customer id and the product via the stored subscription->product map, removes
+ * it from `entitlements`, drops the mapping, and re-syncs custom claims.
+ */
+async function revokeSubscription(subscriptionId: string, customerId: string): Promise<void> {
+  const q = await db.collection('customers').where('stripeCustomerId', '==', customerId).get();
+  if (q.empty) return;
+
+  const snap = q.docs[0];
+  const uid = snap.id;
+  const subscriptions = (snap.get('subscriptions') as Record<string, string> | undefined) ?? {};
+  const productId = subscriptions[subscriptionId];
+  if (!productId) return; // nothing mapped to this subscription
+
+  await db.doc(`customers/${uid}`).set(
+    {
+      entitlements: FieldValue.arrayRemove(productId),
+      subscriptions: { [subscriptionId]: FieldValue.delete() },
+    },
+    { merge: true },
+  );
+  await syncEntitlementClaims(uid);
 }
