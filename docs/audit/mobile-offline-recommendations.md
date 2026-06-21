@@ -397,3 +397,32 @@ Lighthouse SEO check; `nx build storefront` stays green.
 All items are scoped to existing files/libs and designed to land incrementally
 without breaking the green CI suite. The first slice is the recommended starting
 point and is independently shippable.
+
+---
+
+## Known limitations & follow-ups (from the QA hardening pass)
+
+Two issues were surfaced by the post-implementation correctness/security review and
+**deliberately deferred** (they need a small redesign rather than a point fix):
+
+- **MO-16 — Period-leaderboard accumulator under-counts past the top 100.** Daily/
+  weekly boards accumulate `xpDelta` onto the stored entry (`apps/functions/src/lib/
+leaderboard.ts`), but the stored array is truncated to the top 100. A member who
+  earns period XP, drops below rank 100, then earns again restarts from 0 — so their
+  period total is under-counted for tenants with >100 active members per period.
+  **Fix direction:** accumulate authoritative period XP on the member doc (e.g.
+  `periodXp.{daily,weekly}` reset by the cron) and derive boards from it, or keep an
+  untruncated per-period tally; truncate only on read.
+
+- **MO-17 — Reset↔award boundary race at 00:00 UTC.** `scheduled/leaderboard-reset.ts`
+  clears a period board with a blind `set(entries:[])` while `upsertLeaderboards` does
+  a transactional read-modify-write of the same doc; an award that read pre-reset
+  entries can commit just after the reset, resurrecting the prior period's totals.
+  Narrow (only at the rollover instant). **Fix direction:** run the reset in a
+  transaction on the same board doc, or stamp a `periodStartedAt` and have awards
+  zero out stale-period entries.
+
+Everything else from the review was fixed in the QA-hardening wave (SCORM resume,
+atomic completion gate, outbox re-entrancy guards, quiz-draft-after-submit, SCORM URL
+validation, offline pending-count aggregation, sign-out cache hygiene, and the member
+self-update + enrollment-create rule lockdowns).
