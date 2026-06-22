@@ -9,16 +9,16 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { GameRepository } from '@assurance/data-access';
-import type { CardGameConfig } from '@assurance/games';
+import type { CardGameConfig, GameResult } from '@assurance/games';
 import type { Game } from '@assurance/shared';
-import { PhaserHostComponent } from '@assurance/games';
+import { AccessibleCardGameComponent } from '@assurance/games';
 import { RiveCharacterComponent } from '@assurance/games';
 import { PlayerProgressService, type PlayerContext } from './player-progress.service';
 
 @Component({
   selector: 'assurance-game-player',
   standalone: true,
-  imports: [PhaserHostComponent, RiveCharacterComponent],
+  imports: [AccessibleCardGameComponent, RiveCharacterComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
@@ -32,7 +32,10 @@ import { PlayerProgressService, type PlayerContext } from './player-progress.ser
           [stateMachine]="'MainStateMachine'"
         />
       } @else {
-        <assurance-phaser-host [config]="gameConfig(game()!)" (completed)="onCompleted()" />
+        <assurance-accessible-card-game
+          [config]="gameConfig(game()!)"
+          (completed)="onCompleted($event)"
+        />
       }
     }
   `,
@@ -110,7 +113,7 @@ export class GamePlayerComponent implements OnInit {
     return fallback;
   }
 
-  protected onCompleted(): void {
+  protected onCompleted(result: GameResult): void {
     const ctx: PlayerContext = {
       tenantId: this.tenantId(),
       courseId: this.courseId(),
@@ -129,6 +132,7 @@ export class GamePlayerComponent implements OnInit {
       },
       uid: this.uid(),
     };
-    void this.playerProgress.recordCompletion(ctx);
+    // Score is advisory (server recomputes XP/badges). Omitted for flip_reveal.
+    void this.playerProgress.recordCompletion(ctx, result.score);
   }
 }

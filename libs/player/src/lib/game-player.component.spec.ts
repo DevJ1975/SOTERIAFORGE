@@ -87,15 +87,29 @@ describe('GamePlayerComponent', () => {
     expect(el.textContent).toBeTruthy();
   });
 
-  it('renders assurance-phaser-host after a phaser game loads', async () => {
+  it('renders the accessible card game after a card game loads', async () => {
     fixture.detectChanges();
     await new Promise((r) => setTimeout(r, 0));
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
-    // assurance-phaser-host is rendered; PhaserHostComponent is @defer-safe in tests
-    // because isPlatformBrowser returns false in jsdom — no actual Phaser loaded.
-    expect(el.querySelector('assurance-phaser-host')).not.toBeNull();
+    expect(el.querySelector('assurance-accessible-card-game')).not.toBeNull();
+  });
+
+  it('forwards the game score to recordCompletion on completion', () => {
+    const cmp = fixture.componentInstance as unknown as {
+      onCompleted: (r: {
+        kind: string;
+        totalItems: number;
+        correctCount: number;
+        score?: number;
+      }) => void;
+    };
+    cmp.onCompleted({ kind: 'match_pairs', totalItems: 2, correctCount: 2, score: 100 });
+    expect(mockPlayerProgressService.recordCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: 'tenant-1', courseId: 'course-1' }),
+      100,
+    );
   });
 
   it('shows error when game is not found', async () => {

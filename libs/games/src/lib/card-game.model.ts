@@ -111,6 +111,21 @@ export type CardGameConfig =
   | SortBucketsConfig
   | ScenarioCardsConfig;
 
+/**
+ * Result emitted when a card game is completed. `score` is a 0–100 percentage
+ * for the graded kinds (match_pairs, sort_buckets, scenario_cards) and is omitted
+ * for flip_reveal, which is completion-only.
+ */
+export interface GameResult {
+  kind: CardGameConfig['kind'];
+  /** Number of gradable items (pairs / cards / scenarios). */
+  totalItems: number;
+  /** Number answered/placed correctly. */
+  correctCount: number;
+  /** 0–100; omitted for flip_reveal. */
+  score?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
