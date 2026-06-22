@@ -1,4 +1,30 @@
 {
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer contraseña",
+    "sendResetLink": "Enviar enlace de restablecimiento",
+    "resetHint": "Introduce el correo de tu cuenta y te enviaremos un enlace para restablecer tu contraseña.",
+    "checkEmail": "Si existe una cuenta con ese correo, recibirás un enlace para restablecer la contraseña. Revisa tu bandeja de entrada.",
+    "backToSignIn": "Volver a iniciar sesión",
+    "forbidden": {
+      "title": "Acceso denegado",
+      "message": "No tienes permiso para ver esta página en este inquilino.",
+      "switch": "Cambiar de cuenta"
+    },
+    "errors": {
+      "invalidCredentials": "Correo o contraseña no válidos.",
+      "emailInUse": "Ya existe una cuenta con este correo.",
+      "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+      "invalidEmail": "Introduce un correo electrónico válido.",
+      "tooManyRequests": "Demasiados intentos. Inténtalo de nuevo más tarde.",
+      "network": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
   "common": {
     "signIn": "Iniciar sesión",
     "signOut": "Cerrar sesión",

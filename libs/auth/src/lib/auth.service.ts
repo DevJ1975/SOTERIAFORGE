@@ -3,6 +3,7 @@ import {
   Auth,
   authState,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -94,6 +95,16 @@ export class AuthService {
       await cred.user.getIdToken(true);
       await this.refreshClaims();
     }
+  }
+
+  /**
+   * Send a password-reset email for the given address. Tenant scope is applied
+   * first so GCIP routes the reset to the correct Identity Platform pool; the
+   * user completes the reset on Firebase's hosted action page.
+   */
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    this.applyTenantScope();
+    await sendPasswordResetEmail(this.auth, email);
   }
 
   async signOutUser(): Promise<void> {

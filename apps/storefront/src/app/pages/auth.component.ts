@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { AuthService } from '@assurance/auth';
+import { Router, RouterLink } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
+import { AuthService, authErrorMessageKey } from '@assurance/auth';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { CardModule } from 'primeng/card';
@@ -9,7 +10,7 @@ import { CardModule } from 'primeng/card';
 @Component({
   selector: 'assurance-storefront-auth',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, CardModule],
+  imports: [FormsModule, RouterLink, ButtonModule, InputTextModule, CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="auth">
@@ -78,6 +79,12 @@ import { CardModule } from 'primeng/card';
           </div>
         </form>
 
+        @if (!isSignUp()) {
+          <p class="auth__forgot">
+            <a routerLink="/forgot-password">Forgot password?</a>
+          </p>
+        }
+
         <div class="auth__toggle">
           @if (isSignUp()) {
             <p>
@@ -124,6 +131,11 @@ import { CardModule } from 'primeng/card';
         display: flex;
         justify-content: flex-end;
       }
+      .auth__forgot {
+        margin: 0.75rem 0 0;
+        font-size: 0.875rem;
+        text-align: center;
+      }
       .auth__toggle {
         margin-top: 1.25rem;
         font-size: 0.875rem;
@@ -144,6 +156,7 @@ import { CardModule } from 'primeng/card';
 export class StorefrontAuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly isSignUp = signal(false);
   protected readonly loading = signal(false);
@@ -175,29 +188,9 @@ export class StorefrontAuthComponent {
       }
       await this.router.navigate(['/account']);
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      this.errorMessage.set(this.friendlyMessage(code));
+      this.errorMessage.set(this.transloco.translate(authErrorMessageKey(err)));
     } finally {
       this.loading.set(false);
-    }
-  }
-
-  private friendlyMessage(code?: string): string {
-    switch (code) {
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        return 'Invalid email or password.';
-      case 'auth/email-already-in-use':
-        return 'An account with this email already exists.';
-      case 'auth/weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      case 'auth/too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      default:
-        return 'Something went wrong. Please try again.';
     }
   }
 }

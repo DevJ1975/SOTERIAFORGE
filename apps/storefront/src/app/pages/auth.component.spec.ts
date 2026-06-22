@@ -1,7 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
 import { ASSURANCE_ENV, type AssuranceEnvironment, AuthService } from '@assurance/auth';
 import { StorefrontAuthComponent } from './auth.component';
+
+const transloco = () =>
+  TranslocoTestingModule.forRoot({
+    langs: { en: {} },
+    translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
+    preloadLangs: true,
+  });
 
 const testEnv: AssuranceEnvironment = {
   production: false,
@@ -30,7 +38,7 @@ describe('StorefrontAuthComponent', () => {
     authStub = makeAuthStub();
 
     await TestBed.configureTestingModule({
-      imports: [StorefrontAuthComponent],
+      imports: [StorefrontAuthComponent, transloco()],
       providers: [
         provideRouter([]),
         { provide: ASSURANCE_ENV, useValue: testEnv },

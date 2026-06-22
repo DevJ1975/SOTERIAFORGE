@@ -10,6 +10,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TenantService } from '@assurance/auth';
+import { UserMenuComponent } from '@assurance/auth-ui';
 import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
 import { OfflineXapiQueue } from '@assurance/standards';
 import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@assurance/ui';
@@ -23,6 +24,7 @@ import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@a
     RouterLinkActive,
     AssuranceOfflineBannerComponent,
     AssuranceBottomNavComponent,
+    UserMenuComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -32,11 +34,13 @@ import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@a
     <div class="assurance-shell">
       <header class="assurance-shell__header" role="banner">
         <span class="assurance-shell__brand">Soteria Assurance</span>
+        <span class="assurance-shell__spacer"></span>
         @if (tenant.tenantId(); as tid) {
           <span class="assurance-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
             tid
           }}</span>
         }
+        <assurance-user-menu redirectTo="/login" />
       </header>
 
       <!-- Top navigation (visible on larger viewports; bottom-nav covers phones) -->
@@ -83,9 +87,13 @@ import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@a
       .assurance-shell__brand {
         font-weight: 700;
       }
+      .assurance-shell__spacer {
+        flex: 1 1 auto;
+      }
       .assurance-shell__tenant {
         opacity: 0.85;
         text-transform: capitalize;
+        margin-right: 0.75rem;
       }
       .assurance-shell__topnav {
         display: flex;

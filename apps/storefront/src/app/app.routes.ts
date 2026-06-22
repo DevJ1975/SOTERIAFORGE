@@ -17,5 +17,9 @@ export const appRoutes: Routes = [
     path: 'auth',
     loadComponent: () => import('./pages/auth.component').then((m) => m.StorefrontAuthComponent),
   },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('@assurance/auth-ui').then((m) => m.ForgotPasswordComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

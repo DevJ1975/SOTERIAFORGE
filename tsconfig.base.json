@@ -25,6 +25,7 @@
     "paths": {
       "@assurance/ai-tutor": ["libs/ai-tutor/src/index.ts"],
       "@assurance/auth": ["libs/auth/src/index.ts"],
+      "@assurance/auth-ui": ["libs/auth-ui/src/index.ts"],
       "@assurance/data-access": ["libs/data-access/src/index.ts"],
       "@assurance/games": ["libs/games/src/index.ts"],
       "@assurance/games/model": ["libs/games/src/lib/card-game.model.ts"],

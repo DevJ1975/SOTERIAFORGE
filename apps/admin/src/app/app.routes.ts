@@ -1,15 +1,11 @@
 import { Routes } from '@angular/router';
 import { authGuard, tenantGuard, roleGuard } from '@assurance/auth';
+import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
 
 export const appRoutes: Routes = [
-  {
-    path: 'login',
-    loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent),
-  },
-  {
-    path: 'forbidden',
-    loadComponent: () => import('./pages/forbidden.component').then((m) => m.ForbiddenComponent),
-  },
+  { path: 'login', component: LoginComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'forbidden', component: ForbiddenComponent },
   {
     path: '',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],

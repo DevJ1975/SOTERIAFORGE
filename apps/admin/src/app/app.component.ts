@@ -1,26 +1,32 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TenantService } from '@assurance/auth';
+import { UserMenuComponent } from '@assurance/auth-ui';
 
 @Component({
   selector: 'assurance-admin-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, UserMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="assurance-shell">
-      <header class="assurance-shell__header">
+    <a href="#main-content" class="assurance-shell__skip">Skip to main content</a>
+    <div class="assurance-shell">
+      <header class="assurance-shell__header" role="banner">
         <span class="assurance-shell__brand">Soteria Assurance</span>
         @if (tenant.tenantId(); as tid) {
           <span class="assurance-shell__tenant">Admin · {{ tid }}</span>
         }
+        <span class="assurance-shell__spacer"></span>
+        <assurance-user-menu redirectTo="/login" />
       </header>
-      <router-outlet />
+      <main id="main-content" tabindex="-1">
+        <router-outlet />
+      </main>
       <footer class="assurance-shell__footer">
         <span>© {{ year }} Soteria Assurance</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
-    </main>
+    </div>
   `,
   styles: [
     `
@@ -38,6 +44,21 @@ import { TenantService } from '@assurance/auth';
       .assurance-shell__tenant {
         opacity: 0.85;
         text-transform: capitalize;
+      }
+      .assurance-shell__spacer {
+        flex: 1 1 auto;
+      }
+      .assurance-shell__skip {
+        position: absolute;
+        left: -999px;
+        top: 0;
+        background: #fff;
+        color: #000;
+        padding: 0.5rem 1rem;
+        z-index: 100;
+      }
+      .assurance-shell__skip:focus {
+        left: 0;
       }
       .assurance-shell__footer {
         display: flex;

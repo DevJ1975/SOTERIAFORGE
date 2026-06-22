@@ -1,4 +1,30 @@
 {
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset password",
+    "sendResetLink": "Send reset link",
+    "resetHint": "Enter your account email and we'll send you a link to reset your password.",
+    "checkEmail": "If an account exists for that email, a password reset link is on its way. Check your inbox.",
+    "backToSignIn": "Back to sign in",
+    "forbidden": {
+      "title": "Access denied",
+      "message": "You don't have permission to view this page in this tenant.",
+      "switch": "Switch account"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password.",
+      "emailInUse": "An account with this email already exists.",
+      "weakPassword": "Password must be at least 6 characters.",
+      "invalidEmail": "Please enter a valid email address.",
+      "tooManyRequests": "Too many attempts. Please try again later.",
+      "network": "Network error. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
   "common": {
     "signIn": "Sign in",
     "signOut": "Sign out",

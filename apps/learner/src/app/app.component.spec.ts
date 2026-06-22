@@ -1,10 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { ASSURANCE_ENV, type AssuranceEnvironment, AuthService } from '@assurance/auth';
 import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
 import { OfflineXapiQueue } from '@assurance/standards';
 import { AppComponent } from './app.component';
+
+const transloco = () =>
+  TranslocoTestingModule.forRoot({
+    langs: { en: {} },
+    translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
+    preloadLangs: true,
+  });
+const authStub = { principal: signal(null), signOutUser: jest.fn() };
 
 const testEnv: AssuranceEnvironment = {
   production: false,
@@ -22,8 +31,12 @@ const testEnv: AssuranceEnvironment = {
 describe('Learner AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AppComponent],
-      providers: [provideRouter([]), { provide: ASSURANCE_ENV, useValue: testEnv }],
+      imports: [AppComponent, transloco()],
+      providers: [
+        provideRouter([]),
+        { provide: ASSURANCE_ENV, useValue: testEnv },
+        { provide: AuthService, useValue: authStub },
+      ],
     }).compileComponents();
   });
 
@@ -48,10 +61,11 @@ describe('Learner AppComponent — aggregated pending count (FIX-6)', () => {
     quizCount.set(0);
     completionCount.set(0);
     await TestBed.configureTestingModule({
-      imports: [AppComponent],
+      imports: [AppComponent, transloco()],
       providers: [
         provideRouter([]),
         { provide: ASSURANCE_ENV, useValue: testEnv },
+        { provide: AuthService, useValue: authStub },
         { provide: OfflineXapiQueue, useValue: { pendingCount: xapiCount.asReadonly() } },
         { provide: QuizSubmissionService, useValue: { pendingCount: quizCount.asReadonly() } },
         {

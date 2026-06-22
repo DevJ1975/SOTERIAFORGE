@@ -1,5 +1,6 @@
 export * from './lib/assurance-environment';
 export * from './lib/claims';
+export * from './lib/auth-errors';
 export * from './lib/tenant.service';
 export * from './lib/auth.service';
 export * from './lib/guards';
