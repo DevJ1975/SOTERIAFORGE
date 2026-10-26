@@ -14,6 +14,7 @@ import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeng/themes';
 import Aura from '@primeng/themes/aura';
 import { ASSURANCE_ENV } from '@assurance/auth';
+import { AUTH_BRAND_LOGO } from '@assurance/auth-ui';
 import { provideForgeFirebase } from '@assurance/data-access';
 import { FORGE_PRIMENG_OPTIONS, FORGE_PRIMENG_TOKENS, provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
@@ -35,6 +36,14 @@ export const appConfig: ApplicationConfig = {
       theme: { preset: definePreset(Aura, FORGE_PRIMENG_TOKENS), options: FORGE_PRIMENG_OPTIONS },
     }),
     { provide: ASSURANCE_ENV, useValue: environment },
+    // Forge lockup (kit file, used as-is) above the sign-in card.
+    {
+      provide: AUTH_BRAND_LOGO,
+      useValue: {
+        src: 'assets/forge/logo/forge-lockup-horizontal-on-light.svg',
+        alt: 'Soteria Forge',
+      },
+    },
     provideForgeFirebase({
       firebase: environment.firebase,
       appCheckSiteKey: environment.appCheckSiteKey,
