@@ -177,6 +177,26 @@ Held back, each needing a decision or a later phase:
 - **Zoneless change detection** deferred to the design-kit rollout, one app
   at a time, with browser testing.
 
+### Phase 1 progress (2026-10-26)
+
+Started in `backend/`: Django 6.1 + DRF on Python 3.13, Firebase ID-token auth
+(tenant from the GCIP pool, or `X-Forge-Tenant` for shared-pool tenants;
+membership rows decide access), tenants, members and roles in Postgres, the
+`setMemberRole` port (`PATCH /api/members/{id}/role`, audited, mirrored to
+claims inside the transaction), an append-only audit log enforced by a Postgres
+trigger, `/api/me`, `/healthz`, OpenAPI at `/api/schema`, 23 pytest tests, a
+Dockerfile and a CI job.
+
+Railway is described in **`.railway/railway.ts` (Infrastructure as Code)**.
+Railway deprecated `railway.toml`/`railway.json`: new services can't use them,
+and existing ones stop on 2026-12-01. Not done yet in Phase 1: Postgres
+row-level security, the Angular data layer calling the API, Sentry wiring
+verified in a deployed environment, and creating the Railway project
+(`railway config plan` / `apply` with the team's Railway account). Confirm that
+Railway's managed Postgres offers `pgvector` before Phase 4.
+
+CI now runs on Node 24: Angular 22 requires Node ^22.22.3 or ^24.15.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one
