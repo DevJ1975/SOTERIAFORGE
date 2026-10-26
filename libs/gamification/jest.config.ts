@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'gamification',
   preset: '../../jest.preset.js',
   setupFilesAfterEach: ['<rootDir>/src/test-setup.ts'],

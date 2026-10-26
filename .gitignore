@@ -55,3 +55,10 @@ yarn-debug.log*
 yarn-error.log*
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
+
+# Claude Code agent worktrees and local settings
+.claude/worktrees
+.claude/settings.local.json
+
+.nx/polygraph
+.nx/self-healing
