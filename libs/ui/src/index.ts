@@ -13,6 +13,11 @@ export * from './lib/i18n';
 // Connectivity (online/offline signal — MO-04)
 export * from './lib/connectivity.service';
 
+// Soteria Forge design kit (tokens/CSS in libs/ui/src/styles/forge, assets in libs/ui/src/assets/forge)
+export * from './lib/forge/sf-icon.component';
+export * from './lib/forge/sf-app-shell.component';
+export * from './lib/forge/forge-preset';
+
 // Components
 export * from './lib/components/assurance-button/assurance-button.component';
 export * from './lib/components/assurance-card/assurance-card.component';

@@ -1,0 +1,200 @@
+/*
+ * Soteria Forge — app-level extensions to the kit's forge.css.
+ *
+ * Rules: tokens only (no hex a token already covers), `sf-` prefix, and every
+ * addition exists to close an accessibility gap (focus, target size, contrast)
+ * or to make a kit pattern work in a responsive Angular shell.
+ */
+
+:root {
+  /* The kit's focus ring (forge.css .sf-btn:focus-visible) as a reusable token. */
+  --sf-focus-ring: 3px solid color-mix(in srgb, var(--sf-ember) 45%, transparent);
+  /* On charcoal the 45% ember ring is too faint; use solid flame there. */
+  --sf-focus-ring-on-dark: 3px solid var(--sf-flame);
+  --sf-bottom-bar-height: 64px;
+  --sf-gutter: var(--sf-space-8);
+}
+
+@media (max-width: 48rem) {
+  :root {
+    --sf-gutter: var(--sf-space-4);
+  }
+}
+
+/* ---------- Base ---------- */
+html,
+body {
+  margin: 0;
+}
+body.sf-app,
+.sf-app {
+  min-height: 100dvh;
+}
+
+/* Visible focus on every interactive element inside a Forge surface. */
+.sf-app :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--sf-focus-ring);
+  outline-offset: 2px;
+}
+.sf-app :where(a, button):focus:not(:focus-visible) {
+  outline: none;
+}
+
+.sf-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: hidden until focused. */
+.sf-skip-link {
+  position: absolute;
+  top: -999px;
+  left: var(--sf-space-2);
+  z-index: 1000;
+  padding: var(--sf-space-2) var(--sf-space-4);
+  border-radius: 0 0 var(--sf-radius-md) var(--sf-radius-md);
+  background: var(--sf-charcoal);
+  color: var(--sf-surface);
+  font-weight: var(--sf-weight-semibold);
+  text-decoration: none;
+}
+.sf-skip-link:focus {
+  top: 0;
+}
+
+/* ---------- Text ---------- */
+/* --sf-muted (#6B7280) is 4.75:1 on white but only ~4.3:1 on cream, so text set
+   directly on the canvas uses ink-2 instead. */
+.sf-sub--on-canvas {
+  color: var(--sf-ink-2);
+}
+.sf-link {
+  color: var(--sf-ember-on-soft);
+  font-weight: var(--sf-weight-semibold);
+  text-decoration: none;
+}
+.sf-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Buttons & chips: 44 px targets ---------- */
+/* Chips are 28 px visually; extend the hit area to 44 px when interactive. */
+button.sf-chip,
+a.sf-chip {
+  position: relative;
+  font: inherit;
+  font-size: var(--sf-text-xs);
+  font-weight: var(--sf-weight-semibold);
+}
+button.sf-chip::after,
+a.sf-chip::after {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
+}
+.sf-btn--sm {
+  position: relative;
+}
+.sf-btn--sm::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+/* ---------- Inputs ---------- */
+/* Kit placeholder grey is ~2.5:1; the search placeholder doubles as its hint. */
+.sf-search::placeholder {
+  color: var(--sf-muted);
+}
+.sf-input:focus-visible {
+  outline: var(--sf-focus-ring);
+  outline-offset: 1px;
+}
+
+/* ---------- Rail on dark ---------- */
+.sf-rail__item:focus-visible {
+  outline: var(--sf-focus-ring-on-dark);
+  outline-offset: 2px;
+}
+.sf-rail__item {
+  text-decoration: none;
+  transition: color var(--sf-dur-fast) var(--sf-ease), background var(--sf-dur-fast) var(--sf-ease);
+}
+
+/* ---------- Status rows (This week, Portfolio) ---------- */
+.sf-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  flex: none;
+}
+
+/* ---------- Progress ring label ---------- */
+.sf-ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.sf-ring > svg {
+  display: block;
+}
+.sf-ring__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.sf-ring__pct {
+  font-size: 26px;
+  font-weight: var(--sf-weight-black);
+}
+.sf-ring__caption {
+  margin-top: var(--sf-space-1);
+  font-size: 11px;
+  font-weight: var(--sf-weight-bold);
+  letter-spacing: 0.06em;
+  color: var(--sf-muted);
+  text-transform: uppercase;
+}
+
+/* ---------- Badges: keep labels legible when locked ---------- */
+.sf-badge--locked .sf-badge__name {
+  color: var(--sf-ink-2);
+}
+.sf-badge--progress .sf-badge__medal {
+  color: var(--sf-ink-2);
+}
+
+/* ---------- Engage (dark) shell hook ---------- */
+.sf-shell--dark {
+  --sf-shell-canvas: var(--sf-dark-bg);
+  --sf-shell-bar: var(--sf-dark-pane);
+  --sf-shell-line: var(--sf-dark-line);
+  --sf-shell-text: var(--sf-surface);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-app *,
+  .sf-app *::before,
+  .sf-app *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

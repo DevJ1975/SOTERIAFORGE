@@ -1,0 +1,244 @@
+/*
+ * Soteria Forge — application shell (<sf-app-shell>).
+ * Builds on the kit's .sf-rail / .sf-rail__item / .sf-topbar / .sf-avatar.
+ * Desktop: 88 px rail + 64 px top bar + cream canvas.
+ * ≤ 48rem: the rail becomes a bottom tab bar; the top bar keeps crumb, streak, avatar.
+ */
+
+.sf-shell {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--sf-shell-canvas, var(--sf-cream));
+  color: var(--sf-shell-text, var(--sf-ink));
+  font-family: var(--sf-font);
+  font-size: var(--sf-text-base);
+  line-height: var(--sf-leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Rail ---------- */
+.sf-shell__rail {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 0;
+  flex: none;
+  padding-bottom: 18px;
+  z-index: 20;
+}
+.sf-shell__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--sf-space-3);
+  border-radius: var(--sf-radius-lg);
+}
+.sf-shell__brand:focus-visible {
+  outline: var(--sf-focus-ring-on-dark);
+  outline-offset: 2px;
+}
+.sf-shell__shield {
+  display: block;
+  width: 36px;
+  height: auto;
+}
+.sf-shell__nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sf-shell__tab-label {
+  display: none;
+}
+.sf-shell__rail-avatar {
+  margin-top: auto;
+}
+
+/* ---------- Body + top bar ---------- */
+.sf-shell__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sf-shell__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex: none;
+  background: var(--sf-shell-bar, var(--sf-surface));
+  border-bottom-color: var(--sf-shell-line, var(--sf-line));
+  color: var(--sf-shell-text, var(--sf-ink));
+}
+.sf-shell__topbar-shield {
+  display: none;
+}
+.sf-shell__crumbs {
+  min-width: 0;
+}
+.sf-shell__crumbs ol {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.sf-shell__crumbs li {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  min-width: 0;
+}
+.sf-shell__crumbs li + li::before {
+  content: '/';
+  color: var(--sf-muted);
+}
+.sf-shell__crumbs a {
+  color: var(--sf-ink-2);
+  text-decoration: none;
+}
+.sf-shell__crumbs a:hover {
+  text-decoration: underline;
+}
+.sf-shell__crumbs [aria-current='page'] {
+  font-weight: var(--sf-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sf-shell--dark .sf-shell__crumbs a {
+  color: var(--sf-dark-text);
+}
+
+.sf-shell__search {
+  position: relative;
+  margin-left: auto;
+  width: min(300px, 32vw);
+}
+.sf-shell__search .sf-search {
+  height: 38px;
+  padding-left: 36px;
+  border-width: 1px;
+}
+.sf-shell__search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--sf-muted);
+  pointer-events: none;
+}
+.sf-shell__streak {
+  flex: none;
+}
+.sf-shell__streak-sr {
+  display: none;
+}
+.sf-shell__user {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sf-space-3);
+  flex: none;
+}
+.sf-shell__uname {
+  font-size: 14px;
+  font-weight: var(--sf-weight-semibold);
+}
+
+.sf-shell__main {
+  flex: 1 0 auto;
+  padding: var(--sf-gutter);
+  outline: none;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 48rem) {
+  .sf-shell {
+    flex-direction: column;
+  }
+  .sf-shell__rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: center;
+    gap: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0);
+  }
+  .sf-shell__brand,
+  .sf-shell__rail-avatar {
+    display: none;
+  }
+  .sf-shell__nav {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    max-width: 32rem;
+    gap: 0;
+  }
+  .sf-shell__nav li {
+    flex: 1 1 0;
+    display: flex;
+    justify-content: center;
+  }
+  .sf-shell__nav .sf-rail__item {
+    width: 100%;
+    max-width: 64px;
+    height: var(--sf-bottom-bar-height);
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 0;
+    color: var(--sf-placeholder);
+  }
+  .sf-shell__nav .sf-rail__item[aria-current='page'] {
+    color: var(--sf-surface);
+    box-shadow: inset 0 3px 0 var(--sf-ember);
+  }
+  .sf-shell__tab-label {
+    display: block;
+    font-size: 11px;
+    font-weight: var(--sf-weight-semibold);
+    line-height: 1;
+  }
+  .sf-shell__topbar {
+    gap: var(--sf-space-3);
+    padding: 0 var(--sf-space-4);
+  }
+  .sf-shell__topbar-shield {
+    display: block;
+    flex: none;
+  }
+  .sf-shell__search {
+    display: none;
+  }
+  .sf-shell__streak {
+    margin-left: auto;
+    padding: 0 10px;
+  }
+  .sf-shell__streak-unit {
+    display: none;
+  }
+  .sf-shell__streak-sr {
+    display: inline;
+  }
+  .sf-shell__uname {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .sf-shell__main {
+    padding-bottom: calc(var(--sf-bottom-bar-height) + env(safe-area-inset-bottom, 0) + var(--sf-gutter));
+  }
+}

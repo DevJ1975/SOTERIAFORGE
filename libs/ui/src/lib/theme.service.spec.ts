@@ -114,3 +114,39 @@ describe('ThemeService', () => {
     });
   });
 });
+
+describe('ThemeService — Soteria Forge kit token overrides', () => {
+  let service: ThemeService;
+  let root: HTMLElement;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(ThemeService);
+    root = TestBed.inject(DOCUMENT).documentElement;
+  });
+
+  afterEach(() => root.removeAttribute('style'));
+
+  it('defaults the legacy --assurance-* tokens to the Forge kit tokens', () => {
+    expect(DEFAULT_THEME.colorPrimary).toBe('var(--sf-ember)');
+    expect(DEFAULT_THEME.fontFamily).toBe('var(--sf-font)');
+  });
+
+  it('writes --sf-* overrides from tenant branding onto the root', () => {
+    service.applyBranding({ colors: { '--sf-ember': '#0057B8', 'not-a-token': 'red' } });
+    expect(root.style.getPropertyValue('--sf-ember')).toBe('#0057B8');
+    expect(root.style.getPropertyValue('not-a-token')).toBe('');
+  });
+
+  it('ignores keys that are not kit tokens', () => {
+    service.applySfOverrides({ '--sfg-navy': '#000', '--sf-Bad': 'x', '--sf-line': ' ' });
+    expect(root.style.getPropertyValue('--sfg-navy')).toBe('');
+    expect(root.style.getPropertyValue('--sf-line')).toBe('');
+  });
+
+  it('removes --sf-* overrides on reset()', () => {
+    service.applySfOverrides({ '--sf-ember': '#0057B8' });
+    service.reset();
+    expect(root.style.getPropertyValue('--sf-ember')).toBe('');
+  });
+});

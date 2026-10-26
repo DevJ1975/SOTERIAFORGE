@@ -23,16 +23,37 @@ export interface ThemeTokens {
 
 /**
  * Default theme tokens — used before a tenant theme is applied.
+ *
+ * Values reference the Soteria Forge kit tokens (`--sf-*`, loaded globally from
+ * `libs/ui/src/styles/forge/index.css`), so the legacy `--assurance-*` properties
+ * resolve to Forge colours/type until a tenant overrides them.
  */
 export const DEFAULT_THEME: ThemeTokens = {
-  colorPrimary: '#1d4ed8',
-  colorSurface: '#ffffff',
-  colorAccent: '#7c3aed',
-  colorText: '#111827',
-  colorTextMuted: '#6b7280',
-  fontFamily: "'Inter', system-ui, sans-serif",
-  radius: '0.375rem',
+  colorPrimary: 'var(--sf-ember)',
+  colorSurface: 'var(--sf-surface)',
+  colorAccent: 'var(--sf-flame)',
+  colorText: 'var(--sf-ink)',
+  colorTextMuted: 'var(--sf-muted)',
+  fontFamily: 'var(--sf-font)',
+  radius: 'var(--sf-radius-md)',
 };
+
+/** A tenant may override any kit token directly, e.g. `{ '--sf-ember': '#0057B8' }`. */
+export const SF_TOKEN_PATTERN = /^--sf-[a-z0-9-]+$/;
+
+/** Picks the `--sf-*` kit-token overrides out of a free-form branding colour map. */
+export function pickSfTokenOverrides(
+  colors: Record<string, string> | undefined | null,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!colors) return out;
+  for (const [key, value] of Object.entries(colors)) {
+    if (SF_TOKEN_PATTERN.test(key) && typeof value === 'string' && value.trim()) {
+      out[key] = value.trim();
+    }
+  }
+  return out;
+}
 
 /**
  * Converts a `ThemeTokens` object into a flat map of `--assurance-*` CSS custom property names

@@ -1,0 +1,17 @@
+/*
+ * Soteria Forge design kit — global stylesheet entry for Angular apps.
+ *
+ * Register this file FIRST in an app's `project.json` build `styles` array:
+ *   "styles": ["libs/ui/src/styles/forge/index.css", "apps/<app>/src/styles.scss"]
+ *
+ * `fonts/`, `tokens.css` and `forge.css` are verbatim copies of
+ * materials/soteria-forge-design-kit v1.0 (do not edit them; re-copy on kit
+ * updates). Anything Angular- or app-specific lives in `forge-app.css`.
+ * Font files are resolved relative to this folder and fingerprinted by the
+ * Angular build, so they are self-hosted with no extra asset config.
+ */
+@import './fonts/inter.css';
+@import './tokens.css';
+@import './forge.css';
+@import './forge-app.css';
+@import './forge-shell.css';
