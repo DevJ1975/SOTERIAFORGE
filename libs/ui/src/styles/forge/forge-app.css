@@ -171,12 +171,39 @@ a.sf-chip::after {
   text-transform: uppercase;
 }
 
+/* ---------- Streak strip that fits narrow cards (14 days at 375 px) ---------- */
+.sf-streak--fluid {
+  width: 100%;
+}
+.sf-streak--fluid .sf-streak__day {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 28px;
+  height: auto;
+  aspect-ratio: 1;
+}
+
 /* ---------- Badges: keep labels legible when locked ---------- */
 .sf-badge--locked .sf-badge__name {
   color: var(--sf-ink-2);
 }
 .sf-badge--progress .sf-badge__medal {
   color: var(--sf-ink-2);
+}
+
+/* ---------- Phones: tighter cards and medals ---------- */
+@media (max-width: 30rem) {
+  .sf-card {
+    padding: var(--sf-space-5);
+  }
+  .sf-badge__medal {
+    width: 72px;
+    height: 72px;
+  }
+  .sf-badge__medal svg {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 /* ---------- Engage (dark) shell hook ---------- */

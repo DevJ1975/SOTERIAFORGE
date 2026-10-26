@@ -24,6 +24,7 @@ class PageComponent {}
       [userName]="userName()"
       [streakDays]="streak()"
       [variant]="variant()"
+      [bare]="bare()"
       (search)="queries.push($event)"
     >
       <button sfTopbarEnd type="button">Sign out</button>
@@ -36,6 +37,7 @@ class HostComponent {
   readonly userName = signal('Marcus Walker');
   readonly streak = signal<number | null>(22);
   readonly variant = signal<SfShellVariant>('light');
+  readonly bare = signal(false);
   readonly queries: string[] = [];
 }
 
@@ -147,6 +149,16 @@ describe('SfAppShellComponent', () => {
     fixture.componentInstance.variant.set('dark');
     fixture.detectChanges();
     expect(host.classList).toContain('sf-shell--dark');
+  });
+
+  it('bare mode drops rail + top bar but keeps the skip link and <main>', () => {
+    const { fixture, el } = render();
+    fixture.componentInstance.bare.set(true);
+    fixture.detectChanges();
+    expect(el.querySelector('nav.sf-rail')).toBeNull();
+    expect(el.querySelector('header')).toBeNull();
+    expect(el.querySelector('main#main-content h1')).not.toBeNull();
+    expect(el.querySelector('sf-app-shell')?.classList).toContain('sf-shell--bare');
   });
 
   it('has no axe violations', async () => {

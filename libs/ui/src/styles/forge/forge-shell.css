@@ -241,4 +241,7 @@
   .sf-shell__main {
     padding-bottom: calc(var(--sf-bottom-bar-height) + env(safe-area-inset-bottom, 0) + var(--sf-gutter));
   }
+  .sf-shell--bare .sf-shell__main {
+    padding-bottom: var(--sf-gutter);
+  }
 }

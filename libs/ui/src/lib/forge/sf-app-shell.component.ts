@@ -74,10 +74,12 @@ export function initialsOf(name: string | null | undefined): string {
   host: {
     class: 'sf-shell',
     '[class.sf-shell--dark]': "variant() === 'dark'",
+    '[class.sf-shell--bare]': 'bare()',
   },
   template: `
     <a class="sf-skip-link" href="#main-content">Skip to main content</a>
 
+    @if (!bare()) {
     <nav class="sf-rail sf-shell__rail" [attr.aria-label]="navLabel()">
       <a class="sf-shell__brand" [routerLink]="homeLink()" [attr.aria-label]="brandName() + ' home'">
         <img class="sf-shell__shield" [src]="shieldSrc()" alt="" width="36" height="40" />
@@ -105,8 +107,10 @@ export function initialsOf(name: string | null | undefined): string {
         <span class="sf-avatar sf-shell__rail-avatar" aria-hidden="true">{{ initials() }}</span>
       }
     </nav>
+    }
 
     <div class="sf-shell__body">
+      @if (!bare()) {
       <header class="sf-topbar sf-shell__topbar">
         <img class="sf-shell__topbar-shield" [src]="shieldSrc()" alt="" width="24" height="27" />
         <nav class="sf-shell__crumbs" aria-label="Breadcrumb">
@@ -155,6 +159,7 @@ export function initialsOf(name: string | null | undefined): string {
         }
         <ng-content select="[sfTopbarEnd]" />
       </header>
+      }
 
       <main id="main-content" class="sf-shell__main" tabindex="-1">
         <ng-content />
@@ -180,6 +185,11 @@ export class SfAppShellComponent {
   readonly variant = input<SfShellVariant>('light');
   readonly brandName = input<string>('Soteria Forge');
   readonly homeLink = input<string>('/');
+  /**
+   * Render only the canvas + `<main>` (no rail, no top bar), e.g. for sign-in
+   * pages. Keeps a single router-outlet mounted while chrome toggles.
+   */
+  readonly bare = input<boolean>(false);
 
   /** Emits the trimmed query when the learner submits the search form. */
   readonly search = output<string>();

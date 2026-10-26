@@ -17,6 +17,17 @@ import { AuthService } from '@assurance/auth';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (auth.principal(); as p) {
+      @if (variant() === 'compact') {
+        <button
+          type="button"
+          class="sf-btn sf-btn--ghost sf-btn--sm"
+          [attr.aria-busy]="busy() ? 'true' : null"
+          [disabled]="busy()"
+          (click)="signOut()"
+        >
+          {{ 'auth.signOut' | transloco }}
+        </button>
+      } @else {
       <div class="user-menu">
         <span class="user-menu__id">
           <span class="user-menu__email">{{ p.email }}</span>
@@ -30,6 +41,7 @@ import { AuthService } from '@assurance/auth';
           (onClick)="signOut()"
         />
       </div>
+      }
     }
   `,
   styles: [
@@ -62,6 +74,13 @@ export class UserMenuComponent {
 
   /** Where to navigate after signing out. */
   readonly redirectTo = input<string>('/login');
+
+  /**
+   * `full` (default): email + role + PrimeNG button. `compact`: a single
+   * Soteria Forge ghost "Sign out" button for the Forge top bar, where the
+   * shell already shows the learner's name and avatar.
+   */
+  readonly variant = input<'full' | 'compact'>('full');
 
   protected readonly busy = signal(false);
 

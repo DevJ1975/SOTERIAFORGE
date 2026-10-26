@@ -16,6 +16,9 @@ export * from './lib/connectivity.service';
 // Soteria Forge design kit (tokens/CSS in libs/ui/src/styles/forge, assets in libs/ui/src/assets/forge)
 export * from './lib/forge/sf-icon.component';
 export * from './lib/forge/sf-app-shell.component';
+export * from './lib/forge/sf-progress-ring.component';
+export * from './lib/forge/sf-badge.component';
+export * from './lib/forge/sf-streak-strip.component';
 export * from './lib/forge/forge-preset';
 
 // Components
