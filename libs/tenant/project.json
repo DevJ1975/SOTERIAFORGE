@@ -5,11 +5,16 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:feature"],
   "targets": {
-    "lint": { "executor": "@nx/eslint:lint" },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": { "jestConfig": "libs/tenant/jest.config.ts" }
+      "options": {
+        "jestConfig": "libs/tenant/jest.config.ts",
+        "tsConfig": "libs/tenant/tsconfig.spec.json"
+      }
     }
   }
 }
