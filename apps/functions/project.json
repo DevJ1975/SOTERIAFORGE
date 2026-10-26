@@ -8,25 +8,15 @@
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": ["typecheck"],
+      "outputs": ["{projectRoot}/lib"],
       "options": {
         "command": "node apps/functions/build.mjs"
-      },
-      "outputs": ["{projectRoot}/lib"]
+      }
     },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
         "command": "node ./node_modules/typescript/bin/tsc --noEmit -p apps/functions/tsconfig.app.json"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint"
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": {
-        "jestConfig": "apps/functions/jest.config.ts"
       }
     },
     "serve": {

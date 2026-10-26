@@ -7,15 +7,10 @@
   "implicitDependencies": ["learner"],
   "targets": {
     "e2e": {
-      "executor": "@nx/playwright:playwright",
       "outputs": ["{workspaceRoot}/dist/.playwright/apps/learner-e2e"],
       "options": {
-        "config": "apps/learner-e2e/playwright.config.ts",
-        "skipInstall": true
+        "skip-install": true
       }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint"
     }
   }
 }
