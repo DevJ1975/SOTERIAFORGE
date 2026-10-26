@@ -41,7 +41,7 @@ import { LearnerProfileStore } from './services/learner-profile.store';
 
       <router-outlet />
 
-      <footer class="learner-footer">
+      <footer class="learner-footer" [class.learner-footer--dark]="shellMode() === 'dark'">
         <span>© {{ year }} Soteria Forge</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
@@ -60,7 +60,7 @@ import { LearnerProfileStore } from './services/learner-profile.store';
         color: var(--sf-ink-2);
         font-size: var(--sf-text-xs);
       }
-      :host-context(.sf-shell--dark) .learner-footer {
+      .learner-footer--dark {
         border-top-color: var(--sf-dark-line);
         color: var(--sf-dark-text);
       }

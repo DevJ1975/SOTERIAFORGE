@@ -136,6 +136,15 @@
   color: var(--sf-muted);
   pointer-events: none;
 }
+.sf-shell--dark .sf-shell__search .sf-search {
+  background: var(--sf-dark-inset);
+  border-color: var(--sf-dark-line);
+  color: var(--sf-surface);
+}
+.sf-shell--dark .sf-shell__search .sf-search::placeholder,
+.sf-shell--dark .sf-shell__search-icon {
+  color: var(--sf-placeholder);
+}
 .sf-shell__streak {
   flex: none;
 }

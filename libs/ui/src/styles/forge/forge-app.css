@@ -178,6 +178,7 @@ a.sf-chip::after {
 .sf-streak--fluid .sf-streak__day {
   flex: 1 1 0;
   min-width: 0;
+  width: auto;
   max-width: 28px;
   height: auto;
   aspect-ratio: 1;

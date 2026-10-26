@@ -92,9 +92,28 @@ describe('DashboardComponent – accessibility', () => {
     expect(h1s.length).toBe(1);
   });
 
-  it('navigation uses <nav> with an aria-label', () => {
+  // Primary navigation now lives in the Forge shell rail (see sf-app-shell
+  // specs); Home itself is a heading-structured set of cards.
+  it('gives every Home card an <h2> under the single <h1>', () => {
     const el: HTMLElement = fixture.nativeElement;
-    const nav = el.querySelector('nav[aria-label]');
-    expect(nav).not.toBeNull();
+    const cards = Array.from(el.querySelectorAll('.sf-card'));
+    expect(cards.length).toBe(6);
+    for (const card of cards) {
+      expect(card.querySelector('h2')).not.toBeNull();
+    }
+  });
+
+  it('exposes course progress as a labelled progressbar', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const ring = el.querySelector('[role="progressbar"]') as HTMLElement;
+    expect(ring.getAttribute('aria-label')).toBe('AI Cyber Defender progress');
+    expect(ring.getAttribute('aria-valuetext')).toContain('% complete');
+  });
+
+  it('keeps interactive controls keyboard-reachable (links/buttons, no click-only divs)', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    const clickable = el.querySelectorAll('[click], div[role="button"], span[role="button"]');
+    expect(clickable.length).toBe(0);
+    expect(el.querySelectorAll('a[href], button').length).toBeGreaterThanOrEqual(4);
   });
 });
