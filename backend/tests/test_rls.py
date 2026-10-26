@@ -23,7 +23,7 @@ def test_runs_as_a_role_rls_applies_to():
         cur.execute(
             "SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user"
         )
-        assert cur.fetchone() == ("forge_app", False, False)
+        assert cur.fetchone() == ("forge_app_test", False, False)
 
 
 def test_unscoped_session_sees_no_tenant_rows(two_tenants):

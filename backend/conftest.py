@@ -4,17 +4,23 @@ from rest_framework.test import APIClient
 from apps.accounts.models import Member, Role
 from apps.tenants.models import Tenant
 
+TEST_APP_ROLE = "forge_app_test"
+
 # token string -> decoded Firebase claims. Unknown tokens are rejected like a bad signature.
 TOKENS: dict[str, dict] = {}
 
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_setup, django_db_blocker):
-    """Create the RLS-bound runtime role in the test database (as owner)."""
+    """Create an RLS-bound role for tests (as owner).
+
+    Roles are cluster-wide, so tests use their own role and never alter the real
+    runtime role (`forge_app`) of a database on the same server.
+    """
     from apps.tenants.dbroles import ensure_app_role
 
     with django_db_blocker.unblock():
-        ensure_app_role()
+        ensure_app_role(TEST_APP_ROLE)
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +36,7 @@ def rls_bypass(request):
     from apps.tenants import dbroles, rls
 
     # Run as the runtime role: the test DB user is a superuser, which skips RLS.
-    dbroles.use_app_role()
+    dbroles.use_app_role(TEST_APP_ROLE)
     rls.set_bypass(True)
     yield
 

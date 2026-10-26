@@ -187,13 +187,24 @@ claims inside the transaction), an append-only audit log enforced by a Postgres
 trigger, `/api/me`, `/healthz`, OpenAPI at `/api/schema`, 23 pytest tests, a
 Dockerfile and a CI job.
 
+Since then: Postgres **row-level security** on tenant-owned tables, with the
+web process connecting as `forge_app` (no superuser, no BYPASSRLS; superusers
+skip RLS even when forced, and Railway's default user is one); migrations run
+as the owner and `ensure_app_role` refreshes grants on each deploy. The learner
+and admin apps call the API (`forgeApiInterceptor`, `ForgeSession` →
+`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` signs
+in real Firebase Auth emulator users against Django running as `forge_app` and
+checks auth, tenant isolation, the role change, claim mirroring, audit and
+revocation (10/10).
+
 Railway is described in **`.railway/railway.ts` (Infrastructure as Code)**.
 Railway deprecated `railway.toml`/`railway.json`: new services can't use them,
-and existing ones stop on 2026-12-01. Not done yet in Phase 1: Postgres
-row-level security, the Angular data layer calling the API, Sentry wiring
-verified in a deployed environment, and creating the Railway project
-(`railway config plan` / `apply` with the team's Railway account). Confirm that
-Railway's managed Postgres offers `pgvector` before Phase 4.
+and existing ones stop on 2026-12-01. Remaining for Phase 1: create the Railway
+project (`railway config plan` / `apply` with the team's account, then set
+`DJANGO_SECRET_KEY`, `DB_APP_PASSWORD`, `FIREBASE_*`, `SENTRY_DSN`), confirm
+Sentry from a deployed environment, and point the route guards at
+`ForgeSession` instead of Firebase claims. Confirm that Railway's managed
+Postgres offers `pgvector` before Phase 4.
 
 CI now runs on Node 24: Angular 22 requires Node ^22.22.3 or ^24.15.
 
