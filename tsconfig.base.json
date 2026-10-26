@@ -37,7 +37,10 @@
       "@assurance/standards": ["libs/standards/src/index.ts"],
       "@assurance/tenant": ["libs/tenant/src/index.ts"],
       "@assurance/ui": ["libs/ui/src/index.ts"]
-    }
+    },
+    "noUncheckedSideEffectImports": false,
+    "types": ["*"],
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["node_modules", "tmp"]
 }

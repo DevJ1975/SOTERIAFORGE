@@ -3,17 +3,15 @@
  * best-effort deletes the app's offline IndexedDB databases + Cache Storage and
  * clears the Firestore SDK cache, and NEVER throws so sign-out always succeeds.
  *
- * `@angular/fire/auth` and `@angular/fire/firestore` are mocked so the service
- * can be constructed under jsdom without bootstrapping AngularFire, and so we
- * can assert the Firestore terminate/clear calls.
+ * `firebase/auth` and `@angular/fire/firestore` are mocked so the service can
+ * be constructed under jsdom without bootstrapping Firebase, and so we can
+ * assert the Firestore terminate/clear calls.
  */
-import { of } from 'rxjs';
-
 const signOut = jest.fn().mockResolvedValue(undefined);
-jest.mock('@angular/fire/auth', () => ({
-  Auth: class Auth {},
-  authState: jest.fn(() => of(null)),
-  user: jest.fn(() => of(null)),
+jest.mock('firebase/auth', () => ({
+  onAuthStateChanged: jest.fn(() => () => undefined),
+  onIdTokenChanged: jest.fn(() => () => undefined),
+  sendPasswordResetEmail: jest.fn(),
   signOut,
   signInWithEmailAndPassword: jest.fn(),
   createUserWithEmailAndPassword: jest.fn(),
@@ -30,9 +28,9 @@ jest.mock('@angular/fire/firestore', () => ({
 
 import { TestBed } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
-import { Auth } from '@angular/fire/auth';
 import { Firestore } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
+import { FIREBASE_AUTH } from './firebase-auth';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from './assurance-environment';
 
 const testEnv: AssuranceEnvironment = {
@@ -92,7 +90,7 @@ function setup(withFirestore: boolean): AuthService {
   TestBed.configureTestingModule({
     providers: [
       AuthService,
-      { provide: Auth, useValue: { currentUser: null, tenantId: null } },
+      { provide: FIREBASE_AUTH, useValue: { currentUser: null, tenantId: null } },
       { provide: ASSURANCE_ENV, useValue: testEnv },
       { provide: DOCUMENT, useValue: document },
       ...(withFirestore ? [{ provide: Firestore, useValue: { __fake: true } }] : []),
@@ -166,5 +164,34 @@ describe('AuthService.clearLocalOfflineData (FIX-10)', () => {
 
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(deleted.sort()).toEqual([...EXPECTED_DBS].sort());
+  });
+});
+
+describe('AuthService on the server (FIREBASE_AUTH = null)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: FIREBASE_AUTH, useValue: null },
+        { provide: ASSURANCE_ENV, useValue: testEnv },
+      ],
+    });
+  });
+
+  it('is signed out and never touches Firebase', async () => {
+    const svc = TestBed.inject(AuthService);
+
+    expect(svc.isAuthenticated()).toBe(false);
+    await expect(svc.refreshClaims()).resolves.toBeNull();
+    await svc.signOutUser();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('rejects interactive sign-in instead of crashing the render', async () => {
+    const svc = TestBed.inject(AuthService);
+
+    await expect(svc.signInWithPassword('a@b.c', 'pw')).rejects.toThrow(/outside the browser/);
   });
 });

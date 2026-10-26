@@ -12,7 +12,12 @@ const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+const angularApp = new AngularNodeAppEngine({
+  // Vercel's proxy sets these; host-based tenant resolution needs the original
+  // host. Only safe behind a proxy that overwrites them — see
+  // https://angular.dev/best-practices/security#configuring-trusted-proxy-headers
+  trustProxyHeaders: ['x-forwarded-host', 'x-forwarded-proto'],
+});
 
 /** Serve static browser assets. */
 app.use(

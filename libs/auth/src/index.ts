@@ -4,3 +4,4 @@ export * from './lib/auth-errors';
 export * from './lib/tenant.service';
 export * from './lib/auth.service';
 export * from './lib/guards';
+export * from './lib/firebase-auth';

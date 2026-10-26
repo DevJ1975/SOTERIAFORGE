@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { UnityEmbedComponent } from './unity-embed.component';
 
 /**
@@ -83,6 +83,7 @@ describe('UnityEmbedComponent', () => {
     <assurance-unity-embed [launchUrl]="'https://example.com/unity'" [title]="'Test Game'" />
   `,
   imports: [UnityEmbedComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 class TestHostComponent {}

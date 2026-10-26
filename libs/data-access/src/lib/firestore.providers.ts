@@ -15,7 +15,6 @@ import {
   provideFirestore,
 } from '@angular/fire/firestore';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
-import { getAuth, provideAuth } from '@angular/fire/auth';
 import { connectFunctionsEmulator, getFunctions, provideFunctions } from '@angular/fire/functions';
 import {
   ReCaptchaEnterpriseProvider,
@@ -63,8 +62,9 @@ function buildFirestore(isBrowser: boolean): Firestore {
 }
 
 /**
- * Standard Firebase wiring for the Angular apps: App + Auth + Firestore +
- * Functions + App Check. App Check is required on Firestore/Functions/Storage
+ * Standard Firebase wiring for the Angular apps: App + Firestore + Functions +
+ * App Check. Auth is not wired here: `@assurance/auth` owns it (browser-only,
+ * plain `firebase/auth` SDK, see `FIREBASE_AUTH`). App Check is required on Firestore/Functions/Storage
  * in prod. Functions is wired centrally so every app's callable services
  * (quiz submit, tenant admin, ingest, tutor, checkout) resolve `Functions`.
  *
@@ -74,7 +74,6 @@ function buildFirestore(isBrowser: boolean): Firestore {
 export function provideForgeFirebase(options: FirebaseProvidersOptions): EnvironmentProviders {
   return makeEnvironmentProviders([
     provideFirebaseApp(() => initializeApp(options.firebase)),
-    provideAuth(() => getAuth()),
     provideFirestore(() => {
       const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
       const fs = buildFirestore(isBrowser);

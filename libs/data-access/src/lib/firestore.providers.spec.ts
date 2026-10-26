@@ -33,7 +33,6 @@ jest.mock('@angular/fire/app', () => ({
   provideFirebaseApp: jest.fn(),
 }));
 
-jest.mock('@angular/fire/auth', () => ({ getAuth: jest.fn(), provideAuth: jest.fn() }));
 jest.mock('@angular/fire/functions', () => ({
   getFunctions: jest.fn(),
   provideFunctions: jest.fn(),

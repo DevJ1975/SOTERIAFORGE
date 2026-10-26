@@ -4,7 +4,8 @@
     "target": "es2022",
     "useDefineForClassFields": false,
     "module": "preserve",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "ignoreDeprecations": "6.0"
   },
   "files": [],
   "include": [],
