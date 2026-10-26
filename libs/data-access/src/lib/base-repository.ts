@@ -5,6 +5,7 @@ import {
   type QueryConstraint,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   docData,
   getDoc,
@@ -69,8 +70,13 @@ export class BaseRepository<T extends { id?: string } & DocumentData> {
     await setDoc(this.ref(id), value, { merge: false });
   }
 
+  /** Partial update; a key explicitly set to `undefined` removes that field. */
   async update(id: string, partial: Partial<T>): Promise<void> {
-    await updateDoc(this.ref(id), partial as DocumentData);
+    const data: DocumentData = {};
+    for (const [key, value] of Object.entries(partial)) {
+      data[key] = value === undefined ? deleteField() : value;
+    }
+    await updateDoc(this.ref(id), data);
   }
 
   async remove(id: string): Promise<void> {

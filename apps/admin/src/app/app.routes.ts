@@ -25,13 +25,7 @@ export const appRoutes: Routes = [
   {
     path: 'courses',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
-    loadComponent: () => import('./pages/courses.component').then((m) => m.CoursesComponent),
-  },
-  {
-    path: 'courses/:id',
-    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
-    loadComponent: () =>
-      import('./pages/course-editor.component').then((m) => m.CourseEditorComponent),
+    loadChildren: () => import('./courses.routes').then((m) => m.courseRoutes),
   },
   {
     path: 'quizzes',

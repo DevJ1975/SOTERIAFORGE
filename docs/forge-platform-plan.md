@@ -7,19 +7,19 @@
 
 ## 1. Decision summary
 
-| Layer | Today | Target | Why |
-| --- | --- | --- | --- |
-| Frontend | Angular ~20.0, Nx 20.4, AngularFire 19 | **Angular 22.2**, Nx 24, no AngularFire | Newest Angular; AngularFire 21 only supports Angular ^21 |
-| Hosting (frontends) | Vercel | Vercel (no change) | Already works; SSR storefront stays on the edge |
-| Identity | Firebase Auth / GCIP multi-tenancy | **Keep Firebase Auth / GCIP** | Login, MFA, password reset and SAML/OIDC for Lakewood SSO already work; rebuilding them buys nothing |
-| Push | FCM | **Keep FCM** (sent from Django) | Cheapest path to iOS/Android/web push |
-| Database | Firestore | **Postgres on Railway** (+ pgvector) | The spec's model is relational: cohorts → sections → crews, attempts, heat maps, crew totals, audit log, LMS export |
-| Business logic | 26 Cloud Functions (~2.6k LOC) | **Django 5 + DRF** on Railway | Spec SFG-SPC-FRG-010 names Django on Railway; server-authoritative logic is easier to test and audit in one place |
-| Background jobs | Scheduled Functions, Storage triggers | **Celery worker + Celery beat** (Redis) | Leaderboard resets, streak reminders, SCORM parsing, embedding ingest |
-| Realtime (Engage) | Firestore listeners | **Django Channels** (Redis) | Live polls, block bar, Threat Hunt countdowns, crew scores, with server timestamps |
-| AI coach | Genkit + Vertex, Firestore vectors | **Python provider interface + pgvector** | Same swappable-provider idea, one fewer runtime |
-| Files | Cloud Storage + `storage.rules` | **S3-compatible bucket** (Railway Bucket or Cloudflare R2) via signed URLs | Keeps education records with the database under one FERPA boundary |
-| Removed | — | Firestore, Cloud Functions, Genkit, Storage rules, App Check, emulators | — |
+| Layer               | Today                                  | Target                                                                     | Why                                                                                                                 |
+| ------------------- | -------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Frontend            | Angular ~20.0, Nx 20.4, AngularFire 19 | **Angular 22.2**, Nx 24, no AngularFire                                    | Newest Angular; AngularFire 21 only supports Angular ^21                                                            |
+| Hosting (frontends) | Vercel                                 | Vercel (no change)                                                         | Already works; SSR storefront stays on the edge                                                                     |
+| Identity            | Firebase Auth / GCIP multi-tenancy     | **Keep Firebase Auth / GCIP**                                              | Login, MFA, password reset and SAML/OIDC for Lakewood SSO already work; rebuilding them buys nothing                |
+| Push                | FCM                                    | **Keep FCM** (sent from Django)                                            | Cheapest path to iOS/Android/web push                                                                               |
+| Database            | Firestore                              | **Postgres on Railway** (+ pgvector)                                       | The spec's model is relational: cohorts → sections → crews, attempts, heat maps, crew totals, audit log, LMS export |
+| Business logic      | 26 Cloud Functions (~2.6k LOC)         | **Django 5 + DRF** on Railway                                              | Spec SFG-SPC-FRG-010 names Django on Railway; server-authoritative logic is easier to test and audit in one place   |
+| Background jobs     | Scheduled Functions, Storage triggers  | **Celery worker + Celery beat** (Redis)                                    | Leaderboard resets, streak reminders, SCORM parsing, embedding ingest                                               |
+| Realtime (Engage)   | Firestore listeners                    | **Django Channels** (Redis)                                                | Live polls, block bar, Threat Hunt countdowns, crew scores, with server timestamps                                  |
+| AI coach            | Genkit + Vertex, Firestore vectors     | **Python provider interface + pgvector**                                   | Same swappable-provider idea, one fewer runtime                                                                     |
+| Files               | Cloud Storage + `storage.rules`        | **S3-compatible bucket** (Railway Bucket or Cloudflare R2) via signed URLs | Keeps education records with the database under one FERPA boundary                                                  |
+| Removed             | —                                      | Firestore, Cloud Functions, Genkit, Storage rules, App Check, emulators    | —                                                                                                                   |
 
 **Firebase verdict: keep it for identity and push only.** Those two pieces are
 commodity, already integrated and expensive to rebuild. Everything that holds
@@ -97,21 +97,21 @@ mobile/ios GoogleService-Info  KEEP (Auth + FCM)
 
 ### Porting the Cloud Functions
 
-| Cloud Function | Django replacement |
-| --- | --- |
-| `setMemberRole` | `PATCH /api/members/{id}/role` (admin only, audited) |
-| `provisionTenant`, `setTenantStatus`, `updateBranding` | `tenants` API; provisioning also creates the GCIP tenant via firebase-admin |
-| `inviteMember`, `deactivateMember` | `accounts` API; deactivate also disables the Firebase user |
-| `registerFcmToken` | `POST /api/devices` |
-| `submitQuiz`, `completeModule`, `assignCourse` | `assessments` / `learning` API; keep the anti-cheat and server-authoritative completion rules from commits `321ad2c`, `ab60149` |
-| `onScormUpload` | Signed upload URL → `POST /api/packages/{id}/uploaded` → Celery parse |
-| `platformAnalytics` | SQL aggregates / materialized views |
-| `shareLibraryCourse` | `learning` API |
-| `stripeWebhook`, `createCheckoutSession`, `createBillingPortalSession` | `commerce` (port idempotency + cancellation revocation from `a39d1c8`) |
-| `ingestStatement`, `xapi`, `launchCmi5`, `cmi5Fetch` | `standards` app |
-| `askTutor`, `ingestKnowledge` | `coach` app (SSE streaming answer) + Celery ingest |
-| `exportUserData`, `deleteUserData` | `compliance` app |
-| `resetDailyLeaderboards`, `resetWeeklyLeaderboards`, `sendStreakReminders` | Celery beat |
+| Cloud Function                                                             | Django replacement                                                                                                              |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `setMemberRole`                                                            | `PATCH /api/members/{id}/role` (admin only, audited)                                                                            |
+| `provisionTenant`, `setTenantStatus`, `updateBranding`                     | `tenants` API; provisioning also creates the GCIP tenant via firebase-admin                                                     |
+| `inviteMember`, `deactivateMember`                                         | `accounts` API; deactivate also disables the Firebase user                                                                      |
+| `registerFcmToken`                                                         | `POST /api/devices`                                                                                                             |
+| `submitQuiz`, `completeModule`, `assignCourse`                             | `assessments` / `learning` API; keep the anti-cheat and server-authoritative completion rules from commits `321ad2c`, `ab60149` |
+| `onScormUpload`                                                            | Signed upload URL → `POST /api/packages/{id}/uploaded` → Celery parse                                                           |
+| `platformAnalytics`                                                        | SQL aggregates / materialized views                                                                                             |
+| `shareLibraryCourse`                                                       | `learning` API                                                                                                                  |
+| `stripeWebhook`, `createCheckoutSession`, `createBillingPortalSession`     | `commerce` (port idempotency + cancellation revocation from `a39d1c8`)                                                          |
+| `ingestStatement`, `xapi`, `launchCmi5`, `cmi5Fetch`                       | `standards` app                                                                                                                 |
+| `askTutor`, `ingestKnowledge`                                              | `coach` app (SSE streaming answer) + Celery ingest                                                                              |
+| `exportUserData`, `deleteUserData`                                         | `compliance` app                                                                                                                |
+| `resetDailyLeaderboards`, `resetWeeklyLeaderboards`, `sendStreakReminders` | Celery beat                                                                                                                     |
 
 The ~25 function specs (anti-cheat, privilege escalation, webhook idempotency, leaderboard,
 completion) are the acceptance tests for the port. Rewrite each as a pytest case
@@ -153,36 +153,60 @@ and it removes AngularFire, which the new data layer no longer needs.
 5. Gate: all 92 spec files pass, axe a11y specs pass, Lighthouse PWA score unchanged,
    storefront SSR renders on Vercel preview.
 
+### Phase 0 outcome (2026-10-26)
+
+Done on `feat/angular-22-upgrade`: Nx 24.0 and Angular 22.2.3 (via Angular 21),
+TypeScript 6, Jest 30; lint, all tests (including 61 Firestore-rules tests) and
+all builds green. Auth runs on the plain `firebase/auth` SDK and is browser-only,
+which fixed Angular 22's now-fatal SSR prerender error. WebMCP course tools ship
+in admin (`docs/webmcp.md`).
+
+Held back, each needing a decision or a later phase:
+
+- **PrimeNG stays on 19 (MIT).** PrimeNG 22 moved to a commercial license with a
+  license key (free only under $1M revenue, fewer than 5 developers and 10
+  employees). It runs on Angular 22 today, outside its declared peer range.
+  Options: buy PrimeNG licenses, or retire it in favor of the Forge design kit
+  components (`materials/soteria-forge-design-kit`) on Angular CDK.
+- **ApexCharts (`ng-apexcharts`) not upgraded and not imported anywhere.** Its
+  license needs an OEM license for platforms used by others. Remove it, or use
+  a permissively licensed chart library.
+- **`@angular/fire` 19 + `firebase` 11 stay** until Phase 2 removes Firestore and
+  Functions calls; AngularFire has no Angular 22 release.
+- **`ngx-toastr`** has no Angular 22 release yet (not imported anywhere).
+- **Zoneless change detection** deferred to the design-kit rollout, one app
+  at a time, with browser testing.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one
 full-stack developer plus part-time design. Each phase ends with a demo against the
 walkthrough video.
 
-| # | Phase | Delivers | Exit gate |
-| --- | --- | --- | --- |
-| 0 | **Decide + upgrade** (≈1–2 wk) | ADR 0002 (this plan), Angular 22 / Nx 24, AngularFire removed | CI green on Angular 22 |
-| 1 | **Django foundation** (≈2 wk) | Railway project + envs, Django skeleton, Firebase token auth, tenants, members, RBAC (learner, TA, instructor, Lakewood admin, SFG admin), audit log, RLS, CI (pytest, ruff, mypy), Sentry | Login in the learner app hits Django; isolation tests pass |
-| 2 | **Core learning on Postgres** (≈3 wk) | Courses → modules → lessons + key points + framework tags, enrollments, knowledge checks with first-try attempts, data-access rewrite, SCORM upload, offline replay | **Home**, **Lesson + knowledge check** screens run on Django end to end; Firestore unused by learner |
-| 3 | **Gamification to spec** (≈2–3 wk) | XP events (never negative), level bands, Pulse streak + 14-day strip, cohorts/sections/**crews**, **crew-only leaderboard** (replaces today's individual leaderboard), private score card, mission badges, credentials with instructor sign-off, Open Badges 3.0 issuance + public verify page, award overlay | **My Progress** + award overlay match the video; no learner ranked by name |
-| 4 | **Ask Forge coach** (≈3 wk) | Corpus ingest to pgvector, retrieval scoped to module, SSE answers, **diagram spec** (linear flow, before/after, comparison, 2×2) rendered as animated SVG with text alternative, source chips, follow-ups, thumbs, weekly review queue, guardrails, pseudonymized logs | Coach eval set ≥85% helpful in internal review; no-source answers say so |
-| 5 | **Forge Engage** (≈4 wk) | Zoom Video SDK session signing, video grid with crew-first paging, Channels session state, 30-min block bar, live poll with server timestamps, Threat Hunt, crew huddle notes, debrief heat map + "Reteach now", host view, attendance log, live captions | 20-learner load test with 3 sessions/week profile; keyboard-only run-through |
-| 6 | **Standards + exports** (≈2 wk) | xAPI statements to LRS, SCORM/cmi5 packages for Lakewood LMS, analytics for instructor/TA, at-risk list | Lakewood LMS import verified |
-| 7 | **Cutover + hardening** (≈2 wk) | Delete `apps/functions`, Firestore/Storage config and remaining Firebase deps (except Auth/FCM), WCAG 2.2 AA audit, pen test, backup/restore drill, runbooks | Pilot with internal cohort |
+| #   | Phase                                 | Delivers                                                                                                                                                                                                                                                                                                      | Exit gate                                                                                            |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 0   | **Decide + upgrade** (≈1–2 wk)        | ADR 0002 (this plan), Angular 22 / Nx 24, AngularFire removed                                                                                                                                                                                                                                                 | CI green on Angular 22                                                                               |
+| 1   | **Django foundation** (≈2 wk)         | Railway project + envs, Django skeleton, Firebase token auth, tenants, members, RBAC (learner, TA, instructor, Lakewood admin, SFG admin), audit log, RLS, CI (pytest, ruff, mypy), Sentry                                                                                                                    | Login in the learner app hits Django; isolation tests pass                                           |
+| 2   | **Core learning on Postgres** (≈3 wk) | Courses → modules → lessons + key points + framework tags, enrollments, knowledge checks with first-try attempts, data-access rewrite, SCORM upload, offline replay                                                                                                                                           | **Home**, **Lesson + knowledge check** screens run on Django end to end; Firestore unused by learner |
+| 3   | **Gamification to spec** (≈2–3 wk)    | XP events (never negative), level bands, Pulse streak + 14-day strip, cohorts/sections/**crews**, **crew-only leaderboard** (replaces today's individual leaderboard), private score card, mission badges, credentials with instructor sign-off, Open Badges 3.0 issuance + public verify page, award overlay | **My Progress** + award overlay match the video; no learner ranked by name                           |
+| 4   | **Ask Forge coach** (≈3 wk)           | Corpus ingest to pgvector, retrieval scoped to module, SSE answers, **diagram spec** (linear flow, before/after, comparison, 2×2) rendered as animated SVG with text alternative, source chips, follow-ups, thumbs, weekly review queue, guardrails, pseudonymized logs                                       | Coach eval set ≥85% helpful in internal review; no-source answers say so                             |
+| 5   | **Forge Engage** (≈4 wk)              | Zoom Video SDK session signing, video grid with crew-first paging, Channels session state, 30-min block bar, live poll with server timestamps, Threat Hunt, crew huddle notes, debrief heat map + "Reteach now", host view, attendance log, live captions                                                     | 20-learner load test with 3 sessions/week profile; keyboard-only run-through                         |
+| 6   | **Standards + exports** (≈2 wk)       | xAPI statements to LRS, SCORM/cmi5 packages for Lakewood LMS, analytics for instructor/TA, at-risk list                                                                                                                                                                                                       | Lakewood LMS import verified                                                                         |
+| 7   | **Cutover + hardening** (≈2 wk)       | Delete `apps/functions`, Firestore/Storage config and remaining Firebase deps (except Auth/FCM), WCAG 2.2 AA audit, pen test, backup/restore drill, runbooks                                                                                                                                                  | Pilot with internal cohort                                                                           |
 
 The B2C storefront and Stripe port can slip behind Phase 6 because the Lakewood
 cohort is B2B.
 
 ### Screen-to-phase map (SFG-SPC-FRG-011)
 
-| Spec screen | Exists today | Phase |
-| --- | --- | --- |
-| Shell (88 px rail, top bar, cream canvas, brand tokens) | Partial: `@assurance/ui`, PrimeNG theme | 0–2 (retheme during upgrade) |
-| Home | `dashboard.component` (generic) | 2–3 |
-| Lesson + knowledge check | `course-detail` + player + quizzes | 2 |
-| Ask Forge | `tutor.component`, `libs/ai-tutor` (chat only, no diagrams) | 4 |
-| Engage | Not built (games lib has accessible card games, Phaser host) | 5 |
-| My Progress + award overlay | Leaderboard, XP badge, leveling, streaks libs (individual, no crews) | 3 |
+| Spec screen                                             | Exists today                                                         | Phase                        |
+| ------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
+| Shell (88 px rail, top bar, cream canvas, brand tokens) | Partial: `@assurance/ui`, PrimeNG theme                              | 0–2 (retheme during upgrade) |
+| Home                                                    | `dashboard.component` (generic)                                      | 2–3                          |
+| Lesson + knowledge check                                | `course-detail` + player + quizzes                                   | 2                            |
+| Ask Forge                                               | `tutor.component`, `libs/ai-tutor` (chat only, no diagrams)          | 4                            |
+| Engage                                                  | Not built (games lib has accessible card games, Phaser host)         | 5                            |
+| My Progress + award overlay                             | Leaderboard, XP badge, leveling, streaks libs (individual, no crews) | 3                            |
 
 ## 6. Data migration
 
@@ -217,13 +241,15 @@ are, so nobody has to reset a password.
 - [ ] Keep GCIP per-tenant pools, or use one Firebase project with tenant in Postgres?
       (Per-tenant pools are recommended for Lakewood SSO.)
 - [ ] LLM provider/hosting/cost (carried from the spec)
+- [ ] PrimeNG 22 commercial license vs. replacing PrimeNG with the Forge design kit
+- [ ] Remove `ng-apexcharts` (OEM license) or license it
 
 ## 9. Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Port regresses anti-cheat / privilege fixes | Port the existing function specs to pytest first; they gate each endpoint |
-| Engage realtime under live load | Phase 5 load test; Channels on Redis with sticky-free design; server-stamped answers |
-| PrimeNG 19 → 22 breaking theme changes | Absorb in `@assurance/ui`; upgrade one app at a time |
-| Two vendors for one login (Firebase + Django) | Thin, tested auth class; Firebase used only for identity |
-| Railway single-region outage during a live session | Engage degrades to Zoom-only; state resumes from Postgres |
+| Risk                                               | Mitigation                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Port regresses anti-cheat / privilege fixes        | Port the existing function specs to pytest first; they gate each endpoint            |
+| Engage realtime under live load                    | Phase 5 load test; Channels on Redis with sticky-free design; server-stamped answers |
+| PrimeNG 19 → 22 breaking theme changes             | Absorb in `@assurance/ui`; upgrade one app at a time                                 |
+| Two vendors for one login (Firebase + Django)      | Thin, tested auth class; Firebase used only for identity                             |
+| Railway single-region outage during a live session | Engage degrades to Zoom-only; state resumes from Postgres                            |
