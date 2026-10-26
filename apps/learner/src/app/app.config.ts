@@ -13,12 +13,12 @@ import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeng/themes';
 import Aura from '@primeng/themes/aura';
-import { ASSURANCE_ENV } from '@assurance/auth';
+import { ASSURANCE_ENV, forgeApiInterceptor, provideForgeApi } from '@assurance/auth';
 import { AUTH_BRAND_LOGO } from '@assurance/auth-ui';
 import { provideForgeFirebase } from '@assurance/data-access';
 import { FORGE_PRIMENG_OPTIONS, FORGE_PRIMENG_TOKENS, provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideTenantTheme } from '@assurance/tenant';
 import { environment } from '../environments/environment';
 import { appRoutes } from './app.routes';
@@ -28,7 +28,9 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideObservability(),
-    provideHttpClient(withFetch()),
+    // Forge API (Django): the interceptor adds the Firebase ID token + tenant.
+    provideHttpClient(withFetch(), withInterceptors([forgeApiInterceptor])),
+    provideForgeApi(),
     provideForgeTransloco(),
     provideAnimationsAsync(),
     // Soteria Forge: PrimeNG widgets read the --sf-* kit tokens (libs/ui/src/styles/forge).

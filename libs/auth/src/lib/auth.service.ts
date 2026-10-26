@@ -65,6 +65,9 @@ export class AuthService {
 
   readonly isAuthenticated = computed(() => !!this.firebaseUser());
 
+  /** Firebase uid of the signed-in user, before claims exist (null when signed out). */
+  readonly uid = computed(() => this.firebaseUser()?.uid ?? null);
+
   readonly principal = computed<Principal | null>(() => {
     const u = this.firebaseUser();
     const claims = this._claims();
