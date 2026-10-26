@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -52,6 +53,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # After auth so Django admin staff can be recognized; see apps/tenants/rls.py.
+    "apps.tenants.rls.RlsMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -83,6 +86,12 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+# The web process connects as the RLS-bound runtime role (apps/tenants/dbroles.py);
+# migrations and `ensure_app_role` run with DB_USE_OWNER=1 as the owner.
+if os.environ.get("DB_APP_PASSWORD") and not env_bool("DB_USE_OWNER"):
+    DATABASES["default"]["USER"] = os.environ.get("DB_APP_USER", "forge_app")
+    DATABASES["default"]["PASSWORD"] = os.environ["DB_APP_PASSWORD"]
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LANGUAGE_CODE = "en-us"
@@ -115,6 +124,8 @@ SPECTACULAR_SETTINGS = {
 ROOT_DOMAIN = os.environ.get("FORGE_ROOT_DOMAIN", "soteriaforge.com")
 CORS_ALLOWED_ORIGIN_REGEXES = [rf"^https://([a-z0-9-]+\.)?{ROOT_DOMAIN.replace('.', r'\.')}$"]
 CORS_ALLOWED_ORIGINS = env_list("CORS_EXTRA_ORIGINS")
+# Firebase ID token + the host-resolved tenant (apps/accounts/authentication.py).
+CORS_ALLOW_HEADERS = (*default_headers, "x-forge-tenant")
 if DEBUG:
     CORS_ALLOWED_ORIGIN_REGEXES.append(r"^http://([a-z0-9-]+\.)?localhost(:\d+)?$")
 

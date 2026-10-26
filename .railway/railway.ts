@@ -17,7 +17,10 @@ export default defineRailway((ctx) => {
       branch: ctx.isEnvironment('production') ? 'main' : null,
     }),
     build: { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile', watchPatterns: ['backend/**'] },
-    preDeploy: 'python manage.py migrate --noinput',
+    // Migrate as the database owner, then refresh the RLS-bound runtime role the
+    // web process connects as (Postgres superusers skip row-level security).
+    preDeploy:
+      "sh -c 'DB_USE_OWNER=1 python manage.py migrate --noinput && DB_USE_OWNER=1 python manage.py ensure_app_role'",
     healthcheck: '/healthz',
     healthcheckTimeout: 60,
     deploy: { restartPolicyType: 'ON_FAILURE', restartPolicyMaxRetries: 5 },
@@ -27,6 +30,8 @@ export default defineRailway((ctx) => {
       DJANGO_DEBUG: 'false',
       DJANGO_ALLOWED_HOSTS: 'api.soteriaforge.com',
       FORGE_ROOT_DOMAIN: 'soteriaforge.com',
+      DB_APP_USER: 'forge_app',
+      DB_APP_PASSWORD: preserve(),
       DJANGO_SECRET_KEY: preserve(),
       FIREBASE_PROJECT_ID: preserve(),
       FIREBASE_CREDENTIALS_JSON: preserve(),

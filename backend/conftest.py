@@ -8,6 +8,33 @@ from apps.tenants.models import Tenant
 TOKENS: dict[str, dict] = {}
 
 
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Create the RLS-bound runtime role in the test database (as owner)."""
+    from apps.tenants.dbroles import ensure_app_role
+
+    with django_db_blocker.unblock():
+        ensure_app_role()
+
+
+@pytest.fixture(autouse=True)
+def rls_bypass(request):
+    """Fixtures and assertions see every tenant; RlsMiddleware scopes each request.
+
+    Tests that check RLS itself switch it off (`rls.set_bypass(False)`).
+    """
+    if "db" not in request.fixturenames and not request.node.get_closest_marker("django_db"):
+        yield
+        return
+    request.getfixturevalue("db")
+    from apps.tenants import dbroles, rls
+
+    # Run as the runtime role: the test DB user is a superuser, which skips RLS.
+    dbroles.use_app_role()
+    rls.set_bypass(True)
+    yield
+
+
 @pytest.fixture(autouse=True)
 def fake_firebase(monkeypatch):
     """No network: tokens resolve from TOKENS; claim writes are recorded."""

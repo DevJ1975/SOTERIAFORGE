@@ -3,6 +3,7 @@ from django.db import transaction
 
 from apps.accounts.models import Member, Role
 from apps.audit.models import record
+from apps.tenants import rls
 from forge import firebase
 
 
@@ -15,7 +16,7 @@ class Command(BaseCommand):
         parser.add_argument("--no-claims", action="store_true", help="Skip mirroring to Firebase")
 
     def handle(self, *args, uid, email, no_claims, **options):
-        with transaction.atomic():
+        with transaction.atomic(), rls.bypass():
             member, created = Member.objects.get_or_create(
                 tenant=None,
                 firebase_uid=uid,

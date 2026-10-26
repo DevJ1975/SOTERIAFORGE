@@ -13,6 +13,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import authentication, exceptions
 
 from apps.audit.models import record
+from apps.tenants import rls
 from apps.tenants.models import Tenant
 from forge import firebase
 
@@ -42,7 +43,13 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
             log.info("Rejected Firebase ID token: %s", type(exc).__name__)
             raise exceptions.AuthenticationFailed(_("Invalid or expired sign-in.")) from exc
 
-        member, tenant = self._resolve(claims, request.META.get(TENANT_HEADER, "").strip())
+        # Membership lookup spans tenants; everything after runs tenant-scoped.
+        with rls.bypass():
+            member, tenant = self._resolve(claims, request.META.get(TENANT_HEADER, "").strip())
+        if tenant is not None:
+            rls.set_tenant(tenant.id)
+        elif member.is_superadmin:
+            rls.set_bypass(True)  # platform-level superadmin request
         if member.status == Member.Status.INVITED:
             # First verified sign-in accepts the invite.
             member.status = Member.Status.ACTIVE

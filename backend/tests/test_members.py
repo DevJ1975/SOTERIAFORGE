@@ -111,15 +111,26 @@ def test_audit_log_is_append_only_in_python_and_in_postgres(lakewood):
         entry.save()
     with pytest.raises(RuntimeError):
         entry.delete()
-    with (
-        pytest.raises(Exception, match="append-only"),
-        transaction.atomic(),
-        connection.cursor() as cur,
-    ):
-        cur.execute("UPDATE audit_auditentry SET action = 'tampered' WHERE id = %s", [entry.pk])
-    with (
-        pytest.raises(Exception, match="append-only"),
-        transaction.atomic(),
-        connection.cursor() as cur,
-    ):
-        cur.execute("DELETE FROM audit_auditentry WHERE id = %s", [entry.pk])
+
+    tamper = [
+        ("UPDATE audit_auditentry SET action = 'tampered' WHERE id = %s", [entry.pk]),
+        ("DELETE FROM audit_auditentry WHERE id = %s", [entry.pk]),
+    ]
+    # The runtime role has no UPDATE/DELETE grant on the table at all...
+    for statement, params in tamper:
+        with (
+            pytest.raises(Exception, match="permission denied"),
+            transaction.atomic(),
+            connection.cursor() as cur,
+        ):
+            cur.execute(statement, params)
+    # ...and even the owner is stopped by the trigger.
+    with connection.cursor() as cur:
+        cur.execute("RESET ROLE")
+    for statement, params in tamper:
+        with (
+            pytest.raises(Exception, match="append-only"),
+            transaction.atomic(),
+            connection.cursor() as cur,
+        ):
+            cur.execute(statement, params)
