@@ -14,8 +14,11 @@
         "browser": "apps/learner/src/main.ts",
         "polyfills": ["zone.js"],
         "tsConfig": "apps/learner/tsconfig.app.json",
-        "assets": [{ "glob": "**/*", "input": "apps/learner/public" }],
-        "styles": ["apps/learner/src/styles.scss"],
+        "assets": [
+          { "glob": "**/*", "input": "apps/learner/public" },
+          { "glob": "**/*", "input": "libs/ui/src/assets/forge", "output": "assets/forge" }
+        ],
+        "styles": ["libs/ui/src/styles/forge/index.css", "apps/learner/src/styles.scss"],
         "scripts": []
       },
       "configurations": {

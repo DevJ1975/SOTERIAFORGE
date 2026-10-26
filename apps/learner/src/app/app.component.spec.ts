@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { Component, signal } from '@angular/core';
+import { Router, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { ASSURANCE_ENV, type AssuranceEnvironment, AuthService } from '@assurance/auth';
 import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
@@ -44,7 +44,7 @@ describe('Learner AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     expect(fixture.componentInstance).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Soteria Assurance');
+    expect(fixture.nativeElement.textContent).toContain('Soteria Forge');
   });
 });
 
@@ -86,5 +86,57 @@ describe('Learner AppComponent — aggregated pending count (FIX-6)', () => {
     quizCount.set(3);
     completionCount.set(1);
     expect(inst.pendingCount()).toBe(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Soteria Forge shell — route data drives crumbs, bare (auth) and dark (Engage)
+// ---------------------------------------------------------------------------
+describe('Learner AppComponent — Forge shell route hooks', () => {
+  @Component({ standalone: true, template: '<h1>Page</h1>' })
+  class StubPage {}
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppComponent, transloco()],
+      providers: [
+        provideRouter([
+          { path: '', component: StubPage, data: { crumbs: [{ label: 'Home' }] } },
+          { path: 'login', component: StubPage, data: { sfShell: 'none' } },
+          { path: 'engage', component: StubPage, data: { sfShell: 'dark', crumbs: [{ label: 'Engage' }] } },
+        ]),
+        { provide: ASSURANCE_ENV, useValue: testEnv },
+        { provide: AuthService, useValue: authStub },
+      ],
+    }).compileComponents();
+  });
+
+  async function go(url: string) {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    await TestBed.inject(Router).navigateByUrl(url);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('renders the rail + breadcrumb from route data', async () => {
+    const el = await go('/');
+    expect(el.querySelectorAll('nav.sf-rail .sf-rail__item').length).toBe(6);
+    expect(el.querySelector('nav[aria-label="Breadcrumb"] [aria-current="page"]')?.textContent).toBe(
+      'Home',
+    );
+  });
+
+  it('drops the chrome on auth pages (sfShell: none)', async () => {
+    const el = await go('/login');
+    expect(el.querySelector('nav.sf-rail')).toBeNull();
+    expect(el.querySelector('main#main-content h1')).not.toBeNull();
+  });
+
+  it('switches to the dark Engage variant (sfShell: dark)', async () => {
+    const el = await go('/engage');
+    expect(el.querySelector('sf-app-shell')?.classList).toContain('sf-shell--dark');
   });
 });
