@@ -167,3 +167,55 @@ describe('ForgeSession', () => {
     ctrl.verify();
   });
 });
+
+describe('ForgeSession.settled', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    currentUser = { getIdToken: async () => 'id-token' };
+    tenantId = 'lakewood';
+    uid.set(null);
+  });
+
+  const tick = async () => {
+    TestBed.inject(ApplicationRef).tick();
+    await flushMicrotasks();
+  };
+
+  it('is unavailable when signed out', async () => {
+    setup();
+    expect(await TestBed.inject(ForgeSession).settled()).toEqual({ kind: 'unavailable' });
+  });
+
+  it('waits for /api/me and returns the membership', async () => {
+    const { ctrl } = setup();
+    const session = TestBed.inject(ForgeSession);
+    uid.set('marcus');
+    await tick();
+    const result = session.settled();
+    ctrl.expectOne('http://api.test/api/me').flush(me);
+    await tick();
+    expect(await result).toEqual({ kind: 'member', me });
+  });
+
+  it.each([401, 403])('is denied on HTTP %s', async (status) => {
+    const { ctrl } = setup();
+    const session = TestBed.inject(ForgeSession);
+    uid.set('marcus');
+    await tick();
+    const result = session.settled();
+    ctrl.expectOne('http://api.test/api/me').flush({}, { status, statusText: 'no' });
+    await tick();
+    expect(await result).toEqual({ kind: 'denied' });
+  });
+
+  it('is unavailable when the API is down', async () => {
+    const { ctrl } = setup();
+    const session = TestBed.inject(ForgeSession);
+    uid.set('marcus');
+    await tick();
+    const result = session.settled();
+    ctrl.expectOne('http://api.test/api/me').flush({}, { status: 503, statusText: 'down' });
+    await tick();
+    expect(await result).toEqual({ kind: 'unavailable' });
+  });
+});

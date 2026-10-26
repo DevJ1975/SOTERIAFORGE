@@ -6,8 +6,9 @@ import {
   makeEnvironmentProviders,
   provideEnvironmentInitializer,
 } from '@angular/core';
-import { type HttpInterceptorFn, httpResource } from '@angular/common/http';
-import { from, switchMap } from 'rxjs';
+import { HttpErrorResponse, type HttpInterceptorFn, httpResource } from '@angular/common/http';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { filter, firstValueFrom, from, switchMap } from 'rxjs';
 import type { Role } from '@assurance/shared';
 import { ASSURANCE_ENV } from './assurance-environment';
 import { AuthService } from './auth.service';
@@ -28,6 +29,18 @@ export interface ForgeMe {
   tenant: { id: string; name: string; status: string; branding: Record<string, unknown> } | null;
   canAuthor: boolean;
 }
+
+/**
+ * What the API says about the signed-in user, for route guards:
+ * - `member`: use this membership (Postgres is the source of truth for roles)
+ * - `denied`: the API refused (401/403: not a member, deactivated, wrong tenant)
+ * - `unavailable`: no API configured, nobody signed in, or the API is down;
+ *   guards fall back to Firebase claims
+ */
+export type ForgeAccess =
+  | { kind: 'member'; me: ForgeMe }
+  | { kind: 'denied' }
+  | { kind: 'unavailable' };
 
 /** Joins the configured API base URL and a path (`/api/me`). */
 export function forgeApiUrl(base: string, path: string): string {
@@ -77,6 +90,20 @@ export class ForgeSession {
     this.me.hasValue() ? this.me.value().member.role : null,
   );
   readonly canAuthor = computed(() => (this.me.hasValue() ? this.me.value().canAuthor : false));
+
+  private readonly status$ = toObservable(this.me.status);
+
+  /** Waits for any in-flight `/api/me` load, then classifies the result. */
+  async settled(): Promise<ForgeAccess> {
+    if (!this.base || !this.auth.uid()) return { kind: 'unavailable' };
+    await firstValueFrom(this.status$.pipe(filter((s) => s !== 'loading' && s !== 'reloading')));
+    if (this.me.hasValue()) return { kind: 'member', me: this.me.value() };
+    const err = this.me.error();
+    if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+      return { kind: 'denied' };
+    }
+    return { kind: 'unavailable' };
+  }
 }
 
 /** Starts the API session with the app. Pair with `withInterceptors([forgeApiInterceptor])`. */
