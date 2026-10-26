@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { Branding } from '@assurance/shared';
-import { DEFAULT_THEME, ThemeTokens, tokensToCssVars } from './theme.tokens';
+import { DEFAULT_THEME, ThemeTokens, pickSfTokenOverrides, tokensToCssVars } from './theme.tokens';
 
 /**
  * ThemeService manages the active white-label theme for the current tenant.
@@ -13,6 +13,8 @@ import { DEFAULT_THEME, ThemeTokens, tokensToCssVars } from './theme.tokens';
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
+  /** `--sf-*` properties written by applySfOverrides, so reset() can remove them. */
+  private readonly sfOverrideKeys = new Set<string>();
 
   /** The currently active design tokens (reactive signal). */
   readonly tokens = signal<ThemeTokens>({ ...DEFAULT_THEME });
@@ -65,10 +67,27 @@ export class ThemeService {
     }
 
     this.applyTheme(merged);
+    this.applySfOverrides(pickSfTokenOverrides(branding.colors));
+  }
+
+  /**
+   * Writes tenant overrides of Soteria Forge kit tokens (`--sf-*`) onto the
+   * document root. The Forge PrimeNG preset and `sf-*` classes read these
+   * properties, so the whole UI re-skins without a rebuild.
+   */
+  applySfOverrides(overrides: Record<string, string>): void {
+    const root = this.document.documentElement;
+    for (const [prop, value] of Object.entries(pickSfTokenOverrides(overrides))) {
+      root.style.setProperty(prop, value);
+      this.sfOverrideKeys.add(prop);
+    }
   }
 
   /** Resets the theme back to the built-in defaults. */
   reset(): void {
+    const root = this.document.documentElement;
+    for (const prop of this.sfOverrideKeys) root.style.removeProperty(prop);
+    this.sfOverrideKeys.clear();
     this.applyTheme({ ...DEFAULT_THEME });
   }
 }

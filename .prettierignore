@@ -19,3 +19,8 @@ backend/openapi.yaml
 materials
 # Agent worktrees
 .claude
+# Verbatim copies of design-kit files (see libs/ui/src/styles/forge)
+libs/ui/src/styles/forge/tokens.css
+libs/ui/src/styles/forge/tokens.json
+libs/ui/src/styles/forge/forge.css
+libs/ui/src/styles/forge/fonts/inter.css

@@ -99,14 +99,18 @@ import { AuthShellComponent } from './auth-shell.component';
       }
       .auth-form__error {
         margin: 0;
-        color: #b00020;
+        color: var(--sf-danger, #b00020);
         font-size: 0.875rem;
       }
       .auth-form__success {
         margin: 0;
       }
       .auth-form__link {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        color: var(--sf-ember-on-soft, inherit);
+        font-weight: var(--sf-weight-semibold, 600);
         font-size: 0.875rem;
       }
     `,

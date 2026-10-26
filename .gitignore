@@ -63,3 +63,6 @@ yarn-error.log*
 .nx/polygraph
 .nx/self-healing
 .nx/migrate-runs
+# A global "Icon?" rule (macOS Icon\r files) matches "icons" on case-insensitive
+# checkouts and silently drops these folders. Keep them.
+!**/icons/

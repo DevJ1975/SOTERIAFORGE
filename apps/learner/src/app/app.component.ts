@@ -3,145 +3,87 @@ import {
   Component,
   type Signal,
   computed,
+  effect,
   inject,
   PLATFORM_ID,
   signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { TenantService } from '@assurance/auth';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { type ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
+import { AuthService } from '@assurance/auth';
 import { UserMenuComponent } from '@assurance/auth-ui';
 import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
 import { OfflineXapiQueue } from '@assurance/standards';
-import { AssuranceBottomNavComponent, AssuranceOfflineBannerComponent } from '@assurance/ui';
+import { AssuranceOfflineBannerComponent, SfAppShellComponent } from '@assurance/ui';
+import type { ForgeRouteData } from './app.routes';
+import { LearnerProfileStore } from './services/learner-profile.store';
 
 @Component({
   selector: 'assurance-learner-root',
   standalone: true,
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-    AssuranceOfflineBannerComponent,
-    AssuranceBottomNavComponent,
-    UserMenuComponent,
-  ],
+  imports: [RouterOutlet, SfAppShellComponent, AssuranceOfflineBannerComponent, UserMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- Skip link: visually hidden until focused; jumps keyboard users past nav -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-
-    <div class="assurance-shell">
-      <header class="assurance-shell__header" role="banner">
-        <span class="assurance-shell__brand">Soteria Assurance</span>
-        <span class="assurance-shell__spacer"></span>
-        @if (tenant.tenantId(); as tid) {
-          <span class="assurance-shell__tenant" [attr.aria-label]="'Current tenant: ' + tid">{{
-            tid
-          }}</span>
-        }
-        <assurance-user-menu redirectTo="/login" />
-      </header>
-
-      <!-- Top navigation (visible on larger viewports; bottom-nav covers phones) -->
-      <nav class="assurance-shell__topnav" aria-label="Primary">
-        <a routerLink="/" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }"
-          >Dashboard</a
-        >
-        <a routerLink="/courses" routerLinkActive="is-active">Courses</a>
-        <a routerLink="/leaderboard" routerLinkActive="is-active">Leaderboard</a>
-        <a routerLink="/tutor" routerLinkActive="is-active">Tutor</a>
-      </nav>
+    <sf-app-shell
+      [bare]="shellMode() === 'none'"
+      [variant]="shellMode() === 'dark' ? 'dark' : 'light'"
+      [crumbs]="routeData().crumbs ?? []"
+      [userName]="profile.displayName()"
+      [streakDays]="profile.streakDays()"
+      (search)="onSearch($event)"
+    >
+      <assurance-user-menu sfTopbarEnd variant="compact" redirectTo="/login" />
 
       <!-- Offline connectivity banner (non-blocking, polite live region) -->
       <assurance-offline-banner [pendingCount]="pendingCount()" />
 
-      <main id="main-content" class="assurance-shell__main" tabindex="-1">
-        <router-outlet />
-      </main>
+      <router-outlet />
 
-      <footer class="assurance-shell__footer">
-        <span>© {{ year }} Soteria Assurance</span>
+      <footer class="learner-footer" [class.learner-footer--dark]="shellMode() === 'dark'">
+        <span>© {{ year }} Soteria Forge</span>
         <span>Powered by Trainovation Technologies, LLC</span>
       </footer>
-
-      <!-- Mobile bottom tab bar (CSS-gated to small viewports) -->
-      <assurance-bottom-nav />
-    </div>
+    </sf-app-shell>
   `,
   styles: [
     `
-      .assurance-shell {
-        display: flex;
-        flex-direction: column;
-        min-height: 100dvh;
-      }
-      .assurance-shell__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.75rem 1.25rem;
-        background: var(--assurance-primary, #0b5fff);
-        color: #fff;
-      }
-      .assurance-shell__brand {
-        font-weight: 700;
-      }
-      .assurance-shell__spacer {
-        flex: 1 1 auto;
-      }
-      .assurance-shell__tenant {
-        opacity: 0.85;
-        text-transform: capitalize;
-        margin-right: 0.75rem;
-      }
-      .assurance-shell__topnav {
-        display: flex;
-        gap: 1.25rem;
-        padding: 0.5rem 1.25rem;
-        border-bottom: 1px solid var(--assurance-border, #e5e7eb);
-      }
-      .assurance-shell__topnav a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
-        padding: 0 0.25rem;
-        color: var(--assurance-text, #1f2937);
-        text-decoration: none;
-        font-size: 0.9375rem;
-      }
-      .assurance-shell__topnav a.is-active {
-        color: var(--assurance-primary, #0b5fff);
-        font-weight: 600;
-        border-bottom: 2px solid var(--assurance-primary, #0b5fff);
-      }
-      /* On phones the bottom-nav is the primary nav; hide the top links. */
-      @media (max-width: 48rem) {
-        .assurance-shell__topnav {
-          display: none;
-        }
-      }
-      .assurance-shell__main {
-        flex: 1;
-        outline: none;
-      }
-      .assurance-shell__footer {
+      .learner-footer {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.25rem 1rem;
+        gap: var(--sf-space-1) var(--sf-space-4);
         justify-content: space-between;
-        padding: 1rem 1.25rem;
-        margin-top: 2rem;
-        border-top: 1px solid #e5e7eb;
-        color: #6b7280;
-        font-size: 0.8125rem;
+        margin-top: var(--sf-space-10);
+        padding-top: var(--sf-space-4);
+        border-top: 1px solid var(--sf-line);
+        color: var(--sf-ink-2);
+        font-size: var(--sf-text-xs);
+      }
+      .learner-footer--dark {
+        border-top-color: var(--sf-dark-line);
+        color: var(--sf-dark-text);
       }
     `,
   ],
 })
 export class AppComponent {
-  protected readonly tenant = inject(TenantService);
+  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  protected readonly profile = inject(LearnerProfileStore);
   protected readonly year = new Date().getFullYear();
+
+  /** `data` of the deepest active route (crumbs + shell mode). */
+  protected readonly routeData: Signal<ForgeRouteData> = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(() => this.deepestData()),
+    ),
+    { initialValue: {} as ForgeRouteData },
+  );
+
+  /** 'none' (auth pages), 'dark' (Engage) or 'light'. */
+  protected readonly shellMode = computed(() => this.routeData().sfShell ?? 'light');
 
   /**
    * Total pending offline work surfaced in the offline banner: the sum of the
@@ -164,5 +106,25 @@ export class AppComponent {
     } else {
       this.pendingCount = signal(0).asReadonly();
     }
+
+    // Load the learner's member doc (name + streak for the top bar) once signed
+    // in; drop it on sign-out so a shared device never shows the last learner.
+    effect(() => {
+      if (this.auth.principal()) {
+        void this.profile.load();
+      } else {
+        this.profile.reset();
+      }
+    });
+  }
+
+  protected onSearch(q: string): void {
+    void this.router.navigate(['/courses'], { queryParams: { q } });
+  }
+
+  private deepestData(): ForgeRouteData {
+    let snap: ActivatedRouteSnapshot | null = this.router.routerState.snapshot.root;
+    while (snap?.firstChild) snap = snap.firstChild;
+    return (snap?.data ?? {}) as ForgeRouteData;
   }
 }

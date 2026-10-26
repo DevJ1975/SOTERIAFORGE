@@ -11,10 +11,12 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideServiceWorker } from '@angular/service-worker';
 import { getMessaging, provideMessaging } from '@angular/fire/messaging';
 import { providePrimeNG } from 'primeng/config';
+import { definePreset } from '@primeng/themes';
 import Aura from '@primeng/themes/aura';
 import { ASSURANCE_ENV } from '@assurance/auth';
+import { AUTH_BRAND_LOGO } from '@assurance/auth-ui';
 import { provideForgeFirebase } from '@assurance/data-access';
-import { provideObservability } from '@assurance/ui';
+import { FORGE_PRIMENG_OPTIONS, FORGE_PRIMENG_TOKENS, provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideTenantTheme } from '@assurance/tenant';
@@ -29,8 +31,19 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch()),
     provideForgeTransloco(),
     provideAnimationsAsync(),
-    providePrimeNG({ theme: { preset: Aura } }),
+    // Soteria Forge: PrimeNG widgets read the --sf-* kit tokens (libs/ui/src/styles/forge).
+    providePrimeNG({
+      theme: { preset: definePreset(Aura, FORGE_PRIMENG_TOKENS), options: FORGE_PRIMENG_OPTIONS },
+    }),
     { provide: ASSURANCE_ENV, useValue: environment },
+    // Forge lockup (kit file, used as-is) above the sign-in card.
+    {
+      provide: AUTH_BRAND_LOGO,
+      useValue: {
+        src: 'assets/forge/logo/forge-lockup-horizontal-on-light.svg',
+        alt: 'Soteria Forge',
+      },
+    },
     provideForgeFirebase({
       firebase: environment.firebase,
       appCheckSiteKey: environment.appCheckSiteKey,

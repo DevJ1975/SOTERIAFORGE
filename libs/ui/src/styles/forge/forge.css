@@ -1,0 +1,117 @@
+/* Soteria Forge components v1.0. Requires ../tokens/tokens.css (and ../fonts/inter.css).
+   Class prefix: sf-  · Plain CSS, framework-agnostic. Matches the walkthrough video UI. */
+
+*, *::before, *::after { box-sizing: border-box; }
+.sf-app { font-family: var(--sf-font); color: var(--sf-ink); background: var(--sf-cream); -webkit-font-smoothing: antialiased; font-size: var(--sf-text-base); line-height: var(--sf-leading-body); }
+.sf-h1 { font-size: var(--sf-text-xl); font-weight: var(--sf-weight-bold); letter-spacing: -0.01em; line-height: var(--sf-leading-tight); margin: 0; }
+.sf-h2 { font-size: var(--sf-text-lg); font-weight: var(--sf-weight-bold); letter-spacing: -0.01em; margin: 0; }
+.sf-h3 { font-size: var(--sf-text-base); font-weight: var(--sf-weight-bold); margin: 0; }
+.sf-sub { font-size: var(--sf-text-base); color: var(--sf-muted); }
+.sf-icon { width: 24px; height: 24px; flex: none; }
+.sf-icon--sm { width: 18px; height: 18px; }
+
+/* ---------- Buttons ---------- */
+.sf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sf-space-2); height: var(--sf-control-height); padding: 0 var(--sf-space-5); border-radius: var(--sf-radius-md); border: 1px solid transparent; font: inherit; font-size: var(--sf-text-base); font-weight: var(--sf-weight-semibold); cursor: pointer; text-decoration: none; transition: background var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), transform var(--sf-dur-fast) var(--sf-ease); }
+.sf-btn:focus-visible { outline: 3px solid rgba(220, 72, 27, 0.45); outline-offset: 2px; }
+.sf-btn:active { transform: translateY(1px); }
+.sf-btn:disabled, .sf-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.sf-btn--primary { background: var(--sf-ember); color: #fff; }
+.sf-btn--primary:hover { background: #C93F15; }
+.sf-btn--primary:active { background: var(--sf-ember-dark); }
+.sf-btn--secondary { background: var(--sf-surface); color: var(--sf-ink); border-color: var(--sf-line); }
+.sf-btn--secondary:hover { border-color: #D3CCBF; background: #FBFAF7; }
+.sf-btn--dark { background: var(--sf-charcoal); color: #fff; }
+.sf-btn--dark:hover { background: var(--sf-charcoal-2); }
+.sf-btn--ghost { background: transparent; color: var(--sf-ember-on-soft); }
+.sf-btn--ghost:hover { background: var(--sf-ember-soft); }
+.sf-btn--danger { background: var(--sf-danger); color: #fff; }
+.sf-btn--sm { height: 36px; padding: 0 var(--sf-space-4); font-size: var(--sf-text-sm); border-radius: 10px; }
+.sf-btn--icon { width: var(--sf-control-height); padding: 0; }
+.sf-btn--pulse { box-shadow: 0 0 0 5px rgba(220, 72, 27, 0.25); } /* "Ask Forge" attention state */
+
+/* ---------- Tags, pills, chips ---------- */
+.sf-tag { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--sf-radius-sm); font-size: var(--sf-text-xs); font-weight: var(--sf-weight-semibold); background: var(--sf-muted-bg); color: var(--sf-ink-2); white-space: nowrap; }
+.sf-tag--ember { background: var(--sf-ember-soft); color: var(--sf-ember-on-soft); }
+.sf-tag--success { background: var(--sf-success-soft); color: #157A52; }
+.sf-tag--navy { background: var(--sfg-navy-soft); color: var(--sfg-navy); }
+.sf-tag--live { background: var(--sf-danger); color: #fff; }
+.sf-pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: var(--sf-radius-full); background: var(--sf-ember-soft); color: var(--sf-ember-on-soft); font-size: var(--sf-text-sm); font-weight: var(--sf-weight-semibold); }
+.sf-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--sf-radius-sm); background: var(--sf-surface); border: 1px solid var(--sf-line); font-size: var(--sf-text-xs); font-weight: var(--sf-weight-semibold); color: var(--sf-ink-2); cursor: pointer; }
+.sf-chip--suggest { border-color: #F2C8B8; color: var(--sf-ember-on-soft); }
+
+/* ---------- Cards ---------- */
+.sf-card { background: var(--sf-surface); border: 1px solid var(--sf-line); border-radius: var(--sf-radius-xl); box-shadow: var(--sf-shadow-card); padding: var(--sf-space-6); }
+.sf-stat { padding: var(--sf-space-3); border-radius: var(--sf-radius-md); background: var(--sf-cream); text-align: center; }
+.sf-stat__value { font-size: 26px; font-weight: var(--sf-weight-black); }
+.sf-stat__label { font-size: var(--sf-text-xs); color: var(--sf-muted); }
+
+/* ---------- Inputs ---------- */
+.sf-input { width: 100%; height: 52px; padding: 0 var(--sf-space-4); border: 1.5px solid var(--sf-line); border-radius: var(--sf-radius-lg); font: inherit; font-size: var(--sf-text-base); color: var(--sf-ink); background: var(--sf-surface); }
+.sf-input::placeholder { color: var(--sf-placeholder); }
+.sf-input:focus { outline: none; border-color: var(--sf-ember); }
+.sf-search { height: 38px; border-radius: 10px; background: #FBFAF7; font-size: 14px; }
+
+/* ---------- Knowledge-check options ---------- */
+.sf-option { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; border: 1.5px solid var(--sf-line); border-radius: var(--sf-radius-md); background: var(--sf-surface); font: inherit; font-size: var(--sf-text-base); text-align: left; cursor: pointer; }
+.sf-option__key { width: 30px; height: 30px; flex: none; border-radius: var(--sf-radius-sm); border: 1.5px solid var(--sf-line); display: flex; align-items: center; justify-content: center; font-size: var(--sf-text-sm); font-weight: var(--sf-weight-bold); color: var(--sf-muted); }
+.sf-option[aria-checked="true"].is-correct { border-color: var(--sf-success); background: #F0FAF5; }
+.sf-option[aria-checked="true"].is-correct .sf-option__key { background: var(--sf-success); border-color: var(--sf-success); color: #fff; }
+.sf-option[aria-checked="true"].is-wrong { border-color: #E5A4A4; background: var(--sf-danger-soft); }
+.sf-feedback { padding: 14px 16px; border-radius: var(--sf-radius-md); background: var(--sf-success-soft); color: var(--sf-success-ink); font-size: 14px; line-height: 1.45; }
+
+/* ---------- Progress ---------- */
+.sf-xp { height: 14px; border-radius: 7px; background: var(--sf-muted-bg); overflow: hidden; }
+.sf-xp__fill { height: 100%; border-radius: 7px; background: var(--sf-grad-ember); transition: width var(--sf-dur-slow) var(--sf-ease); }
+.sf-streak { display: flex; gap: 6px; }
+.sf-streak__day { width: 28px; height: 28px; border-radius: var(--sf-radius-sm); background: var(--sf-muted-bg); }
+.sf-streak__day.is-done { background: var(--sf-ember); }
+/* Progress ring: <svg class="sf-ring" viewBox="0 0 132 132"><circle class="sf-ring__track" .../><circle class="sf-ring__value" .../></svg> */
+.sf-ring__track { fill: none; stroke: var(--sf-muted-bg); stroke-width: 12; }
+.sf-ring__value { fill: none; stroke: var(--sf-ember); stroke-width: 12; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset var(--sf-dur-slow) var(--sf-ease); }
+
+/* ---------- Badges ---------- */
+.sf-badge { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 150px; text-align: center; }
+.sf-badge__medal { width: 92px; height: 92px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--sf-muted-bg); border: 3px dashed var(--sf-line); color: var(--sf-placeholder); }
+.sf-badge__medal svg { width: 44px; height: 44px; }
+.sf-badge--earned .sf-badge__medal { background: var(--sf-grad-badge); border: 3px solid var(--sf-flame); box-shadow: var(--sf-shadow-badge); color: #fff; }
+.sf-badge--credential .sf-badge__medal { background: var(--sf-grad-credential); border: 3px solid #FFD75E; box-shadow: 0 8px 24px rgba(242, 169, 0, 0.35); color: var(--sf-ink); }
+.sf-badge--locked .sf-badge__medal { opacity: 0.6; }
+.sf-badge__name { font-size: var(--sf-text-sm); font-weight: var(--sf-weight-bold); }
+.sf-badge__meta { font-size: 11px; color: var(--sf-muted); }
+
+/* ---------- App shell ---------- */
+.sf-rail { width: var(--sf-rail-width); background: var(--sf-charcoal); display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 18px; min-height: 100vh; }
+.sf-rail__item { width: 52px; height: 52px; border-radius: var(--sf-radius-lg); display: flex; align-items: center; justify-content: center; color: #9AA3AF; background: none; border: 0; cursor: pointer; }
+.sf-rail__item:hover { color: #fff; }
+.sf-rail__item[aria-current="page"] { background: var(--sf-charcoal-3); color: #fff; box-shadow: inset 3px 0 0 var(--sf-ember); }
+.sf-topbar { height: var(--sf-topbar-height); background: var(--sf-surface); border-bottom: 1px solid var(--sf-line); display: flex; align-items: center; gap: 18px; padding: 0 28px; }
+.sf-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #5B4636, #2B1D14); color: #fff; font-weight: var(--sf-weight-bold); font-size: var(--sf-text-sm); display: flex; align-items: center; justify-content: center; }
+
+/* ---------- AI coach (Ask Forge) ---------- */
+.sf-panel { width: var(--sf-panel-width); background: var(--sf-surface); border-left: 1px solid var(--sf-line); box-shadow: var(--sf-shadow-panel); display: flex; flex-direction: column; }
+.sf-msg { max-width: 92%; padding: 14px 16px; border-radius: var(--sf-radius-lg); font-size: var(--sf-text-base); line-height: 1.5; }
+.sf-msg--ai { background: var(--sf-cream); border-bottom-left-radius: 4px; align-self: flex-start; }
+.sf-msg--me { background: var(--sf-charcoal); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+.sf-diagram-node { fill: var(--sf-cream); stroke: #C9CED6; }
+.sf-diagram-node--risk { fill: var(--sf-ember-soft); stroke: var(--sf-ember); }
+.sf-diagram-node--fix { fill: var(--sf-success-soft); stroke: var(--sf-success); }
+
+/* ---------- Forge Engage (dark) ---------- */
+.sf-engage { background: var(--sf-dark-bg); color: #fff; }
+.sf-pane { background: var(--sf-dark-pane); border: 1px solid var(--sf-dark-line); border-radius: var(--sf-radius-lg); padding: 18px; }
+.sf-tile { position: relative; aspect-ratio: 16 / 9; border-radius: var(--sf-radius-md); background: #0B0C0F; overflow: hidden; }
+.sf-tile__name { position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 6px; background: rgba(0, 0, 0, 0.6); font-size: var(--sf-text-xs); font-weight: var(--sf-weight-semibold); }
+.sf-tile__host { position: absolute; left: 10px; top: 10px; padding: 3px 8px; border-radius: 6px; background: var(--sf-ember); font-size: 11px; font-weight: var(--sf-weight-bold); }
+.sf-tile.is-speaking { box-shadow: 0 0 0 3px var(--sf-success); }
+.sf-stage { display: flex; gap: 6px; }
+.sf-stage__step { flex: 1; height: 52px; border-radius: 10px; background: var(--sf-dark-line); color: #9AA3AF; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--sf-text-xs); font-weight: var(--sf-weight-bold); letter-spacing: 0.04em; }
+.sf-stage__step small { font-size: 11px; font-weight: var(--sf-weight-semibold); opacity: 0.8; }
+.sf-stage__step.is-current { background: var(--sf-ember); color: #fff; }
+.sf-stage__step.is-done { background: #243B2F; color: #7FD3A6; }
+.sf-timer { font-size: 30px; font-weight: var(--sf-weight-black); font-variant-numeric: tabular-nums; color: var(--sf-gold); }
+
+/* ---------- Leaderboard ---------- */
+.sf-lb-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--sf-radius-md); border: 1px solid var(--sf-line); background: var(--sf-surface); }
+.sf-lb-row.is-mine { border-color: var(--sf-ember); background: #FFF8F4; }
+.sf-lb-row__rank { width: 30px; height: 30px; border-radius: 50%; background: var(--sf-muted-bg); display: flex; align-items: center; justify-content: center; font-weight: var(--sf-weight-black); font-size: var(--sf-text-sm); }
+.sf-lb-row__pts { margin-left: auto; font-weight: var(--sf-weight-black); font-size: var(--sf-text-md); }

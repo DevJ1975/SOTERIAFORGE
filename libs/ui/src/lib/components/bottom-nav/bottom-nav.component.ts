@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { SfIconComponent, type SfIconName } from '../../forge/sf-icon.component';
 
 /** A single bottom-nav destination. */
 export interface BottomNavItem {
@@ -7,18 +8,18 @@ export interface BottomNavItem {
   readonly link: string;
   /** Accessible label / visible text. */
   readonly label: string;
-  /** Short emoji/glyph icon (decorative). */
-  readonly icon: string;
+  /** Soteria Forge kit icon (decorative; the label names the tab). Never emoji. */
+  readonly icon: SfIconName;
   /** When true, only matches the exact route (use for the root '/' tab). */
   readonly exact?: boolean;
 }
 
 /** Default learner destinations: Dashboard / Courses / Leaderboard / Tutor. */
 export const LEARNER_BOTTOM_NAV: readonly BottomNavItem[] = [
-  { link: '/', label: 'Dashboard', icon: '🏠', exact: true },
-  { link: '/courses', label: 'Courses', icon: '📚' },
-  { link: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
-  { link: '/tutor', label: 'Tutor', icon: '🤖' },
+  { link: '/', label: 'Dashboard', icon: 'home', exact: true },
+  { link: '/courses', label: 'Courses', icon: 'courses' },
+  { link: '/leaderboard', label: 'Leaderboard', icon: 'progress-star' },
+  { link: '/tutor', label: 'Tutor', icon: 'ask-forge-sparkle' },
 ];
 
 /**
@@ -39,7 +40,7 @@ export const LEARNER_BOTTOM_NAV: readonly BottomNavItem[] = [
 @Component({
   selector: 'assurance-bottom-nav',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, SfIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav class="assurance-bottom-nav" [attr.aria-label]="ariaLabel()">
@@ -54,7 +55,7 @@ export const LEARNER_BOTTOM_NAV: readonly BottomNavItem[] = [
               [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
               [attr.aria-current]="rla.isActive ? 'page' : null"
             >
-              <span class="assurance-bottom-nav__icon" aria-hidden="true">{{ item.icon }}</span>
+              <sf-icon class="assurance-bottom-nav__icon" [name]="item.icon" />
               <span class="assurance-bottom-nav__label">{{ item.label }}</span>
             </a>
           </li>

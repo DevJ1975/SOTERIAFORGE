@@ -88,3 +88,32 @@ export function updateStreak(
   // Gap of 2+ days — streak broken, reset to 1.
   return { streakDays: 1, incremented: true };
 }
+
+/**
+ * Derives the "last N days" activity strip shown on the learner home (Pulse
+ * card) from the server-authoritative streak counter.
+ *
+ * Returns `length` booleans, oldest first, the last entry being today (UTC).
+ * Only the current run is known, so days before it are reported inactive:
+ *  - last active today     → the final `streakDays` entries are active;
+ *  - last active yesterday → the run ends yesterday, today is still open;
+ *  - older / never         → the streak is broken, nothing is active.
+ */
+export function streakStrip(
+  streakDays: number,
+  lastActiveISO: string | undefined | null,
+  nowISO: string,
+  length = 14,
+): boolean[] {
+  const days = Array.from({ length }, () => false);
+  if (!lastActiveISO || streakDays <= 0 || length <= 0) return days;
+
+  const gap = calendarDayDiff(utcDatePart(lastActiveISO), utcDatePart(nowISO));
+  if (gap < 0 || gap > 1) return days;
+
+  const end = length - 1 - gap; // index of the last active day
+  for (let i = 0; i < Math.min(streakDays, end + 1); i++) {
+    days[end - i] = true;
+  }
+  return days;
+}
