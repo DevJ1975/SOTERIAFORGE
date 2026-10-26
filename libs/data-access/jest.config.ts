@@ -12,6 +12,6 @@ module.exports = {
       { tsconfig: '<rootDir>/tsconfig.spec.json', stringifyContentPathRegex: '\\.(html|svg)$' },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$|@angular|rxjs)'],
+  transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$|@angular|rxjs|@jsverse)'],
   moduleFileExtensions: ['ts', 'html', 'js', 'json', 'mjs'],
 };
