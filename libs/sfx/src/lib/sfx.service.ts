@@ -86,6 +86,8 @@ export class SfxService {
     } catch {
       // fall through to the default
     }
-    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return (
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 }

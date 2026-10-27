@@ -36,22 +36,22 @@ LiveKit. Section 10 lists the conditions under which this plan is worth executin
 
 ## 2. Scope: what exists today
 
-| Surface                                  | Django today                                                                                   | Rust replacement                                                                         |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `GET /healthz`                           | `accounts.views.healthz` (`SELECT 1`)                                                          | Axum handler, no auth                                                                    |
-| `GET /api/me`                            | `MeView` → `{member, tenant, canAuthor}`                                                       | Same JSON shape                                                                          |
-| `GET /api/members`                       | Tenant staff only                                                                              | Same                                                                                     |
-| `PATCH /api/members/{id}/role`           | Tenant admin; row lock; audit; Firebase claim mirror **inside** the transaction                | Same transaction order, so a failed claim update still rolls back the role change        |
-| `GET/POST /api/engage/classrooms`        | List: any active member; create: staff, audited                                                | Same                                                                                     |
-| `POST /api/engage/classrooms/{id}/join`  | Provisions the LiveKit room, returns a 5-minute scoped token, `Cache-Control: no-store`        | `livekit-api` crate (official Rust server SDK)                                           |
-| `GET /api/schema`                        | drf-spectacular                                                                                | `utoipa` OpenAPI, validated in CI                                                        |
-| `/admin/`                                | Django admin for tenants, members, audit                                                       | **Dropped.** Superadmin app + CLI subcommands (§4.6)                                     |
-| `manage.py migrate`                      | Django migrations, incl. RLS policies and the audit trigger                                     | `sqlx` SQL migrations (§4.3)                                                             |
-| `manage.py ensure_app_role`              | Creates/refreshes `forge_app` (no superuser, no BYPASSRLS, append-only audit)                  | `forge ensure-app-role` subcommand, same SQL                                             |
-| `manage.py grant_superadmin`             | Out-of-band superadmin grant                                                                   | `forge grant-superadmin` subcommand                                                      |
-| Firebase Admin (Python)                  | Verify ID tokens incl. revocation; set custom claims per GCIP tenant                           | **No official Rust SDK.** Hand-written `forge-firebase` crate (§4.2), the highest-risk part |
-| CORS, security headers, allowed hosts    | django-cors-headers, `SECURE_*`, `ALLOWED_HOSTS` incl. `healthcheck.railway.app`               | `tower-http` CORS with the same origin regex and `x-forge-tenant`; host allowlist and header middleware |
-| Sentry (no PII)                          | `sentry-sdk[django]`, `send_default_pii=False`                                                 | `sentry` + `sentry-tower`, PII off                                                       |
+| Surface                                 | Django today                                                                            | Rust replacement                                                                                        |
+| --------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /healthz`                          | `accounts.views.healthz` (`SELECT 1`)                                                   | Axum handler, no auth                                                                                   |
+| `GET /api/me`                           | `MeView` → `{member, tenant, canAuthor}`                                                | Same JSON shape                                                                                         |
+| `GET /api/members`                      | Tenant staff only                                                                       | Same                                                                                                    |
+| `PATCH /api/members/{id}/role`          | Tenant admin; row lock; audit; Firebase claim mirror **inside** the transaction         | Same transaction order, so a failed claim update still rolls back the role change                       |
+| `GET/POST /api/engage/classrooms`       | List: any active member; create: staff, audited                                         | Same                                                                                                    |
+| `POST /api/engage/classrooms/{id}/join` | Provisions the LiveKit room, returns a 5-minute scoped token, `Cache-Control: no-store` | `livekit-api` crate (official Rust server SDK)                                                          |
+| `GET /api/schema`                       | drf-spectacular                                                                         | `utoipa` OpenAPI, validated in CI                                                                       |
+| `/admin/`                               | Django admin for tenants, members, audit                                                | **Dropped.** Superadmin app + CLI subcommands (§4.6)                                                    |
+| `manage.py migrate`                     | Django migrations, incl. RLS policies and the audit trigger                             | `sqlx` SQL migrations (§4.3)                                                                            |
+| `manage.py ensure_app_role`             | Creates/refreshes `forge_app` (no superuser, no BYPASSRLS, append-only audit)           | `forge ensure-app-role` subcommand, same SQL                                                            |
+| `manage.py grant_superadmin`            | Out-of-band superadmin grant                                                            | `forge grant-superadmin` subcommand                                                                     |
+| Firebase Admin (Python)                 | Verify ID tokens incl. revocation; set custom claims per GCIP tenant                    | **No official Rust SDK.** Hand-written `forge-firebase` crate (§4.2), the highest-risk part             |
+| CORS, security headers, allowed hosts   | django-cors-headers, `SECURE_*`, `ALLOWED_HOSTS` incl. `healthcheck.railway.app`        | `tower-http` CORS with the same origin regex and `x-forge-tenant`; host allowlist and header middleware |
+| Sentry (no PII)                         | `sentry-sdk[django]`, `send_default_pii=False`                                          | `sentry` + `sentry-tower`, PII off                                                                      |
 
 Frontend callers to keep working unchanged: `libs/auth/src/lib/forge-api.ts`,
 `libs/auth/src/lib/guards.ts`, `apps/learner/src/app/pages/engage/engage.service.ts`.
@@ -181,14 +181,14 @@ The admin is currently the only UI for tenants, members and the audit log. Repla
 
 ## 5. Phases
 
-| #   | Phase                                | Delivers                                                                                                                                                                                                                       | Exit gate                                                                                                    |
-| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| R0  | **Decide + spike** (≈1 wk)           | ADR 0002. Spike in `backend-rs/`: Firebase token verification + revocation against the Auth emulator, `TenantTx` against the RLS policies as `forge_app`. Confirm who maintains Rust long term                               | Go/no-go recorded in the ADR                                                                                 |
-| R1  | **Parity harness** (≈1 wk)           | Make `backend/scripts/e2e_emulator.sh` implementation-neutral (seed with `psql`, not `manage.py shell`). List the 46 pytest cases as the acceptance list. Add a stub-server option for the Firebase and LiveKit fault-injection cases | Harness green against **Django**                                                                             |
-| R2  | **Foundation** (≈2–3 wk)             | Workspace, config, `/healthz`, CORS + security headers + host allowlist, `forge_app` pool, baseline migration, CLI subcommands, `forge-firebase`, auth extractor, permissions, `/api/me`, members, role change + claim mirror, audit, OpenAPI, Sentry, Dockerfile, CI (`fmt`, `clippy -D warnings`, tests, `sqlx prepare --check`, `cargo deny`) | Rust ports of `test_auth`, `test_members`, `test_rls`, `test_cors` pass; harness green against **Rust**       |
-| R3  | **Engage** (≈1 wk)                   | `forge-media`, classroom list/create/join                                                                                                                                                                                      | Rust port of `test_engage` passes; `LIVEKIT_SMOKE=1` Playwright run passes against Rust                      |
-| R4  | **Cutover** (≈1 wk)                  | `api-rs` Railway service in staging on the same database; Firebase crate security review; switch `api.soteriaforge.com`; Django image kept deployable for 2 weeks                                                             | Learner + admin apps work against Rust in staging and production; no Sentry regressions; then delete Django |
-| R5+ | **Platform plan phases 2–7 in Rust** | As in the platform plan §5, with the replacements in §7                                                                                                                                                                         | Platform plan exit gates, unchanged                                                                          |
+| #   | Phase                                | Delivers                                                                                                                                                                                                                                                                                                                                         | Exit gate                                                                                                   |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| R0  | **Decide + spike** (≈1 wk)           | ADR 0002. Spike in `backend-rs/`: Firebase token verification + revocation against the Auth emulator, `TenantTx` against the RLS policies as `forge_app`. Confirm who maintains Rust long term                                                                                                                                                   | Go/no-go recorded in the ADR                                                                                |
+| R1  | **Parity harness** (≈1 wk)           | Make `backend/scripts/e2e_emulator.sh` implementation-neutral (seed with `psql`, not `manage.py shell`). List the 46 pytest cases as the acceptance list. Add a stub-server option for the Firebase and LiveKit fault-injection cases                                                                                                            | Harness green against **Django**                                                                            |
+| R2  | **Foundation** (≈2–3 wk)             | Workspace, config, `/healthz`, CORS + security headers + host allowlist, `forge_app` pool, baseline migration, CLI subcommands, `forge-firebase`, auth extractor, permissions, `/api/me`, members, role change + claim mirror, audit, OpenAPI, Sentry, Dockerfile, CI (`fmt`, `clippy -D warnings`, tests, `sqlx prepare --check`, `cargo deny`) | Rust ports of `test_auth`, `test_members`, `test_rls`, `test_cors` pass; harness green against **Rust**     |
+| R3  | **Engage** (≈1 wk)                   | `forge-media`, classroom list/create/join                                                                                                                                                                                                                                                                                                        | Rust port of `test_engage` passes; `LIVEKIT_SMOKE=1` Playwright run passes against Rust                     |
+| R4  | **Cutover** (≈1 wk)                  | `api-rs` Railway service in staging on the same database; Firebase crate security review; switch `api.soteriaforge.com`; Django image kept deployable for 2 weeks                                                                                                                                                                                | Learner + admin apps work against Rust in staging and production; no Sentry regressions; then delete Django |
+| R5+ | **Platform plan phases 2–7 in Rust** | As in the platform plan §5, with the replacements in §7                                                                                                                                                                                                                                                                                          | Platform plan exit gates, unchanged                                                                         |
 
 Sizes assume one developer fluent in Rust. Each Django test is ported **by name** so
 the mapping can be checked in review.
@@ -208,20 +208,20 @@ the mapping can be checked in review.
 
 ## 7. Replacements for the later phases
 
-| Planned in Django                         | Rust replacement                                                                                                     |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Planned in Django                         | Rust replacement                                                                                                                  |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Celery worker                             | `forge worker` subcommand; Postgres job table polled with `FOR UPDATE SKIP LOCKED` (jobs commit with the data that triggers them) |
-| Celery beat                               | Railway cron service running `forge run-job <name>`, or a scheduler inside the worker                               |
-| Channels (Engage live state, leaderboard) | Axum WebSockets + Redis pub/sub between instances; short-lived ticket from `POST /api/ws-ticket` as planned          |
-| SSE (coach answers)                       | `axum::response::Sse`                                                                                                 |
-| pgvector                                  | `pgvector` crate with sqlx                                                                                            |
-| S3 signed URLs                            | `aws-sdk-s3` presigning (works with R2 and Railway buckets)                                                           |
-| Stripe                                    | Community SDK or plain HTTP; webhook signature check + idempotency table, written and tested by us                   |
-| FCM                                       | HTTP v1 API with the service-account token from `forge-firebase`                                                    |
-| SCORM / cmi5 parsing                      | `zip` + `quick-xml`; the existing function specs are the acceptance tests                                             |
-| xAPI to LRS                               | `serde` statement types + `reqwest`                                                                                   |
-| GCIP tenant provisioning                  | Identity Toolkit REST in `forge-firebase`                                                                             |
-| LLM provider                              | Provider trait over `reqwest`, same swappable design as planned                                                       |
+| Celery beat                               | Railway cron service running `forge run-job <name>`, or a scheduler inside the worker                                             |
+| Channels (Engage live state, leaderboard) | Axum WebSockets + Redis pub/sub between instances; short-lived ticket from `POST /api/ws-ticket` as planned                       |
+| SSE (coach answers)                       | `axum::response::Sse`                                                                                                             |
+| pgvector                                  | `pgvector` crate with sqlx                                                                                                        |
+| S3 signed URLs                            | `aws-sdk-s3` presigning (works with R2 and Railway buckets)                                                                       |
+| Stripe                                    | Community SDK or plain HTTP; webhook signature check + idempotency table, written and tested by us                                |
+| FCM                                       | HTTP v1 API with the service-account token from `forge-firebase`                                                                  |
+| SCORM / cmi5 parsing                      | `zip` + `quick-xml`; the existing function specs are the acceptance tests                                                         |
+| xAPI to LRS                               | `serde` statement types + `reqwest`                                                                                               |
+| GCIP tenant provisioning                  | Identity Toolkit REST in `forge-firebase`                                                                                         |
+| LLM provider                              | Provider trait over `reqwest`, same swappable design as planned                                                                   |
 
 ## 8. Gamification and media in Rust
 
@@ -231,27 +231,27 @@ whatever the backend language.
 
 ### 8.1 Gamification (platform plan Phase 3)
 
-| Feature                                        | Rust approach                                                                                                                                                                      |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| XP events, level bands, mission badges         | `forge-core` domain types that make invalid states unrepresentable (XP never negative, first-try attempts only); awards written in the same `TenantTx` as their audit entry         |
-| Anti-cheat and server-authoritative completion | Port the existing function specs (commits `321ad2c`, `ab60149`) as tests first, as the platform plan requires                                                                      |
-| Pulse streaks + 14-day strip                   | Postgres queries over dated activity rows; reminders as a scheduled job (§7)                                                                                                        |
-| Crew-only leaderboards                         | Postgres aggregates, or Redis sorted sets when scores update live; daily/weekly resets as scheduled jobs; no learner ranked by name                                                |
-| Live crew scores, polls, Threat Hunt countdowns | Axum WebSockets + Redis pub/sub (§7), server-stamped times. Holding many idle connections cheaply is where Rust helps most                                                          |
-| Offline replay without double awards           | `Idempotency-Key` table checked inside the award transaction                                                                                                                       |
-| Open Badges 3.0 issuance + verify page         | Badges are W3C Verifiable Credentials: sign with `ed25519-dalek` / `josekit`, or SpruceID's `ssi`. Test issued badges against a public Open Badges 3.0 verifier before launch       |
-| Badge images                                   | `resvg` (SVG) and `image` (raster), generated in a worker job and stored in the bucket                                                                                              |
+| Feature                                         | Rust approach                                                                                                                                                                 |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| XP events, level bands, mission badges          | `forge-core` domain types that make invalid states unrepresentable (XP never negative, first-try attempts only); awards written in the same `TenantTx` as their audit entry   |
+| Anti-cheat and server-authoritative completion  | Port the existing function specs (commits `321ad2c`, `ab60149`) as tests first, as the platform plan requires                                                                 |
+| Pulse streaks + 14-day strip                    | Postgres queries over dated activity rows; reminders as a scheduled job (§7)                                                                                                  |
+| Crew-only leaderboards                          | Postgres aggregates, or Redis sorted sets when scores update live; daily/weekly resets as scheduled jobs; no learner ranked by name                                           |
+| Live crew scores, polls, Threat Hunt countdowns | Axum WebSockets + Redis pub/sub (§7), server-stamped times. Holding many idle connections cheaply is where Rust helps most                                                    |
+| Offline replay without double awards            | `Idempotency-Key` table checked inside the award transaction                                                                                                                  |
+| Open Badges 3.0 issuance + verify page          | Badges are W3C Verifiable Credentials: sign with `ed25519-dalek` / `josekit`, or SpruceID's `ssi`. Test issued badges against a public Open Badges 3.0 verifier before launch |
+| Badge images                                    | `resvg` (SVG) and `image` (raster), generated in a worker job and stored in the bucket                                                                                        |
 
 ### 8.2 Media (platform plan Phase 5)
 
-| Feature                                    | Rust approach                                                                                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Video classrooms                           | Unchanged: LiveKit (Go) relays media; `forge-media` provisions rooms and signs scoped tokens with the official `livekit-api` crate (R3)                                      |
-| Host moderation (mute, remove)             | LiveKit room service API from `forge-media`, checked against Forge roles and audited                                                                                         |
-| Recording                                  | LiveKit Egress (separate service) started and stopped from `forge-media`; output goes to the bucket                                                                          |
-| Attendance                                 | LiveKit webhooks (signature-verified) written to Postgres; not inferred from connection logs (see [video classrooms](./video-classrooms.md))                                 |
-| Uploads (SCORM, PDFs, badge images)        | Presigned S3/R2 URLs (§7); processing in the worker                                                                                                                          |
-| Video/audio processing, if needed          | Run `ffmpeg` from a worker job                                                                                                                                               |
+| Feature                                    | Rust approach                                                                                                                                                                                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Video classrooms                           | Unchanged: LiveKit (Go) relays media; `forge-media` provisions rooms and signs scoped tokens with the official `livekit-api` crate (R3)                                                                                                           |
+| Host moderation (mute, remove)             | LiveKit room service API from `forge-media`, checked against Forge roles and audited                                                                                                                                                              |
+| Recording                                  | LiveKit Egress (separate service) started and stopped from `forge-media`; output goes to the bucket                                                                                                                                               |
+| Attendance                                 | LiveKit webhooks (signature-verified) written to Postgres; not inferred from connection logs (see [video classrooms](./video-classrooms.md))                                                                                                      |
+| Uploads (SCORM, PDFs, badge images)        | Presigned S3/R2 URLs (§7); processing in the worker                                                                                                                                                                                               |
+| Video/audio processing, if needed          | Run `ffmpeg` from a worker job                                                                                                                                                                                                                    |
 | **Live captions, transcription, AI voice** | **Gap.** LiveKit's Agents framework is Python or Node.js only. Either run a small Python agent service next to the Rust API, or stream room audio to a speech-to-text API from a Rust worker that joins the room with the LiveKit Rust client SDK |
 
 Captions are in Phase 5 scope, so decide between those two options before Phase 5
@@ -259,17 +259,17 @@ starts (§11).
 
 ## 9. Risks
 
-| Risk                                                         | Mitigation                                                                                                     |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Hand-written Firebase verification has a security bug        | Small dedicated crate, negative tests for every claim check, emulator-only path fails closed, external review before cutover |
-| Regressions in tenant isolation                              | `TenantTx` is the only way handlers get a DB handle; RLS tests run as `forge_app`; harness checks cross-tenant cases |
-| Slower feature delivery after the rewrite                    | Measure R2 against its estimate; if it overruns by more than 50%, stop and keep Django (only `backend-rs/` is lost) |
-| Only one person can maintain the backend                     | Decide ownership in R0; document crates; keep the code idiomatic and boring (no macros-heavy frameworks)      |
-| Contract drift breaks the Angular apps                       | OpenAPI diff + zod contract test in CI; frontend specs unchanged                                               |
-| Long Rust builds on Railway                                  | `cargo-chef` dependency layer caching; release profile tuned for build time in staging                         |
-| Docs and specs still say Django                              | ADR 0002 and SFG-SPC-FRG-010 update in R0, before any code merges                                             |
-| Live captions need Python (LiveKit Agents)                   | Decide before Phase 5 (§8.2): a small Python agent service, or a Rust worker streaming audio to a speech-to-text API |
-| Open Badges 3.0 credentials don't verify elsewhere           | Test issued badges against a public Open Badges 3.0 verifier in CI before the verify page ships                |
+| Risk                                                  | Mitigation                                                                                                                   |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Hand-written Firebase verification has a security bug | Small dedicated crate, negative tests for every claim check, emulator-only path fails closed, external review before cutover |
+| Regressions in tenant isolation                       | `TenantTx` is the only way handlers get a DB handle; RLS tests run as `forge_app`; harness checks cross-tenant cases         |
+| Slower feature delivery after the rewrite             | Measure R2 against its estimate; if it overruns by more than 50%, stop and keep Django (only `backend-rs/` is lost)          |
+| Only one person can maintain the backend              | Decide ownership in R0; document crates; keep the code idiomatic and boring (no macros-heavy frameworks)                     |
+| Contract drift breaks the Angular apps                | OpenAPI diff + zod contract test in CI; frontend specs unchanged                                                             |
+| Long Rust builds on Railway                           | `cargo-chef` dependency layer caching; release profile tuned for build time in staging                                       |
+| Docs and specs still say Django                       | ADR 0002 and SFG-SPC-FRG-010 update in R0, before any code merges                                                            |
+| Live captions need Python (LiveKit Agents)            | Decide before Phase 5 (§8.2): a small Python agent service, or a Rust worker streaming audio to a speech-to-text API         |
+| Open Badges 3.0 credentials don't verify elsewhere    | Test issued badges against a public Open Badges 3.0 verifier in CI before the verify page ships                              |
 
 ## 10. When this is worth doing
 

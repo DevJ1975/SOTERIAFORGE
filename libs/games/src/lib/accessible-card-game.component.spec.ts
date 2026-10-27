@@ -176,7 +176,11 @@ describe('AccessibleCardGameComponent — sound effects', () => {
     reveal('c1');
     expect(play.mock.calls.map(([id]) => id)).toEqual(['card-flip']);
     reveal('c2');
-    expect(play.mock.calls.map(([id]) => id)).toEqual(['card-flip', 'card-flip', 'lesson-complete']);
+    expect(play.mock.calls.map(([id]) => id)).toEqual([
+      'card-flip',
+      'card-flip',
+      'lesson-complete',
+    ]);
   });
 
   it('match_pairs: select, incorrect on a miss, match on a pair, lesson-complete on the last', () => {
