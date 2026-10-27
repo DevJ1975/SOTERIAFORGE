@@ -58,7 +58,7 @@ def pilot(lakewood, monkeypatch, settings):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def ingest(course, source_id=None, **extra):

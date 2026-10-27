@@ -13,7 +13,7 @@ class TenantSummarySerializer(serializers.ModelSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     tenantId = serializers.CharField(source="tenant_id", read_only=True, allow_null=True)
-    # Firebase uid for members not yet moved over; otherwise the member id.
+    # Legacy alias of `id` for clients written against the Firebase uid.
     uid = serializers.SerializerMethodField()
     displayName = serializers.CharField(source="display_name", read_only=True)
 
@@ -23,7 +23,7 @@ class MemberSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_uid(self, obj: Member) -> str:
-        return obj.firebase_uid or str(obj.id)
+        return str(obj.id)
 
 
 class MeSerializer(serializers.Serializer):

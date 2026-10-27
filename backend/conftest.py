@@ -2,12 +2,10 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Member, Role
+from apps.accounts.tokens import issue_access
 from apps.tenants.models import Tenant
 
 TEST_APP_ROLE = "forge_app_test"
-
-# token string -> decoded Firebase claims. Unknown tokens are rejected like a bad signature.
-TOKENS: dict[str, dict] = {}
 
 
 @pytest.fixture(scope="session")
@@ -41,27 +39,17 @@ def rls_bypass(request):
     yield
 
 
-@pytest.fixture(autouse=True)
-def fake_firebase(monkeypatch):
-    """No network: tokens resolve from TOKENS; claim writes are recorded."""
-    TOKENS.clear()
-    claim_writes: list[dict] = []
+def sign_in(uid: str) -> str:
+    """A real Django access token for the member made with `make_member(tenant, uid)`.
 
-    def verify(token: str) -> dict:
-        if token not in TOKENS:
-            raise ValueError("bad token")
-        return TOKENS[token]
+    Members are addressed by their local-part (`<uid>@example.com`), so a test reads the
+    same as it did when the uid was an identity-provider id.
+    """
+    from apps.tenants import rls
 
-    monkeypatch.setattr("forge.firebase.verify_id_token", verify)
-    monkeypatch.setattr("forge.firebase.set_role_claims", lambda **kw: claim_writes.append(kw))
-    return claim_writes
-
-
-def sign_in(uid: str, gcip_tenant: str | None = None) -> str:
-    """Register a fake ID token for `uid` (optionally from a GCIP tenant pool)."""
-    token = f"token-{uid}-{gcip_tenant}"
-    TOKENS[token] = {"uid": uid, "firebase": {"tenant": gcip_tenant} if gcip_tenant else {}}
-    return token
+    with rls.bypass():
+        member = Member.objects.get(email=f"{uid}@example.com")
+    return issue_access(member)
 
 
 def client_for(token: str | None = None, tenant: str | None = None) -> APIClient:
@@ -77,18 +65,14 @@ def client_for(token: str | None = None, tenant: str | None = None) -> APIClient
 
 @pytest.fixture
 def lakewood(db):
-    return Tenant.objects.create(
-        id="lakewood", name="Lakewood University", status="active", gcip_tenant_id="lakewood-pool"
-    )
+    return Tenant.objects.create(id="lakewood", name="Lakewood University", status="active")
 
 
 @pytest.fixture
 def acme(db):
-    """A tenant on the shared project-level pool (no GCIP tenant)."""
+    """A second tenant, for cross-tenant isolation checks."""
     return Tenant.objects.create(id="acme", name="Acme", status="active")
 
 
 def make_member(tenant, uid, role=Role.LEARNER, **kw) -> Member:
-    return Member.objects.create(
-        tenant=tenant, firebase_uid=uid, email=f"{uid}@example.com", role=role, **kw
-    )
+    return Member.objects.create(tenant=tenant, email=f"{uid}@example.com", role=role, **kw)

@@ -30,8 +30,8 @@ def test_real_local_pdf_retrieval_and_cited_tutor(lakewood, settings):
     learner = make_member(lakewood, "smoke-learner")
     course = Course.objects.create(tenant=lakewood, title="Synthetic gardening", status="published")
     Enrollment.objects.create(tenant=lakewood, member=learner, course=course)
-    teacher = client_for(sign_in("smoke-teacher", "lakewood-pool"))
-    student = client_for(sign_in("smoke-learner", "lakewood-pool"))
+    teacher = client_for(sign_in("smoke-teacher"))
+    student = client_for(sign_in("smoke-learner"))
 
     writer = PdfWriter()
     page = writer.add_blank_page(width=612, height=792)
@@ -123,8 +123,8 @@ def test_real_local_specialist_grounding(lakewood, settings, agent, text, questi
         tenant=lakewood, title="Synthetic specialist lab", status="published"
     )
     Enrollment.objects.create(tenant=lakewood, member=learner, course=course)
-    teacher = client_for(sign_in("specialist-teacher", "lakewood-pool"))
-    student = client_for(sign_in("specialist-learner", "lakewood-pool"))
+    teacher = client_for(sign_in("specialist-teacher"))
+    student = client_for(sign_in("specialist-learner"))
     source_id = uuid.uuid4()
     response = teacher.put(
         f"/api/coach/sources/{source_id}",

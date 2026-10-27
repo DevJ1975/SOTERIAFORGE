@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "soteria-forge-dev",
-    "dev": "soteria-forge-dev",
-    "staging": "soteria-forge-staging",
-    "prod": "soteria-forge-prod"
-  }
-}

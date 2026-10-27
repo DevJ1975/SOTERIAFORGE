@@ -64,7 +64,7 @@ def setup(lakewood, settings, tmp_path):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def upload():
@@ -149,7 +149,7 @@ def test_access_and_legacy_completion_bypass_rejected(setup, acme):
     launched = launch(lesson).data["id"]
     assert commit(launched, uid="peer").status_code == 403
     other = make_member(acme, "other")
-    foreign = client_for(sign_in(other.firebase_uid), "acme")
+    foreign = client_for(sign_in("other"), "acme")
     assert foreign.get(f"/api/standards/packages/{package.pk}").status_code == 403
     other.role = Role.INSTRUCTOR
     other.save()
@@ -470,7 +470,7 @@ def test_real_chrome_runtime_commit_exit_and_resume(setup, settings, version):
     package.save()
     settings.ROOT_URLCONF = "apps.standards.content_urls"
     settings.STANDARDS_APP_ORIGINS = ["http://127.0.0.1:__PORT__"]
-    enrollment = Enrollment.objects.get(member__firebase_uid="learner")
+    enrollment = Enrollment.objects.get(member__email="learner@example.com")
     binding = Binding.objects.get(lesson=lesson)
     runtime = {}
     for resume in (False, True):

@@ -1,3 +1,0 @@
-# Build output only (anchored). An unanchored "lib/" would also ignore
-# apps/functions/src/lib, dropping source files from the repo.
-/lib/

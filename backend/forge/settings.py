@@ -32,7 +32,7 @@ if os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
 # Railway's deploy health check sends this Host header; without it /healthz is a 400.
 if os.environ.get("RAILWAY_ENVIRONMENT_NAME"):
     ALLOWED_HOSTS.append("healthcheck.railway.app")
-# Only Django admin uses cookies/CSRF (the API authenticates with Firebase tokens),
+# Only Django admin uses cookies/CSRF (the API authenticates with Django access tokens),
 # and it must be served over https on the same host.
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
@@ -55,6 +55,10 @@ INSTALLED_APPS = [
     "apps.gamification",
     "apps.coach",
     "apps.standards",
+    "apps.games",
+    "apps.reports",
+    "apps.library",
+    "apps.assets",
 ]
 
 MIDDLEWARE = [
@@ -129,11 +133,9 @@ STORAGES = {
 
 # --- API ---------------------------------------------------------------------
 REST_FRAMEWORK = {
-    # Firebase ID tokens only: no session/basic auth on the API.
-    # Django-issued tokens; Firebase ID tokens still accepted while clients move over.
+    # Django-issued access tokens only: no session/basic auth on the API.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.accounts.authentication.TokenAuthentication",
-        "apps.accounts.authentication.FirebaseAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["apps.accounts.permissions.IsActiveMember"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -206,12 +208,6 @@ MAILERS = {
     }
 }
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"Soteria Forge <no-reply@{ROOT_DOMAIN}>")
-
-# --- Firebase (legacy identity, until every client signs in through Django) ---
-# Service-account JSON (inline). Absent locally/in tests: token verification uses
-# Application Default Credentials or is mocked.
-FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
-FIREBASE_CREDENTIALS_JSON = os.environ.get("FIREBASE_CREDENTIALS_JSON", "")
 
 # Browser-facing WebSocket URL and server-side HTTP API URL may differ in containers.
 LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")

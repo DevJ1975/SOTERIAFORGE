@@ -1,4 +1,4 @@
-"""Email + password sign-in handled by Django (replaces Firebase Auth).
+"""Email + password sign-in handled by Django.
 
 All lookups here run before there is a tenant to scope to, so they use `rls.bypass()`
 and then only touch the one member being signed in.

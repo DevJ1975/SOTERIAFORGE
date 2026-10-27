@@ -1,5 +1,6 @@
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import ValidationError
@@ -144,6 +145,24 @@ class ModuleDetailView(AuthorWrites, APIView):
         body.is_valid(raise_exception=True)
         return Response(ModuleSerializer(body.save()).data)
 
+    @extend_schema(responses={204: None})
+    def delete(self, request, module_id):
+        module = get_object_or_404(Module, tenant=acting_tenant(request), pk=module_id)
+        delete_authored(request, module, "learning.module.deleted")
+        return Response(status=204)
+
+
+def delete_authored(request, obj, action: str) -> None:
+    """Delete a module or lesson, unless learners already have progress on it."""
+    try:
+        with transaction.atomic():
+            record(action=action, actor=request.user, tenant=request.tenant, target=obj)
+            obj.delete()
+    except ProtectedError as exc:
+        raise Conflict(
+            "Learners have progress here, so it can't be deleted. Unpublish the course instead."
+        ) from exc
+
 
 def resolve_quiz(request, data: dict) -> dict:
     """Swap `quizId` for the acting tenant's quiz (404-like 400 if it isn't theirs)."""
@@ -246,6 +265,14 @@ class LessonDetailView(AuthorWrites, APIView):
             setattr(lesson, field, value)
         lesson.save()
         return Response(lesson_detail(lesson, None))
+
+    @extend_schema(responses={204: None})
+    def delete(self, request, lesson_id):
+        lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Detach the package from this lesson before deleting it.")
+        delete_authored(request, lesson, "learning.lesson.deleted")
+        return Response(status=204)
 
 
 class EnrollView(APIView):

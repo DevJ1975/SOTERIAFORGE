@@ -1,6 +1,8 @@
 import pytest
+from django.contrib.auth.hashers import make_password
 
 from apps.accounts.models import Member, Role
+from apps.accounts.tokens import issue_access
 from apps.audit.models import AuditEntry
 from conftest import client_for, make_member, sign_in
 
@@ -27,9 +29,9 @@ def test_rejects_wrong_scheme(lakewood):
     assert res.status_code == 401
 
 
-def test_gcip_pool_decides_the_tenant(lakewood):
+def test_member_token_decides_the_tenant(lakewood):
     make_member(lakewood, "marcus")
-    res = client_for(sign_in("marcus", "lakewood-pool")).get("/api/me")
+    res = client_for(sign_in("marcus")).get("/api/me")
     assert res.status_code == 200
     body = res.json()
     assert body["tenant"]["id"] == "lakewood"
@@ -37,54 +39,65 @@ def test_gcip_pool_decides_the_tenant(lakewood):
     assert body["canAuthor"] is False
 
 
-def test_header_cannot_override_the_gcip_tenant(lakewood, acme):
+def test_header_cannot_override_the_members_tenant(lakewood, acme):
     make_member(lakewood, "marcus")
-    res = client_for(sign_in("marcus", "lakewood-pool"), tenant="acme").get("/api/me")
+    res = client_for(sign_in("marcus"), tenant="acme").get("/api/me")
     assert res.status_code == 403
 
 
-def test_unlinked_gcip_pool_is_refused(lakewood):
-    res = client_for(sign_in("marcus", "unknown-pool")).get("/api/me")
-    assert res.status_code == 403
-
-
-def test_shared_pool_tenant_needs_membership(acme):
-    token = sign_in("wile")
-    assert client_for(token, tenant="acme").get("/api/me").status_code == 403
-    make_member(acme, "wile")
+def test_a_member_cannot_enter_another_tenant_with_the_header(lakewood, acme):
+    # Same local-part exists in both tenants: each token still lands in its own tenant.
+    make_member(lakewood, "marcus")
+    outsider = make_member(acme, "wile")
+    token = issue_access(outsider)
+    assert client_for(token, tenant="lakewood").get("/api/me").status_code == 403
     assert client_for(token, tenant="acme").get("/api/me").status_code == 200
+    assert client_for(token).get("/api/me").json()["tenant"]["id"] == "acme"
 
 
-def test_shared_pool_cannot_enter_a_gcip_tenant(lakewood):
-    # Same uid string exists in the lakewood pool, but this token is from the project pool.
-    make_member(lakewood, "marcus")
-    assert client_for(sign_in("marcus"), tenant="lakewood").get("/api/me").status_code == 403
+def test_token_for_a_removed_member_is_refused(lakewood):
+    gone = make_member(lakewood, "gone")
+    token = issue_access(gone)
+    gone.delete()
+    assert client_for(token).get("/api/me").status_code == 401
+
+
+def test_a_password_change_invalidates_issued_tokens(lakewood):
+    m = make_member(lakewood, "marcus")
+    token = issue_access(m)
+    assert client_for(token).get("/api/me").status_code == 200
+    m.password = make_password("a-new-secret")
+    m.save()
+    assert client_for(token).get("/api/me").status_code == 401
+
+
+def test_unknown_tenant_header_is_refused_for_superadmin():
+    Member.objects.create(tenant=None, email="root@example.com", role=Role.SUPERADMIN)
+    assert client_for(sign_in("root"), tenant="nope").get("/api/me").status_code == 403
 
 
 def test_deactivated_member_is_refused(lakewood):
     make_member(lakewood, "gone", status=Member.Status.DEACTIVATED)
-    assert client_for(sign_in("gone", "lakewood-pool")).get("/api/me").status_code == 403
+    assert client_for(sign_in("gone")).get("/api/me").status_code == 403
 
 
 def test_suspended_tenant_is_refused(lakewood):
     make_member(lakewood, "marcus")
     lakewood.status = "suspended"
     lakewood.save()
-    assert client_for(sign_in("marcus", "lakewood-pool")).get("/api/me").status_code == 403
+    assert client_for(sign_in("marcus")).get("/api/me").status_code == 403
 
 
 def test_first_sign_in_accepts_the_invite(lakewood):
     m = make_member(lakewood, "newbie", status=Member.Status.INVITED)
-    assert client_for(sign_in("newbie", "lakewood-pool")).get("/api/me").status_code == 200
+    assert client_for(sign_in("newbie")).get("/api/me").status_code == 200
     m.refresh_from_db()
     assert m.status == Member.Status.ACTIVE
     assert AuditEntry.objects.filter(action="member.invite.accepted", target_id=str(m.pk)).exists()
 
 
 def test_superadmin_acts_in_a_named_tenant(lakewood):
-    Member.objects.create(
-        tenant=None, firebase_uid="root", email="root@sfg.example", role=Role.SUPERADMIN
-    )
+    Member.objects.create(tenant=None, email="root@example.com", role=Role.SUPERADMIN)
     body = client_for(sign_in("root"), tenant="lakewood").get("/api/me").json()
     assert body["member"]["role"] == "superadmin"
     assert body["tenant"]["id"] == "lakewood"

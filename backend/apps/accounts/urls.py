@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .admin_views import DataErasureView, DataExportView, InviteView, MemberStatusView
 from .auth_views import (
     LoginView,
     LogoutView,
@@ -23,5 +24,9 @@ urlpatterns = [
     ),
     path("me", MeView.as_view(), name="me"),
     path("members", MemberListView.as_view(), name="member-list"),
+    path("members/invite", InviteView.as_view(), name="member-invite"),
     path("members/<uuid:member_id>/role", MemberRoleView.as_view(), name="member-role"),
+    path("members/<uuid:member_id>/status", MemberStatusView.as_view(), name="member-status"),
+    path("members/<uuid:member_id>/export", DataExportView.as_view(), name="member-export"),
+    path("members/<uuid:member_id>/erase", DataErasureView.as_view(), name="member-erase"),
 ]

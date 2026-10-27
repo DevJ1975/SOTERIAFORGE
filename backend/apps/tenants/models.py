@@ -20,9 +20,6 @@ class Tenant(models.Model):
     plan = models.CharField(max_length=50, default="starter")
     custom_domain = models.CharField(max_length=253, blank=True, default="")
     branding = models.JSONField(default=dict, blank=True)
-    # Identity Platform tenant pool. Firebase signs it into every ID token
-    # (`firebase.tenant`), so it is how the API maps a token to a tenant.
-    gcip_tenant_id = models.CharField(max_length=128, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -34,8 +34,6 @@ export default defineRailway((ctx) => {
       DB_APP_USER: 'forge_app',
       DB_APP_PASSWORD: preserve(),
       DJANGO_SECRET_KEY: preserve(),
-      FIREBASE_PROJECT_ID: preserve(),
-      FIREBASE_CREDENTIALS_JSON: preserve(),
       SENTRY_DSN: preserve(),
       // Separate VPS media host. Import deploy/livekit/runtime/railway.env into
       // this API service before applying; never store the key/secret in IaC.

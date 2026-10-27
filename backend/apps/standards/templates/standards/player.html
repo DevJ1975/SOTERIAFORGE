@@ -30,7 +30,7 @@
       ? new Scorm12API({ autocommit: false, lmsCommitUrl: "", logLevel: 5 })
       : new Scorm2004API({ autocommit: false, lmsCommitUrl: "", logLevel: 5 });
     if (config.runtime.cmi) api.loadFromJSON(config.runtime.cmi);
-    // Pseudonymous membership IDs only; no Firebase credentials or LRS secrets enter this origin.
+    // Pseudonymous membership IDs only; no account credentials or LRS secrets enter this origin.
     api.loadFromJSON(config.version === "1.2"
       ? { core: { student_id: config.learnerId, student_name: "Learner", credit: "credit", lesson_mode: "normal", entry: config.runtime.cmi ? "resume" : "ab-initio" } }
       : { learner_id: config.learnerId, learner_name: "Learner", credit: "credit", mode: "normal", entry: config.runtime.cmi ? "resume" : "ab-initio" });

@@ -26,7 +26,7 @@ def content(lakewood, people):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def enroll(uid, course):

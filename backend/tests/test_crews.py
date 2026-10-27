@@ -22,7 +22,7 @@ def at(day, hour=12, minute=0):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 @pytest.fixture
@@ -337,7 +337,7 @@ def test_board_marks_my_crew_and_never_names_a_learner(cohort, learners):
     # Privacy: crews only. No member id, email, uid or name anywhere in the payload.
     text = json.dumps(board)
     for member in learners:
-        for secret in (str(member.pk), member.email, member.firebase_uid):
+        for secret in (str(member.pk), member.email):
             assert secret not in text
     assert set(board["crews"][0]) == {
         "rank",

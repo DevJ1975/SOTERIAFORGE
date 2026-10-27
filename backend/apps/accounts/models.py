@@ -25,9 +25,7 @@ class Member(models.Model):
     """A person's membership in one tenant, and their role there.
 
     Postgres is the source of truth for roles (plan §2). Members sign in with an
-    email and password that Django verifies (see `auth_views`); `firebase_uid` is
-    only set for members still signing in through Firebase during the migration.
-    Superadmins belong to no tenant.
+    email and password that Django verifies (see `auth_views`). Superadmins belong to no tenant.
     """
 
     class Status(models.TextChoices):
@@ -39,11 +37,8 @@ class Member(models.Model):
     tenant = models.ForeignKey(
         Tenant, on_delete=models.PROTECT, null=True, blank=True, related_name="members"
     )
-    # NULL, not "": many password-only members share a tenant, and NULLs don't collide
-    # in the (tenant, firebase_uid) unique constraint.
-    firebase_uid = models.CharField(max_length=128, null=True, blank=True)  # noqa: DJ001
     email = models.EmailField()
-    # Django password hash. Empty means no password yet (invited, or still on Firebase).
+    # Django password hash. Empty means no password yet (invited).
     password = models.CharField(max_length=128, blank=True, default="")
     # Consecutive wrong passwords; kept in Postgres because serverless instances
     # can't share an in-memory throttle.
@@ -58,14 +53,6 @@ class Member(models.Model):
     class Meta:
         ordering = ["display_name", "email"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["tenant", "firebase_uid"], name="member_unique_per_tenant"
-            ),
-            models.UniqueConstraint(
-                fields=["firebase_uid"],
-                condition=Q(tenant__isnull=True),
-                name="superadmin_unique_uid",
-            ),
             # One account per email per tenant (and one platform-level per email).
             models.UniqueConstraint(
                 Lower("email"),

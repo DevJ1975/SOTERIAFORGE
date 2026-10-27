@@ -14,6 +14,10 @@ urlpatterns = [
     path("api/", include("apps.learning.urls")),
     path("api/", include("apps.assessments.urls")),
     path("api/", include("apps.gamification.urls")),
+    path("api/", include("apps.games.urls")),
+    path("api/", include("apps.reports.urls")),
+    path("api/", include("apps.library.urls")),
+    path("api/", include("apps.assets.urls")),
     path("api/coach/", include("apps.coach.urls")),
     path("api/standards/", include("apps.standards.urls")),
 ]
