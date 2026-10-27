@@ -1,5 +1,10 @@
 # Deployment runbook
 
+For **Railway Django + self-hosted video classrooms**, use the
+[LiveKit VPS deployment runbook](../deploy/livekit/README.md) and
+[classroom guide](./video-classrooms.md). The Firebase deployment instructions
+below describe the earlier platform stack, not the Railway media deployment.
+
 For the **local Django + Ollama course tutor**, use the
 [local AI tutor guide](./local-ai-tutor.md). It replaces the tutor/ingestion
 Firebase calls, requires the API and inference on the same host, and is

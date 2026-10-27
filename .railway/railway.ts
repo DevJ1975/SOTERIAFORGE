@@ -37,6 +37,12 @@ export default defineRailway((ctx) => {
       FIREBASE_PROJECT_ID: preserve(),
       FIREBASE_CREDENTIALS_JSON: preserve(),
       SENTRY_DSN: preserve(),
+      // Separate VPS media host. Import deploy/livekit/runtime/railway.env into
+      // this API service before applying; never store the key/secret in IaC.
+      LIVEKIT_URL: preserve(),
+      LIVEKIT_API_URL: preserve(),
+      LIVEKIT_API_KEY: preserve(),
+      LIVEKIT_API_SECRET: preserve(),
     },
   });
 

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ForgeSession } from '@assurance/auth';
 import { ClassroomTrackComponent } from './classroom-track.component';
@@ -87,7 +87,7 @@ import { EngageService } from './engage.service';
               maxlength="120"
               [disabled]="classroom.busy()"
             />
-            <button type="submit" [disabled]="classroom.busy() || !title.trim()">
+            <button type="submit" [disabled]="classroom.busy() || !title().trim()">
               Create classroom
             </button>
           </form>
@@ -212,14 +212,15 @@ import { EngageService } from './engage.service';
 export class EngageComponent implements OnInit {
   protected readonly classroom = inject(EngageService);
   protected readonly session = inject(ForgeSession);
-  protected title = '';
+  // A signal, not a plain field: clearing it after an async create must repaint this OnPush view.
+  protected readonly title = signal('');
 
   ngOnInit(): void {
     void this.classroom.load();
   }
 
   protected async create(): Promise<void> {
-    await this.classroom.create(this.title);
-    if (!this.classroom.error()) this.title = '';
+    await this.classroom.create(this.title());
+    if (!this.classroom.error()) this.title.set('');
   }
 }

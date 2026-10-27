@@ -4,6 +4,7 @@ import { ASSURANCE_ENV, forgeApiUrl } from '@assurance/auth';
 import {
   AudioPresets,
   ConnectionState,
+  DisconnectReason,
   Participant,
   Room,
   RoomEvent,
@@ -71,6 +72,29 @@ function errorMessage(error: unknown, fallback: string): string {
     return fallback;
   }
   return error instanceof Error ? `${fallback} ${error.message}` : fallback;
+}
+
+/**
+ * Why the media server dropped us, in words a learner can act on. Join tokens use the
+ * member id as identity, so opening the same classroom in a second tab or device ends
+ * the first session with DUPLICATE_IDENTITY.
+ */
+function disconnectMessage(reason: DisconnectReason | undefined): string {
+  switch (reason) {
+    case DisconnectReason.DUPLICATE_IDENTITY:
+      return 'You joined this classroom from another tab or device, so this connection was closed.';
+    case DisconnectReason.PARTICIPANT_REMOVED:
+      return 'You were removed from the classroom.';
+    case DisconnectReason.ROOM_DELETED:
+    case DisconnectReason.ROOM_CLOSED:
+      return 'The classroom was closed.';
+    case DisconnectReason.SERVER_SHUTDOWN:
+      return 'The media server is restarting. Try joining again in a moment.';
+    case undefined:
+      return 'Disconnected from the classroom.';
+    default:
+      return `Disconnected from the classroom (reason ${reason}).`;
+  }
 }
 
 @Injectable()
@@ -268,9 +292,7 @@ export class EngageService implements OnDestroy {
         this.reset();
         this.busy.set(false);
         room.removeAllListeners();
-        this.error.set(
-          `Disconnected from the classroom${reason === undefined ? '.' : ` (reason ${reason}).`}`,
-        );
+        this.error.set(disconnectMessage(reason));
       });
   }
 

@@ -99,6 +99,11 @@ docker compose --profile media stop livekit
 
 ## Production requirements
 
+For the Railway API plus a separate Linux media VPS, use the prepared
+[deployment files and step-by-step runbook](../deploy/livekit/README.md). They
+include TLS/TURN routing, local media Redis, private credential generation and
+the Railway variable mapping. They do not provision infrastructure automatically.
+
 1. Deploy the pinned LiveKit server from
    [`backend/docker-compose.yml`](../backend/docker-compose.yml) on infrastructure
    with supported public UDP/TCP routing. Do not use its `--dev` configuration.
