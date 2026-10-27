@@ -287,6 +287,55 @@ player and live progress updates (progress refreshes on load).
 - **Performance:** `GET /api/enrollments/me` queries once per enrollment; fold into
   one query before cohorts grow. Learner initial bundle is 1.26 MB against a 1.00 MB budget.
 
+### Phase 3 progress (2026-10-27)
+
+**Slice 1 done: XP, levels, Pulse streak, crews and the crew leaderboard** in a new
+`gamification` app under tenant RLS.
+
+- **XP ledger.** `XpEvent` is append-only, enforced by a Postgres trigger and by revoking
+  UPDATE/DELETE from the runtime role (like the audit log). `amount` can't be negative
+  (database check), and each (member, source, source id) pays out once, so replays and
+  races can't double-award. Every award is also audited.
+- **Derived, not stored.** Total XP, level and streak are computed from the ledger and
+  from `ActivityDay` rows, so there is no counter to drift. The level curve is a port of
+  the shared TypeScript one (`floor(100 * N^1.5)`) with parity tests at the thresholds.
+- **Where XP is earned** (one hook in `complete_lesson`, on a lesson's first completion
+  only): the lesson's authored reward (default 20, set 0-1000 per lesson) plus 10 XP per
+  quiz point. A graded quiz pays on a pass; a knowledge check pays for first-try-correct
+  points only. The completion response carries an `award` (XP, level, level-up, streak)
+  for the award overlay.
+- **Pulse streak.** A streak is the run of consecutive UTC days with a first lesson
+  completion, ending today or yesterday; otherwise it reads 0. The 14-day strip shows
+  real activity days. Home's Pulse card now uses them (the member-doc values are only a
+  fallback when the API is down).
+- **Cohort -> section -> crew**, staff-managed (learners only, one crew per member per
+  cohort, enforced by a database constraint; roster changes are audited).
+- **Crew-only leaderboard.** `GET /api/leaderboard/crews?period=daily|weekly|allTime`
+  ranks crews and never returns a learner's name or id. Daily and weekly boards are UTC
+  date windows (ISO week, Monday start) over the ledger, so the leaderboard reset jobs
+  are no longer needed. `GET /api/me/progress` is the private score card.
+
+**Product decisions made here (change them if wrong):**
+
+- A crew's score is the **average XP per crew member**, so a bigger crew has no head
+  start. Ties share a rank.
+- Crews are assigned by staff; learners can't pick or change their own.
+- The streak counts a first lesson completion, not every knowledge-check answer.
+- Only members with the `learner` role join crews.
+
+**Remaining for Phase 3:**
+
+- **Mission badges and credentials:** catalog and rules, instructor sign-off, Open Badges
+  3.0 issuance with a public verify page. Signing needs an issuer key pair (see
+  `docs/open-badges.md`), which is a deployment decision.
+- **Learner screens:** My Progress (score card, crew standing), the crew leaderboard page
+  (replaces the individual one), the award overlay driven by the completion `award`, and
+  Home's XP bar and badges card on real data.
+- **Staff screens:** cohort / section / crew management in the admin app.
+- **Cleanup:** remove the Firestore XP, leaderboard and member-doc gamification code
+  (`libs/gamification` services, `apps/functions` gamification and leaderboard jobs) at
+  cutover.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

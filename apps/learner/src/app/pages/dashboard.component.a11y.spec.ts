@@ -7,7 +7,7 @@ import {
   TenantService,
 } from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
-import { LearningApi } from '@assurance/lms-core';
+import { GamificationApi, LearningApi } from '@assurance/lms-core';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { DashboardComponent } from './dashboard.component';
 import type { Member } from '@assurance/shared';
@@ -59,6 +59,11 @@ const mockMemberRepository = {
 };
 
 const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
+// An async throw (not Promise.reject) so the rejection is handled where it is created.
+const offline = async () => {
+  throw new Error('offline');
+};
+const mockGamification = { progress: jest.fn(offline) };
 
 describe('DashboardComponent – accessibility', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -66,6 +71,7 @@ describe('DashboardComponent – accessibility', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockApi.myEnrollments.mockResolvedValue([]);
+    mockGamification.progress.mockImplementation(offline);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -76,6 +82,7 @@ describe('DashboardComponent – accessibility', () => {
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },
         { provide: LearningApi, useValue: mockApi },
+        { provide: GamificationApi, useValue: mockGamification },
       ],
     }).compileComponents();
 

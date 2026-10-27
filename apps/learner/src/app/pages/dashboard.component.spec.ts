@@ -7,7 +7,7 @@ import {
   TenantService,
 } from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
-import { LearningApi } from '@assurance/lms-core';
+import { GamificationApi, LearningApi } from '@assurance/lms-core';
 import { DashboardComponent } from './dashboard.component';
 import type { Member } from '@assurance/shared';
 
@@ -57,6 +57,11 @@ const mockMemberRepository = {
 };
 
 const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
+// An async throw (not Promise.reject) so the rejection is handled where it is created.
+const offline = async () => {
+  throw new Error('offline');
+};
+const mockGamification = { progress: jest.fn(offline) };
 
 describe('DashboardComponent (Forge Home)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -65,6 +70,7 @@ describe('DashboardComponent (Forge Home)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockApi.myEnrollments.mockResolvedValue([]);
+    mockGamification.progress.mockImplementation(offline);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -75,6 +81,7 @@ describe('DashboardComponent (Forge Home)', () => {
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },
         { provide: LearningApi, useValue: mockApi },
+        { provide: GamificationApi, useValue: mockGamification },
       ],
     }).compileComponents();
 
@@ -113,6 +120,50 @@ describe('DashboardComponent (Forge Home)', () => {
     expect(strip.querySelectorAll('.sf-streak__day').length).toBe(14);
     expect(strip.querySelectorAll('.sf-streak__day.is-done').length).toBe(7);
     expect(strip.getAttribute('aria-label')).toBe('Active 7 of the last 14 days');
+  });
+
+  it('prefers the server streak and real activity days over the member doc', async () => {
+    // Active today, yesterday and four days ago: a 2-day streak, 3 active days.
+    const strip = Array.from({ length: 14 }, (_, i) => [13, 12, 9].includes(i));
+    mockGamification.progress.mockResolvedValue({
+      totalXp: 90,
+      todayXp: 20,
+      level: 1,
+      xpIntoLevel: 90,
+      xpToNext: 282,
+      streakDays: 2,
+      strip,
+      crew: null,
+    });
+    await settle();
+    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('2');
+    const days = pulse.querySelectorAll('sf-streak-strip .sf-streak__day');
+    expect(Array.from(days).map((d) => d.classList.contains('is-done'))).toEqual(strip);
+    expect(pulse.querySelector('sf-streak-strip')?.getAttribute('aria-label')).toBe(
+      'Active 3 of the last 14 days',
+    );
+  });
+
+  it('shows a broken streak as zero instead of the stale member-doc number', async () => {
+    mockGamification.progress.mockResolvedValue({
+      totalXp: 0,
+      todayXp: 0,
+      level: 1,
+      xpIntoLevel: 0,
+      xpToNext: 282,
+      streakDays: 0,
+      strip: Array.from({ length: 14 }, () => false),
+      crew: null,
+    });
+    await settle();
+    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0'); // member doc says 7
+  });
+
+  it('falls back to the member doc when the progress API is unavailable', async () => {
+    await settle(); // default mock rejects
+    expect(el.querySelector('assurance-home-pulse-card .hp__num')?.textContent).toBe('7');
   });
 
   it('renders the Continue card with a progress ring and a Resume action', async () => {

@@ -91,6 +91,7 @@ export interface ApiLesson {
   externalUrl: string;
   scormVersion: string;
   estimatedMinutes: number | null;
+  xpReward: number;
   frameworkTags: string[];
   keyPoints: { title: string; body: string }[];
   quiz: ApiLessonQuiz | null;
@@ -108,10 +109,23 @@ export interface ApiMyEnrollment extends ApiEnrollment {
   } | null;
 }
 
+/** What a first completion earned: the data behind the award overlay. */
+export interface ApiAward {
+  /** XP paid by this completion (0 when only the streak moved). */
+  awarded: number;
+  totalXp: number;
+  level: number;
+  leveledUp: boolean;
+  streakDays: number;
+  streakExtended: boolean;
+}
+
 export interface ApiCompletion {
   progressPct: number;
   completed: boolean;
   firstCompletion: boolean;
+  /** Present only on a first completion; a replay never pays twice. */
+  award: ApiAward | null;
 }
 
 /** One answer: options for choice/matching, `text` for fill-in, `order` for ordering. */

@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { LearningApi } from '@assurance/lms-core';
+import { LearningApi, GamificationApi, type ApiScoreCard } from '@assurance/lms-core';
 import { streakStrip } from '@assurance/gamification';
 import { LearnerProfileStore } from '../services/learner-profile.store';
 import { HomeBadgesCardComponent } from './home/badges-card.component';
@@ -136,6 +136,7 @@ const longDate = new Intl.DateTimeFormat('en-US', {
 export class DashboardComponent implements OnInit {
   private readonly profile = inject(LearnerProfileStore);
   private readonly api = inject(LearningApi);
+  private readonly gamification = inject(GamificationApi);
 
   protected readonly now = new Date();
 
@@ -157,8 +158,14 @@ export class DashboardComponent implements OnInit {
     const first = this.profile.firstName();
     return `${greetingFor(this.now)}${first ? ', ' + first : ''}.`;
   });
-  protected readonly streakDays = computed(() => this.member()?.streakDays ?? 0);
+  // Pulse: the server's streak and real 14-day activity; the member doc only if the API is down.
+  private readonly scoreCard = signal<ApiScoreCard | null>(null);
+  protected readonly streakDays = computed(
+    () => this.scoreCard()?.streakDays ?? this.member()?.streakDays ?? 0,
+  );
   protected readonly strip = computed(() => {
+    const card = this.scoreCard();
+    if (card) return card.strip;
     const m = this.member();
     return streakStrip(m?.streakDays ?? 0, m?.lastActiveAt, this.now.toISOString(), 14);
   });
@@ -177,6 +184,15 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     void this.profile.load();
     void this.loadContinue();
+    void this.loadScoreCard();
+  }
+
+  private async loadScoreCard(): Promise<void> {
+    try {
+      this.scoreCard.set(await this.gamification.progress());
+    } catch {
+      // Keep the member-doc streak so the Pulse card never breaks.
+    }
   }
 
   /** Real Continue card; on no enrollment or any failure the placeholder stays. */
