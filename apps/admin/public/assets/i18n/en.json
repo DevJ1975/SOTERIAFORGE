@@ -18,12 +18,21 @@
     "errors": {
       "invalidCredentials": "Invalid email or password.",
       "emailInUse": "An account with this email already exists.",
-      "weakPassword": "Password must be at least 6 characters.",
+      "weakPassword": "Password must be at least 12 characters.",
       "invalidEmail": "Please enter a valid email address.",
       "tooManyRequests": "Too many attempts. Please try again later.",
       "network": "Network error. Check your connection and try again.",
-      "generic": "Something went wrong. Please try again."
-    }
+      "generic": "Something went wrong. Please try again.",
+      "invalidLink": "This link is invalid or has expired. Request a new one.",
+      "passwordsDontMatch": "The passwords don't match."
+    },
+    "chooseNewPassword": "Choose a new password",
+    "acceptInvite": "Set up your account",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "savePassword": "Save password",
+    "passwordHint": "Use at least {{min}} characters. A short phrase is easy to remember and hard to guess.",
+    "passwordSet": "Your password is set. You can sign in now."
   },
   "common": {
     "signIn": "Sign in",
@@ -40,6 +49,10 @@
     "account": "My learning",
     "reports": "Reports"
   },
-  "dashboard": { "welcome": "Welcome" },
-  "footer": { "poweredBy": "Powered by Trainovation Technologies, LLC" }
+  "dashboard": {
+    "welcome": "Welcome"
+  },
+  "footer": {
+    "poweredBy": "Powered by Trainovation Technologies, LLC"
+  }
 }

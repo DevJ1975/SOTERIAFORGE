@@ -1,5 +1,5 @@
 /**
- * Maps a Firebase Auth error to a Transloco translation key under `auth.errors`.
+ * Maps a sign-in error (`AuthError.code`) to a Transloco translation key under `auth.errors`.
  * Centralises the friendly-message mapping so every auth surface (login,
  * forgot-password, storefront sign-up/in) stays consistent. Consumers translate
  * the returned key, e.g. `transloco.translate(authErrorMessageKey(err))`.
@@ -21,6 +21,8 @@ export function authErrorMessageKey(err: unknown): string {
       return 'auth.errors.tooManyRequests';
     case 'auth/network-request-failed':
       return 'auth.errors.network';
+    case 'auth/invalid-action-code':
+      return 'auth.errors.invalidLink';
     default:
       return 'auth.errors.generic';
   }

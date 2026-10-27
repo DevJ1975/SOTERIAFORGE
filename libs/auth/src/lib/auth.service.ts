@@ -1,20 +1,8 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import {
-  type Auth,
-  type User,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  onIdTokenChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile,
-} from 'firebase/auth';
-import { Firestore, clearIndexedDbPersistence, terminate } from '@angular/fire/firestore';
+import { Injectable, InjectionToken, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import type { CustomClaims, Principal } from '@assurance/shared';
-import { Observable, of } from 'rxjs';
-import { parseClaims } from './claims';
-import { FIREBASE_AUTH } from './firebase-auth';
+import { ASSURANCE_ENV } from './assurance-environment';
+import { type ForgeMe, forgeApiUrl } from './forge-me';
 import { TenantService } from './tenant.service';
 
 /**
@@ -35,133 +23,198 @@ const OFFLINE_IDB_DATABASES = [
 const OFFLINE_CACHE_NAME = 'assurance-offline-v1';
 
 /**
- * Authentication facade over Firebase Auth + GCIP multi-tenancy.
+ * Extra clean-up to run on sign-out (multi-provider). The data layer registers one
+ * to wipe its own on-device cache; kept as a token so auth never imports it.
+ */
+export const SIGN_OUT_CLEANUP = new InjectionToken<(() => Promise<void>)[]>('SIGN_OUT_CLEANUP');
+
+/** Refresh the access token this long before it expires. */
+const EXPIRY_MARGIN_MS = 30_000;
+
+/**
+ * A sign-in failure. `code` reuses the `auth/...` vocabulary that
+ * `authErrorMessageKey` maps to translated messages.
+ */
+export class AuthError extends Error {
+  constructor(
+    readonly code: string,
+    message = code,
+    readonly status = 0,
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+interface TokenResponse {
+  access: string;
+  expiresIn: number;
+}
+
+/**
+ * Sign-in against the Forge API (Django): email + password, a short-lived access
+ * token held in memory, and a refresh token the API keeps in an HttpOnly cookie
+ * (so page scripts never see it). Role and tenant come from `GET /api/me`.
  *
- * GCIP isolation: before any sign-in we stamp `auth.tenantId` with the active
- * tenant's Identity Platform id so the user authenticates against that tenant's
- * pool. Superadmin signs in against the project-level (tenantId = null) pool.
+ * Auth calls use `fetch` directly rather than HttpClient, so they don't loop
+ * through `forgeApiInterceptor` (which asks this service for the token).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  /** Null on the server (SSR / prerender): every server render is signed out. */
-  private readonly auth = inject(FIREBASE_AUTH);
+  private readonly env = inject(ASSURANCE_ENV);
   private readonly tenant = inject(TenantService);
-  /** Optional: not every AuthService consumer provides Firestore. */
-  private readonly firestore = inject(Firestore, { optional: true });
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly cleanups = inject(SIGN_OUT_CLEANUP, { optional: true }) ?? [];
 
-  /** The raw Firebase user (null when signed out); follows ID-token changes. */
-  private readonly firebaseUser = signal<User | null>(null);
+  private access: { token: string; expiresAt: number } | null = null;
+  private refreshing: Promise<string | null> | null = null;
+  /** Set after a refresh fails, so signed-out pages don't retry on every API call. */
+  private signedOut = false;
 
-  constructor() {
-    if (this.auth) {
-      const unsubscribe = onIdTokenChanged(this.auth, (u) => this.firebaseUser.set(u));
-      inject(DestroyRef).onDestroy(unsubscribe);
-    }
-  }
+  private readonly meState = signal<ForgeMe | null>(null);
+  /** HTTP status of the last `/api/me` load: 401/403 mean the API refused. */
+  private readonly meStatusState = signal<number | null>(null);
 
-  /** Validated custom claims, refreshed on auth state changes. */
-  private readonly _claims = signal<CustomClaims | null>(null);
-  readonly claims = this._claims.asReadonly();
+  /** The membership `/api/me` returned, or null when signed out. */
+  readonly me = this.meState.asReadonly();
+  readonly meStatus = this.meStatusState.asReadonly();
 
-  readonly isAuthenticated = computed(() => !!this.firebaseUser());
+  /** Role and tenant from Postgres, shaped like the claims the guards check. */
+  readonly claims = computed<CustomClaims | null>(() => {
+    const me = this.meState();
+    if (!me) return null;
+    return {
+      role: me.member.role,
+      tenantId: me.tenant?.id ?? me.member.tenantId ?? undefined,
+      entitlements: [],
+    };
+  });
 
-  /** Firebase uid of the signed-in user, before claims exist (null when signed out). */
-  readonly uid = computed(() => this.firebaseUser()?.uid ?? null);
+  readonly isAuthenticated = computed(() => !!this.meState());
+
+  /** Stable id of the signed-in member (null when signed out). */
+  readonly uid = computed(() => this.meState()?.member.uid ?? null);
 
   readonly principal = computed<Principal | null>(() => {
-    const u = this.firebaseUser();
-    const claims = this._claims();
-    if (!u || !claims) return null;
+    const me = this.meState();
+    const claims = this.claims();
+    if (!me || !claims) return null;
     return {
-      uid: u.uid,
-      email: u.email ?? undefined,
-      displayName: u.displayName ?? undefined,
+      uid: me.member.uid,
+      email: me.member.email,
+      displayName: me.member.displayName || undefined,
       claims,
     };
   });
 
-  /** Bind the active GCIP tenant onto the Auth instance. */
-  applyTenantScope(): void {
-    if (this.auth) this.auth.tenantId = this.tenant.gcipTenantId();
-  }
+  /** Resolves once the session from a previous visit has been restored (or not). */
+  private readonly restored: Promise<void> = this.isBrowser ? this.restore() : Promise.resolve();
 
-  /** Sign-in flows only run in the browser; fail loudly if reached on the server. */
-  private requireAuth(): Auth {
-    if (!this.auth) throw new Error('Firebase Auth is unavailable outside the browser');
-    return this.auth;
+  /** Waits for the initial session restore. */
+  ready(): Promise<void> {
+    return this.restored;
   }
 
   async signInWithPassword(email: string, password: string): Promise<void> {
-    this.applyTenantScope();
-    const cred = await signInWithEmailAndPassword(this.requireAuth(), email, password);
-    await this.refreshClaims();
-    if (cred.user && !this._claims()) {
-      // No claims yet (e.g. just-provisioned user) — force a token refresh once.
-      await cred.user.getIdToken(true);
-      await this.refreshClaims();
-    }
+    const res = await this.call('/api/auth/login', {
+      email,
+      password,
+      tenant: this.tenant.tenantId() ?? '',
+    });
+    if (!res.ok) throw await this.failure(res, 'auth/invalid-credential');
+    this.store((await res.json()) as TokenResponse);
+    await this.loadMe();
+    if (!this.meState()) throw new AuthError('auth/user-disabled', 'Not allowed in', 403);
   }
 
-  async signUp(email: string, password: string, displayName?: string): Promise<void> {
-    this.applyTenantScope();
-    const cred = await createUserWithEmailAndPassword(this.requireAuth(), email, password);
-    if (displayName && cred.user) {
-      await updateProfile(cred.user, { displayName });
-    }
-    await this.refreshClaims();
-    if (cred.user && !this._claims()) {
-      // No claims yet for a just-provisioned user — force a token refresh once.
-      await cred.user.getIdToken(true);
-      await this.refreshClaims();
-    }
+  /** Self-service sign-up isn't offered; members are invited. */
+  async signUp(_email: string, _password: string, _displayName?: string): Promise<void> {
+    throw new AuthError('auth/operation-not-allowed', 'Sign-up is not available.');
   }
 
-  /**
-   * Send a password-reset email for the given address. Tenant scope is applied
-   * first so GCIP routes the reset to the correct Identity Platform pool; the
-   * user completes the reset on Firebase's hosted action page.
-   */
+  /** Emails a reset link. The API answers the same whether or not the account exists. */
   async sendPasswordResetEmail(email: string): Promise<void> {
-    this.applyTenantScope();
-    await sendPasswordResetEmail(this.requireAuth(), email);
+    const res = await this.call('/api/auth/password-reset', {
+      email,
+      tenant: this.tenant.tenantId() ?? '',
+    });
+    if (!res.ok) throw await this.failure(res, 'auth/internal-error');
+  }
+
+  /** Sets a password from an emailed reset or invite link. */
+  async confirmPasswordReset(token: string, password: string): Promise<void> {
+    const res = await this.call('/api/auth/password-reset/confirm', { token, password });
+    if (res.ok) return;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (res.status === 400 && body['password']) {
+      throw new AuthError(
+        'auth/weak-password',
+        ([] as string[]).concat(body['password'] as string[]).join(' '),
+        400,
+      );
+    }
+    if (res.status === 400 && body['token']) {
+      throw new AuthError('auth/invalid-action-code', 'This link is invalid or has expired.', 400);
+    }
+    throw await this.failure(res, 'auth/internal-error');
   }
 
   async signOutUser(): Promise<void> {
-    if (this.auth) await signOut(this.auth);
-    this._claims.set(null);
+    try {
+      if (this.isBrowser && this.env.apiBaseUrl) await this.call('/api/auth/logout', {});
+    } catch {
+      // Offline: the local session still ends below.
+    }
+    this.clearSession();
     // Shared-device hygiene: purge this user's local offline data so the next
-    // user cannot read it. Best-effort and never throws — sign-out must succeed
-    // regardless (FIX-10).
+    // user cannot read it. Best-effort and never throws (FIX-10).
     await this.clearLocalOfflineData();
   }
 
   /**
-   * Best-effort deletion of all app-owned offline local data on sign-out:
-   * the offline IndexedDB databases, the offline Cache Storage bucket, and the
-   * Firestore SDK's IndexedDB cache (MO-01 `persistentLocalCache`). None of
+   * A current access token for the Forge API, refreshing it if it's about to
+   * expire. Null when signed out.
+   */
+  async getAccessToken(): Promise<string | null> {
+    if (this.access && this.access.expiresAt - Date.now() > EXPIRY_MARGIN_MS) {
+      return this.access.token;
+    }
+    if (this.signedOut || !this.isBrowser || !this.env.apiBaseUrl) return null;
+    return this.refreshAccess();
+  }
+
+  /** Forces a new access token (after the API rejected one). Null when signed out. */
+  async renewAccessToken(): Promise<string | null> {
+    this.access = null;
+    return this.signedOut ? null : this.refreshAccess();
+  }
+
+  /** The current role/tenant, after the initial restore; `force` reloads `/api/me`. */
+  async refreshClaims(force = false): Promise<CustomClaims | null> {
+    await this.restored;
+    if (force && this.access) await this.loadMe();
+    return this.claims();
+  }
+
+  /**
+   * Best-effort deletion of all app-owned offline local data on sign-out: the
+   * offline IndexedDB databases, the offline Cache Storage bucket, and anything
+   * registered under `SIGN_OUT_CLEANUP` (e.g. the Firestore cache). None of
    * these are uid-scoped, so on a shared device they would leak the prior
-   * user's data. Browser-guarded and fully swallowed — this MUST NOT break
+   * user's data. Browser-guarded and fully swallowed: this MUST NOT break
    * sign-out if any step fails or is unsupported.
-   *
-   * Caveat: deleting an IndexedDB database that still has open connections in
-   * other tabs may be `blocked` until they close; for the Firestore cache we
-   * `terminate()` first, but a hard reload after sign-out remains the most
-   * reliable way to guarantee a clean slate on shared devices.
    */
   async clearLocalOfflineData(): Promise<void> {
     if (typeof window === 'undefined') return;
 
-    // 1. Firestore SDK persistent cache: terminate the client, then clear it.
-    if (this.firestore) {
+    for (const cleanup of this.cleanups) {
       try {
-        await terminate(this.firestore);
-        await clearIndexedDbPersistence(this.firestore);
+        await cleanup();
       } catch {
         // Already terminated / unsupported / open elsewhere — ignore.
       }
     }
 
-    // 2. App-owned offline IndexedDB databases.
     if (typeof indexedDB !== 'undefined') {
       await Promise.all(
         OFFLINE_IDB_DATABASES.map(
@@ -181,7 +234,6 @@ export class AuthService {
       );
     }
 
-    // 3. Offline Cache Storage bucket (downloaded content).
     if (typeof caches !== 'undefined') {
       try {
         await caches.delete(OFFLINE_CACHE_NAME);
@@ -191,29 +243,80 @@ export class AuthService {
     }
   }
 
-  /** Force-refresh the ID token and re-parse custom claims. */
-  async refreshClaims(forceRefresh = false): Promise<CustomClaims | null> {
-    const u = this.auth?.currentUser;
-    if (!u) {
-      this._claims.set(null);
-      return null;
-    }
-    const token = await u.getIdTokenResult(forceRefresh);
-    const claims = parseClaims(token.claims);
-    this._claims.set(claims);
-    return claims;
+  // --- internals ---------------------------------------------------------------
+  private async restore(): Promise<void> {
+    if (!this.env.apiBaseUrl) return;
+    if (await this.refreshAccess()) await this.loadMe();
   }
 
-  /** Observable of auth state for guards that prefer async resolution. */
-  authState$(): Observable<User | null> {
-    const auth = this.auth;
-    if (!auth) return of(null);
-    return new Observable<User | null>((sub) =>
-      onAuthStateChanged(
-        auth,
-        (u) => sub.next(u),
-        (e) => sub.error(e),
-      ),
-    );
+  private refreshAccess(): Promise<string | null> {
+    // One refresh at a time: concurrent callers share it (the API rotates the
+    // cookie on every use, so parallel refreshes would trip reuse detection).
+    this.refreshing ??= (async () => {
+      try {
+        const res = await this.call('/api/auth/refresh', {});
+        if (!res.ok) {
+          this.clearSession();
+          return null;
+        }
+        return this.store((await res.json()) as TokenResponse);
+      } catch {
+        return null; // offline: keep whatever session state we have
+      } finally {
+        this.refreshing = null;
+      }
+    })();
+    return this.refreshing;
+  }
+
+  private async loadMe(): Promise<void> {
+    const token = this.access?.token;
+    if (!token || !this.env.apiBaseUrl) return;
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const tenantId = this.tenant.tenantId();
+    if (tenantId) headers['X-Forge-Tenant'] = tenantId;
+    try {
+      const res = await fetch(forgeApiUrl(this.env.apiBaseUrl, '/api/me'), { headers });
+      this.meStatusState.set(res.status);
+      this.meState.set(res.ok ? ((await res.json()) as ForgeMe) : null);
+    } catch {
+      this.meStatusState.set(0); // network error: API unavailable
+    }
+  }
+
+  private store(body: TokenResponse): string {
+    this.access = { token: body.access, expiresAt: Date.now() + body.expiresIn * 1000 };
+    this.signedOut = false;
+    return body.access;
+  }
+
+  private clearSession(): void {
+    this.access = null;
+    this.signedOut = true;
+    this.meState.set(null);
+    this.meStatusState.set(null);
+  }
+
+  /** POST JSON to an auth endpoint, sending and receiving the refresh cookie. */
+  private async call(path: string, body: object): Promise<Response> {
+    if (!this.env.apiBaseUrl) throw new AuthError('auth/unavailable', 'No API configured.');
+    try {
+      return await fetch(forgeApiUrl(this.env.apiBaseUrl, path), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Forge-Client': 'web' },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new AuthError('auth/network-request-failed', 'Network error.');
+    }
+  }
+
+  private async failure(res: Response, fallback: string): Promise<AuthError> {
+    if (res.status === 429)
+      return new AuthError('auth/too-many-requests', 'Too many attempts.', 429);
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    const code = res.status === 401 ? 'auth/invalid-credential' : fallback;
+    return new AuthError(code, body.detail ?? code, res.status);
   }
 }

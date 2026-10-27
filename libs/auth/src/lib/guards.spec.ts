@@ -1,18 +1,13 @@
-jest.mock('firebase/auth', () => ({
-  onAuthStateChanged: jest.fn(() => () => undefined),
-  onIdTokenChanged: jest.fn(() => () => undefined),
-}));
-
 import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree, provideRouter } from '@angular/router';
 import type { CustomClaims } from '@assurance/shared';
 import { AuthService } from './auth.service';
 import { type ForgeAccess, type ForgeMe, ForgeSession } from './forge-api';
-import { roleGuard, superadminGuard, tenantGuard } from './guards';
+import { authGuard, roleGuard, superadminGuard, tenantGuard } from './guards';
 import { TenantService } from './tenant.service';
 
 let access: ForgeAccess;
-let claims: CustomClaims | null;
+let signedIn: boolean;
 let hostTenant: string | null;
 
 function me(over: Partial<ForgeMe['member']> = {}): ForgeMe {
@@ -35,9 +30,17 @@ function me(over: Partial<ForgeMe['member']> = {}): ForgeMe {
   };
 }
 
-const refreshClaims = jest.fn(async () => claims);
+/** The claims AuthService derives from the API's membership. */
+function claimsFor(a: ForgeAccess): CustomClaims | null {
+  if (a.kind !== 'member') return null;
+  return {
+    role: a.me.member.role,
+    tenantId: a.me.tenant?.id ?? a.me.member.tenantId ?? undefined,
+    entitlements: [],
+  };
+}
 
-function run(guard: ReturnType<typeof roleGuard>): Promise<true | string> {
+function run(guard: ReturnType<typeof roleGuard>, url = '/'): Promise<true | string> {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -45,14 +48,18 @@ function run(guard: ReturnType<typeof roleGuard>): Promise<true | string> {
       { provide: ForgeSession, useValue: { settled: async () => access } },
       {
         provide: AuthService,
-        useValue: { claims: () => claims, refreshClaims, isAuthenticated: () => true },
+        useValue: {
+          ready: async () => undefined,
+          claims: () => claimsFor(access),
+          isAuthenticated: () => signedIn,
+        },
       },
       { provide: TenantService, useValue: { tenantId: () => hostTenant } },
     ],
   });
   const router = TestBed.inject(Router);
   return TestBed.runInInjectionContext(async () => {
-    const result = await guard({} as never, { url: '/' } as never);
+    const result = await guard({} as never, { url } as never);
     return result === true ? true : router.serializeUrl(result as UrlTree);
   });
 }
@@ -60,27 +67,35 @@ function run(guard: ReturnType<typeof roleGuard>): Promise<true | string> {
 describe('route guards', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
-    jest.clearAllMocks();
     hostTenant = 'lakewood';
-    claims = { role: 'learner', tenantId: 'lakewood', entitlements: [] };
+    signedIn = true;
     access = { kind: 'member', me: me() };
   });
 
-  it('use the API role over stale claims (promotion)', async () => {
+  it('authGuard lets a signed-in user through and sends others to /login with a return URL', async () => {
+    expect(await run(authGuard, '/courses')).toBe(true);
+    signedIn = false;
+    expect(await run(authGuard, '/courses')).toBe('/login?returnUrl=%2Fcourses');
+  });
+
+  it('allow a role the API grants', async () => {
     access = { kind: 'member', me: me({ role: 'instructor' }) };
     expect(await run(roleGuard('instructor'))).toBe(true);
   });
 
-  it('use the API role over stale claims (demotion)', async () => {
-    claims = { role: 'tenant_admin', tenantId: 'lakewood', entitlements: [] };
+  it('deny a role the API does not grant', async () => {
     expect(await run(roleGuard('tenant_admin'))).toBe('/forbidden');
   });
 
-  it('deny when the API refuses, whatever the claims say', async () => {
-    claims = { role: 'superadmin', entitlements: [] };
+  it('deny when the API refuses', async () => {
     access = { kind: 'denied' };
     expect(await run(superadminGuard)).toBe('/forbidden');
     expect(await run(tenantGuard)).toBe('/forbidden');
+  });
+
+  it('deny when the API is unavailable (no fallback to unverified claims)', async () => {
+    access = { kind: 'unavailable' };
+    expect(await run(roleGuard('learner'))).toBe('/forbidden');
   });
 
   it('deny members the API reports as not active', async () => {
@@ -100,14 +115,5 @@ describe('route guards', () => {
     hostTenant = 'acme';
     expect(await run(tenantGuard)).toBe(true);
     expect(await run(superadminGuard)).toBe(true);
-  });
-
-  it('fall back to claims only when the API is unavailable', async () => {
-    access = { kind: 'unavailable' };
-    claims = { role: 'instructor', tenantId: 'lakewood', entitlements: [] };
-    expect(await run(roleGuard('instructor'))).toBe(true);
-    claims = null;
-    expect(await run(roleGuard('instructor'))).toBe('/forbidden');
-    expect(refreshClaims).toHaveBeenCalled();
   });
 });

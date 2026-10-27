@@ -1,10 +1,21 @@
 import { Routes } from '@angular/router';
 import { authGuard, tenantGuard, roleGuard } from '@assurance/auth';
-import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
+import {
+  ForbiddenComponent,
+  ForgotPasswordComponent,
+  LoginComponent,
+  SetPasswordComponent,
+} from '@assurance/auth-ui';
 
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: SetPasswordComponent },
+  {
+    path: 'accept-invite',
+    component: SetPasswordComponent,
+    data: { mode: 'invite' },
+  },
   { path: 'forbidden', component: ForbiddenComponent },
   {
     path: '',

@@ -15,7 +15,7 @@ import { definePreset } from '@primeng/themes';
 import Aura from '@primeng/themes/aura';
 import { ASSURANCE_ENV, forgeApiInterceptor, provideForgeApi } from '@assurance/auth';
 import { AUTH_BRAND_LOGO } from '@assurance/auth-ui';
-import { provideForgeFirebase } from '@assurance/data-access';
+import { isFirebaseConfigured, provideForgeFirebase } from '@assurance/data-access';
 import { FORGE_PRIMENG_OPTIONS, FORGE_PRIMENG_TOKENS, provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
@@ -28,7 +28,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideObservability(),
-    // Forge API (Django): the interceptor adds the Firebase ID token + tenant.
+    // Forge API (Django): the interceptor adds the access token + tenant.
     provideHttpClient(withFetch(), withInterceptors([forgeApiInterceptor])),
     provideForgeApi(),
     provideForgeTransloco(),
@@ -51,16 +51,19 @@ export const appConfig: ApplicationConfig = {
       appCheckSiteKey: environment.appCheckSiteKey,
       useEmulators: !environment.production,
     }),
-    // FCM messaging is browser-only (Push API + service worker). Wiring it on the
-    // server would throw during SSR/prerender, so the provider is only registered
-    // in the browser; PushNotificationService injects Messaging optionally and
+    // FCM messaging is browser-only (Push API + service worker) and needs a
+    // Firebase project. PushNotificationService injects Messaging optionally and
     // gracefully no-ops when it is absent (MO-11).
-    provideMessaging(() => {
-      if (!isPlatformBrowser(inject(PLATFORM_ID))) {
-        return null as unknown as ReturnType<typeof getMessaging>;
-      }
-      return getMessaging();
-    }),
+    ...(isFirebaseConfigured(environment.firebase)
+      ? [
+          provideMessaging(() => {
+            if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+              return null as unknown as ReturnType<typeof getMessaging>;
+            }
+            return getMessaging();
+          }),
+        ]
+      : []),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',

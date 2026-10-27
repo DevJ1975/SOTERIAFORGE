@@ -1,6 +1,11 @@
 import { Routes } from '@angular/router';
 import { authGuard, tenantGuard } from '@assurance/auth';
-import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
+import {
+  ForbiddenComponent,
+  ForgotPasswordComponent,
+  LoginComponent,
+  SetPasswordComponent,
+} from '@assurance/auth-ui';
 import type { SfCrumb } from '@assurance/ui';
 import type { LessonComponent } from './pages/lesson/lesson.component';
 
@@ -23,6 +28,12 @@ const placeholder = () =>
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent, data: { sfShell: 'none' } },
   { path: 'forgot-password', component: ForgotPasswordComponent, data: { sfShell: 'none' } },
+  { path: 'reset-password', component: SetPasswordComponent, data: { sfShell: 'none' } },
+  {
+    path: 'accept-invite',
+    component: SetPasswordComponent,
+    data: { mode: 'invite', sfShell: 'none' },
+  },
   { path: 'forbidden', component: ForbiddenComponent, data: { sfShell: 'none' } },
   {
     path: '',

@@ -6,103 +6,80 @@ import {
   makeEnvironmentProviders,
   provideEnvironmentInitializer,
 } from '@angular/core';
-import { HttpErrorResponse, type HttpInterceptorFn, httpResource } from '@angular/common/http';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { filter, firstValueFrom, from, switchMap } from 'rxjs';
+import { type HttpInterceptorFn, type HttpRequest, HttpErrorResponse } from '@angular/common/http';
+import { catchError, from, switchMap, throwError } from 'rxjs';
 import type { Role } from '@assurance/shared';
 import { ASSURANCE_ENV } from './assurance-environment';
 import { AuthService } from './auth.service';
-import { FIREBASE_AUTH } from './firebase-auth';
+import { type ForgeMe, forgeApiUrl } from './forge-me';
 import { TenantService } from './tenant.service';
 
-/** `GET /api/me` from the Forge API (backend/apps/accounts/serializers.py). */
-export interface ForgeMe {
-  member: {
-    id: string;
-    uid: string;
-    tenantId: string | null;
-    email: string;
-    displayName: string;
-    role: Role;
-    status: 'invited' | 'active' | 'deactivated';
-  };
-  tenant: { id: string; name: string; status: string; branding: Record<string, unknown> } | null;
-  canAuthor: boolean;
-}
+export { type ForgeMe, forgeApiUrl } from './forge-me';
 
 /**
  * What the API says about the signed-in user, for route guards:
  * - `member`: use this membership (Postgres is the source of truth for roles)
  * - `denied`: the API refused (401/403: not a member, deactivated, wrong tenant)
- * - `unavailable`: no API configured, nobody signed in, or the API is down;
- *   guards fall back to Firebase claims
+ * - `unavailable`: no API configured, nobody signed in, or the API is down
  */
 export type ForgeAccess =
   | { kind: 'member'; me: ForgeMe }
   | { kind: 'denied' }
   | { kind: 'unavailable' };
 
-/** Joins the configured API base URL and a path (`/api/me`). */
-export function forgeApiUrl(base: string, path: string): string {
-  return `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
-}
-
 /**
- * Sends the Firebase ID token and the host-resolved tenant to the Forge API, and
- * only to it: requests elsewhere never carry the token.
+ * Sends the access token and the host-resolved tenant to the Forge API, and only
+ * to it: requests elsewhere never carry the token. A 401 gets one retry with a
+ * renewed token (it may have expired in flight).
  */
 export const forgeApiInterceptor: HttpInterceptorFn = (req, next) => {
   const base = inject(ASSURANCE_ENV).apiBaseUrl;
   if (!base || !req.url.startsWith(forgeApiUrl(base, ''))) return next(req);
 
-  const user = inject(FIREBASE_AUTH)?.currentUser;
+  const auth = inject(AuthService);
   const tenantId = inject(TenantService).tenantId();
-  return from(user ? user.getIdToken() : Promise.resolve(null)).pipe(
-    switchMap((token) => {
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      if (tenantId) headers['X-Forge-Tenant'] = tenantId;
-      return next(req.clone({ setHeaders: headers }));
-    }),
+  const withHeaders = (token: string | null): HttpRequest<unknown> => {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantId) headers['X-Forge-Tenant'] = tenantId;
+    return req.clone({ setHeaders: headers });
+  };
+
+  return from(auth.getAccessToken()).pipe(
+    switchMap((token) =>
+      next(withHeaders(token)).pipe(
+        catchError((err: unknown) => {
+          if (!token || !(err instanceof HttpErrorResponse) || err.status !== 401) {
+            return throwError(() => err);
+          }
+          return from(auth.renewAccessToken()).pipe(
+            switchMap((renewed) => (renewed ? next(withHeaders(renewed)) : throwError(() => err))),
+          );
+        }),
+      ),
+    ),
   );
 };
 
 /**
  * The signed-in user as the Forge API sees them (membership, role, tenant).
- * Postgres is the source of truth for roles (docs/forge-platform-plan.md §2);
- * route guards still read Firebase claims until they move onto this.
+ * Postgres is the source of truth for roles (docs/forge-platform-plan.md §2).
  */
 @Injectable({ providedIn: 'root' })
 export class ForgeSession {
-  private readonly base = inject(ASSURANCE_ENV).apiBaseUrl;
   private readonly auth = inject(AuthService);
 
-  /**
-   * Loads after sign-in, clears on sign-out; idle when no API is configured.
-   * A fresh request object per uid makes a user switch in the same tab refetch.
-   */
-  readonly me = httpResource<ForgeMe>(() => {
-    const uid = this.auth.uid();
-    return this.base && uid ? { url: forgeApiUrl(this.base, '/api/me') } : undefined;
-  });
+  readonly me = this.auth.me;
+  readonly role = computed<Role | null>(() => this.me()?.member.role ?? null);
+  readonly canAuthor = computed(() => this.me()?.canAuthor ?? false);
 
-  readonly role = computed<Role | null>(() =>
-    this.me.hasValue() ? this.me.value().member.role : null,
-  );
-  readonly canAuthor = computed(() => (this.me.hasValue() ? this.me.value().canAuthor : false));
-
-  private readonly status$ = toObservable(this.me.status);
-
-  /** Waits for any in-flight `/api/me` load, then classifies the result. */
+  /** Waits for the session restore, then classifies the result. */
   async settled(): Promise<ForgeAccess> {
-    if (!this.base || !this.auth.uid()) return { kind: 'unavailable' };
-    await firstValueFrom(this.status$.pipe(filter((s) => s !== 'loading' && s !== 'reloading')));
-    if (this.me.hasValue()) return { kind: 'member', me: this.me.value() };
-    const err = this.me.error();
-    if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
-      return { kind: 'denied' };
-    }
-    return { kind: 'unavailable' };
+    await this.auth.ready();
+    const me = this.me();
+    if (me) return { kind: 'member', me };
+    const status = this.auth.meStatus();
+    return status === 401 || status === 403 ? { kind: 'denied' } : { kind: 'unavailable' };
   }
 }
 

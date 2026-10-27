@@ -6,14 +6,17 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import {
-  type Firestore,
+  Firestore,
+  clearIndexedDbPersistence,
   connectFirestoreEmulator,
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   provideFirestore,
+  terminate,
 } from '@angular/fire/firestore';
+import { SIGN_OUT_CLEANUP } from '@assurance/auth';
 import { getApp, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { connectFunctionsEmulator, getFunctions, provideFunctions } from '@angular/fire/functions';
 import {
@@ -21,6 +24,11 @@ import {
   initializeAppCheck,
   provideAppCheck,
 } from '@angular/fire/app-check';
+
+/** Whether a Firebase web config was supplied (the committed placeholders are empty). */
+export function isFirebaseConfigured(config: Record<string, string> | undefined): boolean {
+  return !!config?.['projectId'] && !!config?.['apiKey'];
+}
 
 export interface FirebaseProvidersOptions {
   firebase: Record<string, string>;
@@ -72,7 +80,23 @@ function buildFirestore(isBrowser: boolean): Firestore {
  * see {@link buildFirestore}.
  */
 export function provideForgeFirebase(options: FirebaseProvidersOptions): EnvironmentProviders {
+  // Sign-in has moved to the Forge API, so a build may have no Firebase project.
+  // The app and Firestore providers are still registered (an empty config is
+  // harmless until a query runs, and pages that inject Firestore keep resolving);
+  // only App Check, which needs a real site key, is conditional.
   return makeEnvironmentProviders([
+    // Wipe the on-device Firestore cache on sign-out (shared devices).
+    {
+      provide: SIGN_OUT_CLEANUP,
+      multi: true,
+      useFactory: () => {
+        const firestore = inject(Firestore);
+        return async () => {
+          await terminate(firestore);
+          await clearIndexedDbPersistence(firestore);
+        };
+      },
+    },
     provideFirebaseApp(() => initializeApp(options.firebase)),
     provideFirestore(() => {
       const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

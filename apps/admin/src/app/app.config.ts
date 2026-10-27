@@ -16,7 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideObservability(),
-    // Forge API (Django): the interceptor adds the Firebase ID token + tenant.
+    // Forge API (Django): the interceptor adds the access token + tenant.
     provideHttpClient(withFetch(), withInterceptors([forgeApiInterceptor])),
     provideForgeApi(),
     provideForgeTransloco(),
