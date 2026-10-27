@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import {
   type EnvironmentProviders,
@@ -5,33 +6,39 @@ import {
   inject,
   provideAppInitializer,
 } from '@angular/core';
-import { TenantService } from '@assurance/auth';
-import { TenantRepository } from '@assurance/data-access';
+import { ASSURANCE_ENV, TenantService, forgeApiUrl } from '@assurance/auth';
+import type { Branding } from '@assurance/shared';
 import { ThemeService } from '@assurance/ui';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Runtime white-labeling: on app start (browser only), resolve the active
- * tenant (subdomain), load its branding from Firestore, and apply it via the
- * design-system ThemeService (CSS custom properties). Falls back to the default
- * theme on any failure so the app always renders.
+ * tenant (subdomain), load its branding from the Forge API (`/api/tenant/branding`,
+ * public so the sign-in page can be themed), and apply it via the design-system
+ * ThemeService (CSS custom properties). Falls back to the default theme on any
+ * failure so the app always renders.
  *
  * Deliberately browser-only: during SSR/prerender there is no tenant request
- * context and no live Firebase config, so a Firestore read would fail the
- * render. The server emits the default theme; the browser applies the tenant
- * theme on hydration. (Request-time per-tenant SSR theming is a later
- * enhancement that reads branding from the request host.)
+ * context, so the server emits the default theme and the browser applies the
+ * tenant theme on hydration.
  */
 export function provideTenantTheme(): EnvironmentProviders {
   return provideAppInitializer(async () => {
     if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
 
-    const tenants = inject(TenantRepository);
+    const http = inject(HttpClient);
+    const base = inject(ASSURANCE_ENV).apiBaseUrl;
     const theme = inject(ThemeService);
     const tenantId = inject(TenantService).tenantId();
-    if (!tenantId) return;
+    if (!tenantId || !base) return;
     try {
-      const tenant = await tenants.getById(tenantId);
-      if (tenant?.branding) {
+      // Sent explicitly: not every app registers the Forge API interceptor.
+      const tenant = await firstValueFrom(
+        http.get<{ branding?: Branding }>(forgeApiUrl(base, '/api/tenant/branding'), {
+          headers: { 'X-Forge-Tenant': tenantId },
+        }),
+      );
+      if (tenant.branding && Object.keys(tenant.branding).length > 0) {
         theme.applyBranding(tenant.branding);
       }
     } catch {

@@ -6,10 +6,8 @@ import {
   AuthService,
   TenantService,
 } from '@assurance/auth';
-import { MemberRepository } from '@assurance/data-access';
 import { GamificationApi, LearningApi } from '@assurance/lms-core';
 import { DashboardComponent } from './dashboard.component';
-import type { Member } from '@assurance/shared';
 
 const testEnv: AssuranceEnvironment = {
   production: false,
@@ -24,21 +22,6 @@ const testEnv: AssuranceEnvironment = {
   },
 };
 
-const mockMember: Member = {
-  uid: 'user-1',
-  tenantId: 'tenant-1',
-  role: 'learner',
-  status: 'active',
-  email: 'alice@example.com',
-  displayName: 'Alice Ortega',
-  xp: 350,
-  level: 2,
-  streakDays: 7,
-  lastActiveAt: new Date().toISOString(),
-  earnedBadgeIds: ['recruit'],
-  createdAt: '2024-01-01T00:00:00.000Z',
-};
-
 const mockAuthService = {
   principal: () => ({
     uid: 'user-1',
@@ -50,10 +33,6 @@ const mockAuthService = {
 
 const mockTenantService = {
   tenantId: () => 'tenant-1',
-};
-
-const mockMemberRepository = {
-  getById: jest.fn().mockResolvedValue(mockMember),
 };
 
 const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
@@ -79,7 +58,6 @@ describe('DashboardComponent (Forge Home)', () => {
         { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
-        { provide: MemberRepository, useValue: mockMemberRepository },
         { provide: LearningApi, useValue: mockApi },
         { provide: GamificationApi, useValue: mockGamification },
       ],
@@ -107,22 +85,12 @@ describe('DashboardComponent (Forge Home)', () => {
     );
   });
 
-  it('loads member from MemberRepository on init', async () => {
+  it('loads the score card from the progress API on init', async () => {
     await settle();
-    expect(mockMemberRepository.getById).toHaveBeenCalledWith('tenant-1', 'user-1');
+    expect(mockGamification.progress).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the member streak and a 14-day strip in the Pulse card', async () => {
-    await settle();
-    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
-    expect(pulse.querySelector('.hp__num')?.textContent).toBe('7');
-    const strip = pulse.querySelector('sf-streak-strip') as HTMLElement;
-    expect(strip.querySelectorAll('.sf-streak__day').length).toBe(14);
-    expect(strip.querySelectorAll('.sf-streak__day.is-done').length).toBe(7);
-    expect(strip.getAttribute('aria-label')).toBe('Active 7 of the last 14 days');
-  });
-
-  it('prefers the server streak and real activity days over the member doc', async () => {
+  it('shows the server streak and real activity days in the Pulse card', async () => {
     // Active today, yesterday and four days ago: a 2-day streak, 3 active days.
     const strip = Array.from({ length: 14 }, (_, i) => [13, 12, 9].includes(i));
     mockGamification.progress.mockResolvedValue({
@@ -145,7 +113,7 @@ describe('DashboardComponent (Forge Home)', () => {
     );
   });
 
-  it('shows a broken streak as zero instead of the stale member-doc number', async () => {
+  it('shows a broken streak as zero', async () => {
     mockGamification.progress.mockResolvedValue({
       totalXp: 0,
       todayXp: 0,
@@ -158,12 +126,18 @@ describe('DashboardComponent (Forge Home)', () => {
     });
     await settle();
     const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
-    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0'); // member doc says 7
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0');
   });
 
-  it('falls back to the member doc when the progress API is unavailable', async () => {
+  it('shows a zero streak and an empty 14-day strip when the progress API is unavailable', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     await settle(); // default mock rejects
-    expect(el.querySelector('assurance-home-pulse-card .hp__num')?.textContent).toBe('7');
+    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0');
+    const strip = pulse.querySelector('sf-streak-strip') as HTMLElement;
+    expect(strip.querySelectorAll('.sf-streak__day').length).toBe(14);
+    expect(strip.querySelectorAll('.sf-streak__day.is-done').length).toBe(0);
+    warn.mockRestore();
   });
 
   it('renders the Continue card with a progress ring and a Resume action', async () => {
@@ -264,14 +238,15 @@ describe('DashboardComponent (Forge Home)', () => {
     expect(words).toEqual(['Done:', 'Done:', 'Today:', 'Upcoming:', 'Upcoming:']);
   });
 
-  it('resolves mission badges from member.earnedBadgeIds, each with a state word', async () => {
+  it('shows the mission badges, each with a state word', async () => {
     await settle();
     const card = el.querySelector('assurance-home-badges-card') as HTMLElement;
-    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('1 of 8 earned');
+    // No badge data in the Forge API yet: nothing is shown as earned.
+    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('0 of 8 earned');
     const metas = Array.from(card.querySelectorAll('.sf-badge__meta')).map((m) =>
       m.textContent?.trim(),
     );
-    expect(metas[0]).toBe('Earned');
+    expect(metas).not.toContain('Earned');
     expect(metas).toContain('In progress');
     expect(metas).toContain('Locked');
   });
