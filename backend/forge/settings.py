@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.audit",
     "apps.engage",
+    "apps.learning",
+    "apps.assessments",
+    "apps.coach",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +125,12 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Soteria Forge API",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Several models have a `status` field; name each choice set explicitly.
+    "ENUM_NAME_OVERRIDES": {
+        "TenantStatusEnum": "apps.tenants.models.Tenant.Status",
+        "MemberStatusEnum": "apps.accounts.models.Member.Status",
+        "PublishStatusEnum": "apps.learning.models.PublishStatus",
+    },
 }
 
 # Angular apps on Vercel: tenant subdomains + the apex storefront.
@@ -144,6 +153,13 @@ LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
 LIVEKIT_API_URL = os.environ.get("LIVEKIT_API_URL", LIVEKIT_URL)
 LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
 LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
+
+# Local AI pilot: intentionally loopback-only; Railway cannot reach a Mac's localhost.
+COACH_ENABLED = env_bool("COACH_ENABLED")
+COACH_MODEL = "qwen3:8b"
+COACH_MODEL_DIGEST = "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
+COACH_EMBED_MODEL = "qwen3-embedding:0.6b"
+COACH_EMBED_DIGEST = "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d"
 
 # --- Security ----------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
