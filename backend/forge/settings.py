@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.tenants",
     "apps.accounts",
     "apps.audit",
+    "apps.engage",
 ]
 
 MIDDLEWARE = [
@@ -137,6 +138,12 @@ if DEBUG:
 # Application Default Credentials or is mocked.
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
 FIREBASE_CREDENTIALS_JSON = os.environ.get("FIREBASE_CREDENTIALS_JSON", "")
+
+# Browser-facing WebSocket URL and server-side HTTP API URL may differ in containers.
+LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
+LIVEKIT_API_URL = os.environ.get("LIVEKIT_API_URL", LIVEKIT_URL)
+LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
+LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 
 # --- Security ----------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -16,5 +16,13 @@ services:
   redis:
     image: redis:7-alpine
     ports: ['6380:6379']
+  livekit:
+    image: livekit/livekit-server:v1.13.11
+    profiles: ['media']
+    command: ['--dev', '--bind', '0.0.0.0', '--node-ip', '127.0.0.1']
+    ports:
+      - '127.0.0.1:7880:7880'
+      - '127.0.0.1:7881:7881'
+      - '127.0.0.1:7882:7882/udp'
 volumes:
   pgdata:

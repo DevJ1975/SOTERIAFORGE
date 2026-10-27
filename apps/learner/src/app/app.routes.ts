@@ -49,14 +49,8 @@ export const appRoutes: Routes = [
     data: {
       crumbs: crumb('Engage'),
       sfShell: 'dark',
-      title: 'Forge Engage',
-      description:
-        'Live classes with your crew: video, the 30-minute stage bar, polls and Game Day.',
-      phase: 'Arrives in Phase 5',
-      icon: 'engage',
-      dark: true,
     },
-    loadComponent: placeholder,
+    loadComponent: () => import('./pages/engage/engage.component').then((m) => m.EngageComponent),
   },
   {
     path: 'progress',

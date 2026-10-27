@@ -15,6 +15,7 @@ dependencies = [
   "uvicorn~=0.38",
   "whitenoise~=6.11",
   "sentry-sdk[django]~=2.43",
+  "livekit-api~=1.0",
 ]
 
 [dependency-groups]

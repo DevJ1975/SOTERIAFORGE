@@ -57,6 +57,7 @@
     "firebase-admin": "~13.1.0",
     "firebase-functions": "~6.3.0",
     "genkit": "~1.0.0",
+    "livekit-client": "^2.23.0",
     "ng-apexcharts": "^2.4.0",
     "ngx-extended-pdf-viewer": "^31.0.1",
     "ngx-quill": "^31.0.1",

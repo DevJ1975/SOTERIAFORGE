@@ -53,7 +53,7 @@ Postgres, so FERPA scope, audit logging and anti-cheat logic sit in one system.
    └─ Redis   (Channels layer, Celery broker, cache, rate limits)
    │
    ├─► S3-compatible bucket (SCORM/cmi5 packages, job aid PDFs, badge images)
-   ├─► Zoom Video SDK (Django signs session JWTs; Zoom carries only A/V)
+   ├─► Self-hosted LiveKit WebRTC SFU (Django authorizes rooms and signs media JWTs)
    ├─► LLM provider (open question in the spec)
    ├─► Stripe (B2C storefront; not needed for the Lakewood cohort)
    └─► LRS / Lakewood LMS (xAPI, SCORM/cmi5 export)
@@ -221,7 +221,7 @@ walkthrough video.
 | 2   | **Core learning on Postgres** (≈3 wk) | Courses → modules → lessons + key points + framework tags, enrollments, knowledge checks with first-try attempts, data-access rewrite, SCORM upload, offline replay                                                                                                                                           | **Home**, **Lesson + knowledge check** screens run on Django end to end; Firestore unused by learner |
 | 3   | **Gamification to spec** (≈2–3 wk)    | XP events (never negative), level bands, Pulse streak + 14-day strip, cohorts/sections/**crews**, **crew-only leaderboard** (replaces today's individual leaderboard), private score card, mission badges, credentials with instructor sign-off, Open Badges 3.0 issuance + public verify page, award overlay | **My Progress** + award overlay match the video; no learner ranked by name                           |
 | 4   | **Ask Forge coach** (≈3 wk)           | Corpus ingest to pgvector, retrieval scoped to module, SSE answers, **diagram spec** (linear flow, before/after, comparison, 2×2) rendered as animated SVG with text alternative, source chips, follow-ups, thumbs, weekly review queue, guardrails, pseudonymized logs                                       | Coach eval set ≥85% helpful in internal review; no-source answers say so                             |
-| 5   | **Forge Engage** (≈4 wk)              | Zoom Video SDK session signing, video grid with crew-first paging, Channels session state, 30-min block bar, live poll with server timestamps, Threat Hunt, crew huddle notes, debrief heat map + "Reteach now", host view, attendance log, live captions                                                     | 20-learner load test with 3 sessions/week profile; keyboard-only run-through                         |
+| 5   | **Forge Engage** (≈4 wk)              | Self-hosted LiveKit WebRTC classroom foundation (implemented; see [video classrooms](./video-classrooms.md)); remaining: cohort access, crew-first paging, Channels session state, 30-min block bar, live polls, Threat Hunt, crew huddle notes, debrief heat map, host moderation, attendance and captions | 20-learner load test with 3 sessions/week profile; keyboard-only run-through                         |
 | 6   | **Standards + exports** (≈2 wk)       | xAPI statements to LRS, SCORM/cmi5 packages for Lakewood LMS, analytics for instructor/TA, at-risk list                                                                                                                                                                                                       | Lakewood LMS import verified                                                                         |
 | 7   | **Cutover + hardening** (≈2 wk)       | Delete `apps/functions`, Firestore/Storage config and remaining Firebase deps (except Auth/FCM), WCAG 2.2 AA audit, pen test, backup/restore drill, runbooks                                                                                                                                                  | Pilot with internal cohort                                                                           |
 
@@ -283,4 +283,4 @@ are, so nobody has to reset a password.
 | Engage realtime under live load                    | Phase 5 load test; Channels on Redis with sticky-free design; server-stamped answers |
 | PrimeNG 19 → 22 breaking theme changes             | Absorb in `@assurance/ui`; upgrade one app at a time                                 |
 | Two vendors for one login (Firebase + Django)      | Thin, tested auth class; Firebase used only for identity                             |
-| Railway single-region outage during a live session | Engage degrades to Zoom-only; state resumes from Postgres                            |
+| Railway single-region outage during a live session | Existing media may continue if LiveKit is hosted independently; new joins require Django. Classroom state resumes from Postgres. |
