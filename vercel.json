@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx nx build learner --configuration=production",
+  "buildCommand": "node scripts/vercel-env.mjs learner && npx nx build learner --configuration=production",
   "outputDirectory": "dist/apps/learner/browser",
   "framework": "angular",
   "installCommand": "npm ci --legacy-peer-deps",
