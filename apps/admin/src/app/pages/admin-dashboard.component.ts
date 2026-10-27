@@ -91,6 +91,11 @@ export class AdminDashboardComponent {
       link: '/knowledge',
     },
     {
+      title: 'SCORM and xAPI',
+      description: 'Import SCORM packages, attach lessons, and monitor external LRS delivery.',
+      link: '/standards',
+    },
+    {
       title: 'Reports',
       description: 'Export completion, compliance, and usage reports (Phase 1+).',
       link: '/reports',

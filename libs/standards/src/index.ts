@@ -7,3 +7,5 @@ export * from './lib/scorm-runtime.service';
 export * from './lib/scorm-player.component';
 export * from './lib/cmi5-launcher.component';
 export * from './lib/cmi5-launch.service';
+export * from './lib/standards-api';
+export * from './lib/managed-scorm-player.component';

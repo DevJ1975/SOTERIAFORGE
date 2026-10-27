@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCORM lesson</title>
+  <script src="/runtime.js"></script>
+  <style>
+    body { margin: 0; font: 16px system-ui; }
+    #status { padding: .5rem; margin: 0; }
+    iframe { width: 100%; height: calc(100vh - 3rem); border: 0; }
+  </style>
+</head>
+<body>
+  <p id="status" role="status">Connecting to lesson...</p>
+  <iframe id="sco" title="Course content" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer"></iframe>
+  {{ config|json_script:"launch-config" }}
+  <script>
+    "use strict";
+    const config = JSON.parse(document.getElementById("launch-config").textContent);
+    const status = document.getElementById("status");
+    let appOrigin = null;
+    let sequence = 0;
+    let pending = null;
+    let dirty = false;
+    let terminated = false;
+    let lastSaved = "";
+    let saveTimer;
+    const api = config.version === "1.2"
+      ? new Scorm12API({ autocommit: false, lmsCommitUrl: "", logLevel: 5 })
+      : new Scorm2004API({ autocommit: false, lmsCommitUrl: "", logLevel: 5 });
+    if (config.runtime.cmi) api.loadFromJSON(config.runtime.cmi);
+    // Pseudonymous membership IDs only; no Firebase credentials or LRS secrets enter this origin.
+    api.loadFromJSON(config.version === "1.2"
+      ? { core: { student_id: config.learnerId, student_name: "Learner", credit: "credit", lesson_mode: "normal", entry: config.runtime.cmi ? "resume" : "ab-initio" } }
+      : { learner_id: config.learnerId, learner_name: "Learner", credit: "credit", mode: "normal", entry: config.runtime.cmi ? "resume" : "ab-initio" });
+    window[config.version === "1.2" ? "API" : "API_1484_11"] = api;
+    api.on(config.version === "1.2" ? "LMSSetValue" : "SetValue", () => {
+      dirty = true;
+      if (appOrigin) window.parent.postMessage({
+        type: "forge.scorm.dirty", launchId: config.launchId
+      }, appOrigin);
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(save, 1000);
+    });
+    function sendPending() {
+      if (appOrigin && pending) window.parent.postMessage(pending, appOrigin);
+    }
+    function save() {
+      dirty = true;
+      if (!appOrigin || pending) return;
+      const cmi = api.renderCMIToJSONObject();
+      const snapshot = JSON.stringify(cmi);
+      if (snapshot === lastSaved) {
+        dirty = false;
+        window.parent.postMessage({ type: "forge.scorm.clean", launchId: config.launchId }, appOrigin);
+        return;
+      }
+      pending = { type: "forge.scorm.commit", launchId: config.launchId, sequence: ++sequence, cmi };
+      dirty = false;
+      status.textContent = "Saving...";
+      sendPending();
+    }
+    for (const event of config.version === "1.2" ? ["LMSCommit", "LMSFinish"] : ["Commit", "Terminate"]) {
+      api.on(event, () => { terminated = event === "LMSFinish" || event === "Terminate"; save(); });
+    }
+    window.addEventListener("message", (event) => {
+      if (event.source !== window.parent || !config.origins.includes(event.origin)) return;
+      const message = event.data;
+      if (!message || message.launchId !== config.launchId) return;
+      if (message.type === "forge.scorm.connect" && !appOrigin) {
+        appOrigin = event.origin;
+        document.getElementById("sco").src = config.entry;
+        status.textContent = "Lesson ready. Progress is saved online.";
+      } else if (message.type === "forge.scorm.ack" && pending && message.sequence === pending.sequence) {
+        lastSaved = JSON.stringify(pending.cmi);
+        pending = null;
+        status.textContent = "Progress saved.";
+        if (dirty) save();
+      } else if (message.type === "forge.scorm.error") {
+        status.textContent = "Progress is NOT saved. Reconnect and use Retry save in the classroom.";
+      }
+    });
+    setInterval(() => {
+      if (pending) sendPending();
+      else if (!terminated && appOrigin && api.isInitialized()) save();
+    }, 15000);
+    window.addEventListener("beforeunload", (event) => {
+      if (pending || dirty) { event.preventDefault(); event.returnValue = ""; }
+    });
+    for (const origin of config.origins) {
+      window.parent.postMessage({ type: "forge.scorm.ready", launchId: config.launchId }, origin);
+    }
+  </script>
+</body>
+</html>

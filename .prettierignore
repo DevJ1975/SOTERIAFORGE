@@ -24,3 +24,5 @@ libs/ui/src/styles/forge/tokens.css
 libs/ui/src/styles/forge/tokens.json
 libs/ui/src/styles/forge/forge.css
 libs/ui/src/styles/forge/fonts/inter.css
+# Django templates (not plain HTML)
+backend/**/templates

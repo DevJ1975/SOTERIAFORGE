@@ -11,6 +11,11 @@ Firebase calls, requires the API and inference on the same host, and is
 disabled by default outside the configured local Mac. The legacy Vertex
 instructions below do not configure this tutor.
 
+For **Django SCORM imports, Railway Bucket and external xAPI reporting**, use the
+[SCORM and xAPI deployment guide](./scorm-cmi5.md). Playback requires a separate
+content-only origin/service; never serve executable packages from the API/app
+origin. The pilot is feature-disabled until that infrastructure is configured.
+
 Clean split: **Vercel** hosts the Angular apps (incl. storefront SSR/edge);
 **Firebase/GCP** hosts data, auth, business logic, and AI.
 

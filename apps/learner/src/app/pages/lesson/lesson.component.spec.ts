@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { LearningApi, type ApiCourseOutline, type ApiLesson } from '@assurance/lms-core';
 import { LessonComponent } from './lesson.component';
+import { ManagedScormPlayerComponent, StandardsApi } from '@assurance/standards';
+import { By } from '@angular/platform-browser';
 
 function lesson(over: Partial<ApiLesson> = {}): ApiLesson {
   return {
@@ -80,7 +82,11 @@ describe('LessonComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [LessonComponent],
-      providers: [provideRouter([]), { provide: LearningApi, useValue: api }],
+      providers: [
+        provideRouter([]),
+        { provide: LearningApi, useValue: api },
+        { provide: StandardsApi, useValue: { launch: jest.fn(), commit: jest.fn() } },
+      ],
     });
   });
 
@@ -128,6 +134,22 @@ describe('LessonComponent', () => {
     await create();
     expect(el().textContent).not.toContain('Mark as complete');
     expect(el().querySelector('assurance-knowledge-check')).not.toBeNull();
+  });
+
+  it('uses the managed player and does not allow manual completion of a package', async () => {
+    api.lesson.mockResolvedValue(lesson({ contentType: 'scorm', standardsManaged: true }));
+    await create();
+    expect(el().querySelector('assurance-managed-scorm-player')).not.toBeNull();
+    expect(el().textContent).not.toContain('Mark as complete');
+    expect(api.complete).not.toHaveBeenCalled();
+    const player: ManagedScormPlayerComponent = fixture.debugElement.query(
+      By.directive(ManagedScormPlayerComponent),
+    ).componentInstance;
+    jest.spyOn(player, 'hasUnsavedChanges').mockReturnValue(true);
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(fixture.componentInstance.canLeave()).toBe(false);
+    expect(confirm).toHaveBeenCalled();
+    confirm.mockRestore();
   });
 
   it('shows an error state with retry when loading fails', async () => {

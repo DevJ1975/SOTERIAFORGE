@@ -53,6 +53,11 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./pages/knowledge.component').then((m) => m.KnowledgeComponent),
   },
   {
+    path: 'standards',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/standards.component').then((m) => m.StandardsComponent),
+  },
+  {
     path: 'reports',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent),

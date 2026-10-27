@@ -90,6 +90,7 @@ export interface ApiLesson {
   assetRef: string;
   externalUrl: string;
   scormVersion: string;
+  standardsManaged?: boolean;
   estimatedMinutes: number | null;
   xpReward: number;
   frameworkTags: string[];

@@ -199,6 +199,7 @@ def lesson_detail(lesson: Lesson, enrollment: Enrollment | None) -> dict:
         "assetRef": lesson.asset_ref,
         "externalUrl": lesson.external_url,
         "scormVersion": lesson.scorm_version,
+        "standardsManaged": hasattr(lesson, "binding"),
         "estimatedMinutes": lesson.estimated_minutes,
         "xpReward": lesson.xp_reward,
         "frameworkTags": lesson.framework_tags,
@@ -236,6 +237,11 @@ class LessonDetailView(AuthorWrites, APIView):
         lesson = get_lesson(request, lesson_id)
         body = LessonWriteSerializer(lesson, data=request.data, partial=True)
         body.is_valid(raise_exception=True)
+        if hasattr(lesson, "binding") and any(
+            field in body.validated_data
+            for field in {"content_type", "scorm_version", "quizId", "asset_ref", "external_url"}
+        ):
+            raise Conflict("Package lessons have immutable content. Attach a new package version.")
         for field, value in resolve_quiz(request, dict(body.validated_data)).items():
             setattr(lesson, field, value)
         lesson.save()
@@ -346,6 +352,8 @@ class LessonCompleteView(APIView):
     @extend_schema(request=CompleteSerializer, responses=CompletionSerializer)
     def post(self, request, lesson_id):
         lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Complete this SCORM lesson inside its player.")
         if lesson.quiz_id is not None:
             raise Conflict("Finish this lesson's quiz to complete it.")
         enrollment = require_enrollment(request, lesson.module.course)
@@ -361,6 +369,8 @@ class LessonRuntimeView(APIView):
     @extend_schema(request=RuntimeSerializer, responses={204: None})
     def put(self, request, lesson_id):
         lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Save this SCORM lesson through its active launch.")
         enrollment = require_enrollment(request, lesson.module.course)
         body = RuntimeSerializer(data=request.data)
         body.is_valid(raise_exception=True)

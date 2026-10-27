@@ -9,6 +9,7 @@ import {
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -21,6 +22,7 @@ import {
 } from '@assurance/lms-core';
 import { SfIconComponent } from '@assurance/ui';
 import { KnowledgeCheckComponent } from './knowledge-check.component';
+import { ManagedScormPlayerComponent } from '@assurance/standards';
 
 const VIDEO_FILE = /\.(mp4|webm|ogg|m4v)(\?|#|$)/i;
 const HTTP_URL = /^https?:\/\//i;
@@ -29,7 +31,7 @@ const HTTP_URL = /^https?:\/\//i;
 @Component({
   selector: 'assurance-lesson',
   standalone: true,
-  imports: [RouterLink, SfIconComponent, KnowledgeCheckComponent],
+  imports: [RouterLink, SfIconComponent, KnowledgeCheckComponent, ManagedScormPlayerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="ls" aria-labelledby="ls-title">
@@ -67,49 +69,53 @@ const HTTP_URL = /^https?:\/\//i;
         </header>
 
         <section class="sf-card" aria-label="Lesson content">
-          @switch (l.contentType) {
-            @case ('quiz') {
-              <p class="sf-sub">Complete the quiz below to finish this lesson.</p>
-            }
-            @case ('video') {
-              @if (videoSrc(); as src) {
-                @if (isVideoFile()) {
-                  <video class="ls__video" controls preload="metadata" [src]="src">
-                    Your browser cannot play this video.
-                    <a [href]="src" target="_blank" rel="noopener noreferrer">Open the video</a>
-                  </video>
+          @if (l.standardsManaged) {
+            <assurance-managed-scorm-player [lessonId]="l.id" (completed)="onCompleted($event)" />
+          } @else {
+            @switch (l.contentType) {
+              @case ('quiz') {
+                <p class="sf-sub">Complete the quiz below to finish this lesson.</p>
+              }
+              @case ('video') {
+                @if (videoSrc(); as src) {
+                  @if (isVideoFile()) {
+                    <video class="ls__video" controls preload="metadata" [src]="src">
+                      Your browser cannot play this video.
+                      <a [href]="src" target="_blank" rel="noopener noreferrer">Open the video</a>
+                    </video>
+                  } @else {
+                    <a
+                      class="sf-btn sf-btn--secondary"
+                      [href]="src"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open video
+                    </a>
+                  }
                 } @else {
+                  <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
+                }
+              }
+              @default {
+                @if (externalLink(); as href) {
                   <a
                     class="sf-btn sf-btn--secondary"
-                    [href]="src"
+                    [href]="href"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Open video
+                    Open {{ typeName() }} content
                   </a>
+                  <p class="sf-sub ls__note" role="note">
+                    {{ typeName() }} content opens in a new tab. It is not shown inside this app
+                    yet; come back and mark the lesson complete when you finish.
+                  </p>
+                } @else {
+                  <p class="sf-sub" role="note">
+                    This {{ typeName() }} lesson cannot be opened in this app yet.
+                  </p>
                 }
-              } @else {
-                <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
-              }
-            }
-            @default {
-              @if (externalLink(); as href) {
-                <a
-                  class="sf-btn sf-btn--secondary"
-                  [href]="href"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open {{ typeName() }} content
-                </a>
-                <p class="sf-sub ls__note" role="note">
-                  {{ typeName() }} content opens in a new tab. It is not shown inside this app yet;
-                  come back and mark the lesson complete when you finish.
-                </p>
-              } @else {
-                <p class="sf-sub" role="note">
-                  This {{ typeName() }} lesson cannot be opened in this app yet.
-                </p>
               }
             }
           }
@@ -140,7 +146,7 @@ const HTTP_URL = /^https?:\/\//i;
               (completed)="onCompleted($event)"
             />
           </section>
-        } @else if (!completion() && !l.progress?.completedAt) {
+        } @else if (!l.standardsManaged && !completion() && !l.progress?.completedAt) {
           <div class="ls__actions">
             @if (completeError()) {
               <p class="ls__error" role="alert">{{ completeError() }}</p>
@@ -277,6 +283,14 @@ const HTTP_URL = /^https?:\/\//i;
   ],
 })
 export class LessonComponent {
+  private readonly scormPlayer = viewChild(ManagedScormPlayerComponent);
+
+  canLeave(): boolean {
+    return (
+      !this.scormPlayer()?.hasUnsavedChanges() ||
+      window.confirm('SCORM progress has not been saved. Leave and lose unsaved changes?')
+    );
+  }
   private readonly api = inject(LearningApi);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);

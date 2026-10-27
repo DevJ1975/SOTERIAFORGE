@@ -8,6 +8,7 @@ are awarded (gamification.awards); badges join this path next.
 
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -69,6 +70,10 @@ def complete_lesson(
 
         award = None
         if first:
+            if settings.XAPI_RECORDING_ENABLED:
+                from apps.standards.events import completed_event
+
+                completed_event(enrollment, lesson, score)
             award = award_lesson(enrollment=enrollment, lesson=lesson, extra_xp=extra_xp, now=now)
             record(
                 action="learning.lesson.completed",

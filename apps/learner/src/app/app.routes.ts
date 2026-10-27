@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard, tenantGuard } from '@assurance/auth';
 import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
 import type { SfCrumb } from '@assurance/ui';
+import type { LessonComponent } from './pages/lesson/lesson.component';
 
 /**
  * Route `data` keys read by the Forge shell in AppComponent:
@@ -46,6 +47,7 @@ export const appRoutes: Routes = [
   {
     path: 'courses/:courseId/lessons/:lessonId',
     canActivate: [authGuard, tenantGuard],
+    canDeactivate: [(component: LessonComponent) => component.canLeave()],
     data: {
       crumbs: [{ label: 'Courses', link: '/courses' }, { label: 'Course' }, { label: 'Lesson' }],
     },

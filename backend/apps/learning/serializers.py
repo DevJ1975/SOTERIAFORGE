@@ -221,6 +221,7 @@ class LessonProgressSerializer(serializers.Serializer):
 
 
 class LessonDetailSerializer(serializers.Serializer):
+    standardsManaged = serializers.BooleanField()
     xpReward = serializers.IntegerField()
     id = serializers.UUIDField()
     courseId = serializers.UUIDField()
