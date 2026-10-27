@@ -44,6 +44,14 @@ export const appRoutes: Routes = [
       import('./pages/course-detail.component').then((m) => m.CourseDetailComponent),
   },
   {
+    path: 'courses/:courseId/lessons/:lessonId',
+    canActivate: [authGuard, tenantGuard],
+    data: {
+      crumbs: [{ label: 'Courses', link: '/courses' }, { label: 'Course' }, { label: 'Lesson' }],
+    },
+    loadComponent: () => import('./pages/lesson/lesson.component').then((m) => m.LessonComponent),
+  },
+  {
     path: 'engage',
     canActivate: [authGuard, tenantGuard],
     data: {

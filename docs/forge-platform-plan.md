@@ -208,6 +208,64 @@ Postgres offers `pgvector` before Phase 4.
 
 CI now runs on Node 24: Angular 22 requires Node ^22.22.3 or ^24.15.
 
+### Phase 2 progress (2026-10-27)
+
+**Backend done** in two new apps, `learning` and `assessments`, all tables under
+tenant RLS:
+
+- **Content model follows the lesson screen:** course → module (with a label such
+  as "Week 5") → lesson. A lesson carries its content type and asset, estimated
+  minutes, framework tags ("OWASP LLM01:2025") and key points. Firestore's
+  "module" (one content item) is now a **lesson**; a module groups lessons.
+- **Authoring API** for staff: courses, modules, lessons, quizzes (questions
+  validated on save). Status changes are audited. Learners see published courses only,
+  and quiz answer keys never reach them.
+- **Enrollment:** self-enroll in published courses (idempotent) and staff
+  assignment (port of `assignCourse`; existing progress is never reset; audited).
+  `GET /api/enrollments/me` returns progress and the next lesson for Home.
+- **Completion** (port of `recordModuleCompletion`): under an enrollment row lock,
+  first completion is decided exactly once, progress is recomputed on the server,
+  and lesson and course completions are audited. Lessons with a quiz complete only
+  through grading. SCORM/cmi5 runtime state is saved per lesson.
+- **Knowledge checks with first-try answers:** one question at a time; the first
+  answer is stored as given with a server timestamp, retries can still solve it,
+  and the lesson score is the first-try score.
+- **Graded quizzes** (port of `submitQuiz` + `gradeQuiz`): server grading,
+  `maxAttempts` enforced under the lock, malformed quizzes refused, attempts
+  audited.
+- 49 new tests (100 total), including ports of the `gradeQuiz` and `submitQuiz` specs.
+  The OpenAPI schema documents every response shape.
+
+XP, badges, streaks and leaderboards join the completion path in Phase 3.
+
+**Learner app switched to the API (2026-10-27).** Courses list, Home "Continue"
+card, course outline and the new lesson screen (`courses/:courseId/lessons/:lessonId`)
+read the Forge API through `LearningApi` (`libs/lms-core`). The lesson screen shows
+framework tags and key points, runs knowledge checks one question at a time with
+server feedback (first try recorded), and submits graded quizzes once. Opening a
+lesson by direct link enrolls the learner in a published course. `manage.py
+seed_course --tenant <id> [--publish]` loads a demo course.
+
+**Removed from the learner course page** (they depended on the Firestore module
+type): offline download, focused one-module-per-screen mode, the in-page module
+player and live progress updates (progress refreshes on load).
+
+**Remaining for Phase 2:**
+
+- **Question types:** ordering and matching have no learner input yet. The lesson
+  blocks with a message instead of letting a learner spend graded attempts.
+- **SCORM/cmi5/game/Unity lessons** show an "Open" link only; the player needs
+  rebuilding on lessons, and with it offline download and runtime-state saving.
+  A video stored as a bare storage key is not resolved.
+- **SCORM upload** needs the object-storage decision (Railway Bucket vs R2, §8).
+- **Zod schemas** in `libs/shared` still describe the Firestore model; update them
+  to the lesson model and add the OpenAPI contract test.
+- **Offline replay:** completion and first-try answers are safe to replay; add
+  `Idempotency-Key` for graded attempts so a replay can't use up an attempt.
+- **Admin app** still authors courses in Firestore; move authoring to the API.
+- **Performance:** `GET /api/enrollments/me` queries once per enrollment; fold into
+  one query before cohorts grow. Learner initial bundle is 1.26 MB against a 1.00 MB budget.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

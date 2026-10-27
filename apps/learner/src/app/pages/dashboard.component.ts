@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { LearningApi } from '@assurance/lms-core';
 import { streakStrip } from '@assurance/gamification';
 import { LearnerProfileStore } from '../services/learner-profile.store';
 import { HomeBadgesCardComponent } from './home/badges-card.component';
@@ -8,9 +16,13 @@ import { HomeLiveSessionCardComponent } from './home/live-session-card.component
 import { HomePulseCardComponent } from './home/pulse-card.component';
 import { HomeWeekCardComponent } from './home/week-card.component';
 import {
+  type ContinueLearning,
+  type PulseToday,
+  buildContinueLearning,
   formatTimeWithZone,
   greetingFor,
   isSameLocalDay,
+  pickContinueEnrollment,
   resolveBadgeStates,
 } from './home/home.models';
 import {
@@ -18,7 +30,6 @@ import {
   HOME_PLACEHOLDER_COACH,
   HOME_PLACEHOLDER_CONTINUE,
   HOME_PLACEHOLDER_DAY_THEME,
-  HOME_PLACEHOLDER_PULSE,
   HOME_PLACEHOLDER_WEEK,
   homePlaceholderLiveSession,
 } from './home/home.placeholders';
@@ -33,7 +44,8 @@ const longDate = new Intl.DateTimeFormat('en-US', {
  * Learner Home (Soteria Forge, forge_home.jpg).
  *
  * Real data: name, streak, 14-day strip and earned badges come from the
- * member doc via LearnerProfileStore. Everything else is a typed design
+ * member doc via LearnerProfileStore; the Continue card comes from the
+ * learning API (falls back to the placeholder when there is nothing to resume). Everything else is a typed design
  * placeholder from ./home/home.placeholders.ts until its data source exists.
  */
 @Component({
@@ -55,8 +67,8 @@ const longDate = new Intl.DateTimeFormat('en-US', {
     </div>
 
     <div class="home__row home__row--top">
-      <assurance-home-continue-card [data]="continueLearning" />
-      <assurance-home-pulse-card [streakDays]="streakDays()" [days]="strip()" [data]="pulse" />
+      <assurance-home-continue-card [data]="continueLearning()" />
+      <assurance-home-pulse-card [streakDays]="streakDays()" [days]="strip()" [data]="pulse()" />
       <assurance-home-live-session-card [session]="session" [now]="now" />
     </div>
 
@@ -123,12 +135,18 @@ const longDate = new Intl.DateTimeFormat('en-US', {
 })
 export class DashboardComponent implements OnInit {
   private readonly profile = inject(LearnerProfileStore);
+  private readonly api = inject(LearningApi);
 
   protected readonly now = new Date();
 
   // Typed design placeholders (see ./home/home.placeholders.ts).
-  protected readonly continueLearning = HOME_PLACEHOLDER_CONTINUE;
-  protected readonly pulse = HOME_PLACEHOLDER_PULSE;
+  protected readonly continueLearning = signal<ContinueLearning>(HOME_PLACEHOLDER_CONTINUE);
+  private readonly hasRealLesson = signal(false);
+  protected readonly pulse = computed<PulseToday>(() => ({
+    message: this.hasRealLesson()
+      ? 'Your next lesson is ready'
+      : 'Enroll in a course to get started',
+  }));
   protected readonly session = homePlaceholderLiveSession(this.now);
   protected readonly week = HOME_PLACEHOLDER_WEEK;
   protected readonly coach = HOME_PLACEHOLDER_COACH;
@@ -158,5 +176,19 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.profile.load();
+    void this.loadContinue();
+  }
+
+  /** Real Continue card; on no enrollment or any failure the placeholder stays. */
+  private async loadContinue(): Promise<void> {
+    try {
+      const pick = pickContinueEnrollment(await this.api.myEnrollments());
+      if (pick) {
+        this.continueLearning.set(buildContinueLearning(pick));
+        this.hasRealLesson.set(true);
+      }
+    } catch {
+      // Keep the placeholder so Home never breaks.
+    }
   }
 }

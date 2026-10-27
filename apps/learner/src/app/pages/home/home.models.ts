@@ -1,3 +1,4 @@
+import type { ApiMyEnrollment } from '@assurance/lms-core';
 import type { SfBadgeState, SfIconName } from '@assurance/ui';
 
 /** Continue card: the learner's current course and next module. */
@@ -120,4 +121,41 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
+}
+
+/** An enrollment the learner can resume: not finished and has a next lesson. */
+export type ResumableEnrollment = ApiMyEnrollment & {
+  nextLesson: NonNullable<ApiMyEnrollment['nextLesson']>;
+};
+
+const activityTime = (e: ApiMyEnrollment): number => {
+  const t = Date.parse(e.lastActivityAt ?? e.createdAt);
+  return Number.isNaN(t) ? 0 : t;
+};
+
+/** Most recently active unfinished enrollment (lastActivityAt, else createdAt), or null. */
+export function pickContinueEnrollment(
+  enrollments: readonly ApiMyEnrollment[],
+): ResumableEnrollment | null {
+  let best: ResumableEnrollment | null = null;
+  for (const e of enrollments) {
+    if (e.completedAt || !e.nextLesson) continue;
+    if (best === null || activityTime(e) > activityTime(best)) best = e as ResumableEnrollment;
+  }
+  return best;
+}
+
+/** Build the Continue card model from a resumable enrollment. */
+export function buildContinueLearning(e: ResumableEnrollment): ContinueLearning {
+  const { nextLesson } = e;
+  const subtitle = [nextLesson.moduleLabel, nextLesson.moduleTitle].filter(Boolean).join(' · ');
+  return {
+    courseTitle: e.course.title,
+    subtitle,
+    percent: e.progressPct,
+    ringCaption: nextLesson.moduleLabel || 'Course',
+    resumeLabel: `Resume ${nextLesson.title}`,
+    resumeLink: `/courses/${e.courseId}/lessons/${nextLesson.id}`,
+    timeLeft: nextLesson.estimatedMinutes == null ? '' : `${nextLesson.estimatedMinutes} min left`,
+  };
 }

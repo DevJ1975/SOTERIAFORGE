@@ -7,6 +7,7 @@ import {
   TenantService,
 } from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
+import { LearningApi } from '@assurance/lms-core';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { DashboardComponent } from './dashboard.component';
 import type { Member } from '@assurance/shared';
@@ -57,11 +58,14 @@ const mockMemberRepository = {
   getById: jest.fn().mockResolvedValue(mockMember),
 };
 
+const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
+
 describe('DashboardComponent – accessibility', () => {
   let fixture: ComponentFixture<DashboardComponent>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockApi.myEnrollments.mockResolvedValue([]);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -71,6 +75,7 @@ describe('DashboardComponent – accessibility', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },
+        { provide: LearningApi, useValue: mockApi },
       ],
     }).compileComponents();
 

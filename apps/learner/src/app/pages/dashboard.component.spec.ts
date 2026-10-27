@@ -7,6 +7,7 @@ import {
   TenantService,
 } from '@assurance/auth';
 import { MemberRepository } from '@assurance/data-access';
+import { LearningApi } from '@assurance/lms-core';
 import { DashboardComponent } from './dashboard.component';
 import type { Member } from '@assurance/shared';
 
@@ -55,12 +56,15 @@ const mockMemberRepository = {
   getById: jest.fn().mockResolvedValue(mockMember),
 };
 
+const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
+
 describe('DashboardComponent (Forge Home)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let el: HTMLElement;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockApi.myEnrollments.mockResolvedValue([]);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -70,6 +74,7 @@ describe('DashboardComponent (Forge Home)', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: MemberRepository, useValue: mockMemberRepository },
+        { provide: LearningApi, useValue: mockApi },
       ],
     }).compileComponents();
 
@@ -116,6 +121,80 @@ describe('DashboardComponent (Forge Home)', () => {
     expect(card.querySelector('sf-progress-ring')?.getAttribute('aria-valuenow')).toBe('56');
     const resume = card.querySelector('a.sf-btn--primary') as HTMLAnchorElement;
     expect(resume.textContent).toContain('Resume Module 5.1');
+  });
+
+  function enrollment(over: Record<string, unknown>) {
+    return {
+      id: 'e1',
+      courseId: 'c1',
+      memberId: 'user-1',
+      assigned: false,
+      dueAt: null,
+      progressPct: 40,
+      completedAt: null,
+      lastActivityAt: '2026-01-02T00:00:00Z',
+      createdAt: '2026-01-01T00:00:00Z',
+      course: { id: 'c1', title: 'Real Course' },
+      nextLesson: {
+        id: 'l1',
+        title: 'Lesson One',
+        moduleTitle: 'Basics',
+        moduleLabel: 'Week 2',
+        estimatedMinutes: 9,
+      },
+      ...over,
+    };
+  }
+
+  it('shows the most recently active unfinished enrollment on the Continue card', async () => {
+    mockApi.myEnrollments.mockResolvedValue([
+      enrollment({ id: 'old', lastActivityAt: '2025-01-01T00:00:00Z' }),
+      enrollment({
+        id: 'done',
+        completedAt: '2026-02-01T00:00:00Z',
+        lastActivityAt: '2026-03-01T00:00:00Z',
+      }),
+      enrollment({
+        id: 'new',
+        courseId: 'c2',
+        lastActivityAt: null,
+        createdAt: '2026-02-01T00:00:00Z',
+        course: { id: 'c2', title: 'Newest Course' },
+        nextLesson: {
+          id: 'l9',
+          title: 'Intro',
+          moduleTitle: 'Start',
+          moduleLabel: '',
+          estimatedMinutes: null,
+        },
+        progressPct: 10,
+      }),
+    ]);
+    await settle();
+    const card = el.querySelector('assurance-home-continue-card') as HTMLElement;
+    expect(card.textContent).toContain('Newest Course');
+    expect(card.textContent).toContain('Course');
+    const resume = card.querySelector('a.sf-btn--primary') as HTMLAnchorElement;
+    expect(resume.textContent).toContain('Resume Intro');
+    expect(resume.getAttribute('href')).toBe('/courses/c2/lessons/l9');
+    expect(card.textContent).not.toContain('min left');
+    expect(el.querySelector('assurance-home-pulse-card')?.textContent).toContain('ready');
+  });
+
+  it('builds subtitle and time left from the next lesson', async () => {
+    mockApi.myEnrollments.mockResolvedValue([enrollment({})]);
+    await settle();
+    const card = el.querySelector('assurance-home-continue-card') as HTMLElement;
+    expect(card.textContent).toContain('Week 2 · Basics');
+    expect(card.textContent).toContain('9 min left');
+  });
+
+  it('keeps the placeholder and does not claim a lesson is ready when the request fails', async () => {
+    mockApi.myEnrollments.mockRejectedValue(new Error('boom'));
+    await settle();
+    const card = el.querySelector('assurance-home-continue-card') as HTMLElement;
+    expect(card.textContent).toContain('AI Cyber Defender');
+    expect(el.querySelector('assurance-home-pulse-card')?.textContent).not.toContain('ready');
   });
 
   it('renders Next live session with crew check-in', async () => {

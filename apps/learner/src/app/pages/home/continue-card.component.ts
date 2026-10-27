@@ -26,7 +26,9 @@ import type { ContinueLearning } from './home.models';
           {{ data().resumeLabel }}
           <sf-icon name="arrow-right" size="sm" />
         </a>
-        <span class="sf-sub">{{ data().timeLeft }}</span>
+        @if (data().timeLeft) {
+          <span class="sf-sub">{{ data().timeLeft }}</span>
+        }
       </div>
     </div>
   `,
