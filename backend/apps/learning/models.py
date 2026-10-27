@@ -85,6 +85,8 @@ class Lesson(models.Model):
         max_length=4, choices=[("1.2", "1.2"), ("2004", "2004")], blank=True, default=""
     )
     estimated_minutes = models.PositiveIntegerField(null=True, blank=True)
+    # XP for the first completion (quiz points are added on top); see gamification.awards.
+    xp_reward = models.PositiveIntegerField(default=20)
     framework_tags = models.JSONField(default=list, blank=True)
     key_points = models.JSONField(default=list, blank=True)
     quiz = models.ForeignKey(

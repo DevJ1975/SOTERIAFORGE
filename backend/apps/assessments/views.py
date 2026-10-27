@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import TENANT_STAFF, HasTenantRole, IsActiveMember
 from apps.audit.models import record
+from apps.gamification.awards import XP_PER_QUIZ_POINT
 from apps.learning.access import Conflict, acting_tenant, get_lesson, require_enrollment
 from apps.learning.progress import complete_lesson, lock_enrollment, touch
 
@@ -125,7 +126,9 @@ class LessonCheckView(APIView):
                 total = sum(q["points"] for q in questions)
                 earned = sum(q["points"] for q in questions if q["id"] in first_right)
                 score = int(earned * 100 / total + 0.5) if total else 100
-                completion = complete_lesson(enrollment, lesson, score=score)
+                completion = complete_lesson(
+                    enrollment, lesson, score=score, extra_xp=earned * XP_PER_QUIZ_POINT
+                )
             else:
                 touch(enrollment)
 
@@ -187,7 +190,12 @@ class LessonAttemptView(APIView):
                 number=attempt.number,
             )
             if result.passed:
-                completion = complete_lesson(enrollment, lesson, score=result.score_pct)
+                completion = complete_lesson(
+                    enrollment,
+                    lesson,
+                    score=result.score_pct,
+                    extra_xp=result.earned_points * XP_PER_QUIZ_POINT,
+                )
             else:
                 completion = None
                 touch(enrollment)

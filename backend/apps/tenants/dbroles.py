@@ -10,7 +10,7 @@ from django.db import connection
 from psycopg import sql
 
 APP_ROLE = "forge_app"
-APPEND_ONLY_TABLES = ("audit_auditentry",)
+APPEND_ONLY_TABLES = ("audit_auditentry", "gamification_xpevent")
 
 
 def ensure_app_role(role: str = APP_ROLE, password: str | None = None) -> None:

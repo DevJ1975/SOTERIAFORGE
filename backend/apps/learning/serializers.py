@@ -59,6 +59,9 @@ class LessonWriteSerializer(serializers.ModelSerializer):
     estimatedMinutes = serializers.IntegerField(
         source="estimated_minutes", min_value=0, allow_null=True, required=False
     )
+    xpReward = serializers.IntegerField(
+        source="xp_reward", min_value=0, max_value=1000, required=False
+    )
     frameworkTags = serializers.ListField(
         source="framework_tags",
         child=serializers.CharField(max_length=100),
@@ -79,6 +82,7 @@ class LessonWriteSerializer(serializers.ModelSerializer):
             "externalUrl",
             "scormVersion",
             "estimatedMinutes",
+            "xpReward",
             "frameworkTags",
             "keyPoints",
             "quizId",
@@ -217,6 +221,7 @@ class LessonProgressSerializer(serializers.Serializer):
 
 
 class LessonDetailSerializer(serializers.Serializer):
+    xpReward = serializers.IntegerField()
     id = serializers.UUIDField()
     courseId = serializers.UUIDField()
     moduleId = serializers.UUIDField()
@@ -261,7 +266,19 @@ class AssignResultSerializer(serializers.Serializer):
     skipped = serializers.IntegerField()
 
 
+class AwardSerializer(serializers.Serializer):
+    """What a first completion earned, for the award overlay."""
+
+    awarded = serializers.IntegerField()
+    totalXp = serializers.IntegerField()
+    level = serializers.IntegerField()
+    leveledUp = serializers.BooleanField()
+    streakDays = serializers.IntegerField()
+    streakExtended = serializers.BooleanField()
+
+
 class CompletionSerializer(serializers.Serializer):
     progressPct = serializers.IntegerField()
     completed = serializers.BooleanField()
     firstCompletion = serializers.BooleanField()
+    award = AwardSerializer(allow_null=True)

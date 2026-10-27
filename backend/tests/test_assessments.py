@@ -176,7 +176,20 @@ def test_solving_every_question_completes_with_the_first_try_score(content, lear
     answer(learner, content.checked, "q1", selectedOptionIds=["b"])  # wrong first
     answer(learner, content.checked, "q1", selectedOptionIds=["a"])
     done = answer(learner, content.checked, "q2", selectedOptionIds=["f"]).json()
-    assert done["completion"] == {"progressPct": 33, "completed": False, "firstCompletion": True}
+    assert done["completion"] == {
+        "progressPct": 33,
+        "completed": False,
+        "firstCompletion": True,
+        # 20 for the lesson + 10 for the one question answered right on the first try
+        "award": {
+            "awarded": 30,
+            "totalXp": 30,
+            "level": 1,
+            "leveledUp": False,
+            "streakDays": 1,
+            "streakExtended": True,
+        },
+    }
     # One of two questions right on the first try.
     assert LessonProgress.objects.get(lesson=content.checked).score == 50
 
@@ -196,6 +209,11 @@ def test_finishing_every_lesson_completes_the_course(content, learner):
     answer(learner, content.checked, "q1", selectedOptionIds=["a"])
     answer(learner, content.checked, "q2", selectedOptionIds=["f"])
     result = submit(learner, content.exam, PASSING).json()
-    assert result["completion"] == {"progressPct": 100, "completed": True, "firstCompletion": True}
+    assert result["completion"]["progressPct"] == 100
+    assert result["completion"]["completed"] is True
+    assert result["completion"]["firstCompletion"] is True
+    # video 20 + checked lesson (20 + 2 first-try points x 10) + exam (20 + 1 point x 10)
+    assert result["completion"]["award"]["awarded"] == 30
+    assert result["completion"]["award"]["totalXp"] == 90
     assert Enrollment.objects.get().completed_at is not None
     assert AuditEntry.objects.filter(action="learning.course.completed").count() == 1

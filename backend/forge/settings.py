@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.engage",
     "apps.learning",
     "apps.assessments",
+    "apps.gamification",
     "apps.coach",
 ]
 

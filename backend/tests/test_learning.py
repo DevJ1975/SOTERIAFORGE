@@ -219,8 +219,25 @@ def test_completion_is_recorded_once(content):
     enroll("learner", content.course)
     first = as_("learner").post(f"/api/lessons/{content.video.pk}/complete").json()
     replay = as_("learner").post(f"/api/lessons/{content.video.pk}/complete").json()
-    assert first == {"progressPct": 33, "completed": False, "firstCompletion": True}
-    assert replay == {"progressPct": 33, "completed": False, "firstCompletion": False}
+    assert first == {
+        "progressPct": 33,
+        "completed": False,
+        "firstCompletion": True,
+        "award": {
+            "awarded": 20,
+            "totalXp": 20,
+            "level": 1,
+            "leveledUp": False,
+            "streakDays": 1,
+            "streakExtended": True,
+        },
+    }
+    assert replay == {
+        "progressPct": 33,
+        "completed": False,
+        "firstCompletion": False,
+        "award": None,  # a replay never pays twice
+    }
     assert AuditEntry.objects.filter(action="learning.lesson.completed").count() == 1
 
 

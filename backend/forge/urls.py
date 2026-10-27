@@ -12,5 +12,6 @@ urlpatterns = [
     path("api/engage/", include("apps.engage.urls")),
     path("api/", include("apps.learning.urls")),
     path("api/", include("apps.assessments.urls")),
+    path("api/", include("apps.gamification.urls")),
     path("api/coach/", include("apps.coach.urls")),
 ]

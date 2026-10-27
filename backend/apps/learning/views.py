@@ -200,6 +200,7 @@ def lesson_detail(lesson: Lesson, enrollment: Enrollment | None) -> dict:
         "externalUrl": lesson.external_url,
         "scormVersion": lesson.scorm_version,
         "estimatedMinutes": lesson.estimated_minutes,
+        "xpReward": lesson.xp_reward,
         "frameworkTags": lesson.framework_tags,
         "keyPoints": lesson.key_points,
         "quiz": quiz,
