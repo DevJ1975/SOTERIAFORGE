@@ -53,3 +53,16 @@ serviceAccountKey*.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+
+# Claude Code agent worktrees and local settings
+.claude/worktrees
+.claude/settings.local.json
+
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs
+# A global "Icon?" rule (macOS Icon\r files) matches "icons" on case-insensitive
+# checkouts and silently drops these folders. Keep them.
+!**/icons/

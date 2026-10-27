@@ -53,7 +53,7 @@ describe('AppComponent – accessibility', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    const skipLink = el.querySelector('a.skip-link') as HTMLAnchorElement | null;
+    const skipLink = el.querySelector('a.sf-skip-link') as HTMLAnchorElement | null;
     expect(skipLink).not.toBeNull();
     expect(skipLink?.getAttribute('href')).toBe('#main-content');
     // Skip link must be the first <a> in the DOM

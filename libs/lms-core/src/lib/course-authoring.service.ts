@@ -9,6 +9,19 @@ export interface NewCourseInput {
   tags?: string[];
 }
 
+/** Editable course fields. Status is excluded: publishing stays a separate, explicit step. */
+export type CourseUpdate = Partial<
+  Pick<Course, 'title' | 'description' | 'tags' | 'xpReward' | 'availableOffline'>
+>;
+
+/** Editable module fields (order changes go through {@link CourseAuthoringService.reorder}). */
+export type ModuleUpdate = Partial<
+  Pick<
+    Module,
+    'title' | 'assetRef' | 'externalUrl' | 'estimatedMinutes' | 'xpReward' | 'completion'
+  >
+>;
+
 export interface NewModuleInput {
   tenantId: string;
   courseId: string;
@@ -78,6 +91,25 @@ export class CourseAuthoringService {
     await Promise.all(
       orderedIds.map((id, index) => this.modules.update(tenantId, courseId, id, { order: index })),
     );
+  }
+
+  updateCourse(tenantId: string, courseId: string, patch: CourseUpdate): Promise<void> {
+    return this.courses.update(tenantId, courseId, {
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  updateModule(
+    tenantId: string,
+    courseId: string,
+    moduleId: string,
+    patch: ModuleUpdate,
+  ): Promise<void> {
+    return this.modules.update(tenantId, courseId, moduleId, {
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   publish(course: Course): Promise<void> {

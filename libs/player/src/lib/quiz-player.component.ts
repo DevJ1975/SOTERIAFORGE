@@ -13,6 +13,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuizRepository } from '@assurance/data-access';
 import { QuizSubmissionService } from '@assurance/lms-core';
+import { SfxService } from '@assurance/sfx';
 import { IndexedDbStore, isIndexedDbAvailable } from '@assurance/shared';
 import type { Quiz, QuizGrade, QuizQuestion, QuizResponse } from '@assurance/shared';
 
@@ -464,6 +465,7 @@ export class QuizPlayerComponent implements OnInit {
 
   private readonly quizRepo = inject(QuizRepository);
   private readonly submissionSvc = inject(QuizSubmissionService);
+  private readonly sfx = inject(SfxService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly draftStore = new IndexedDbStore<QuizDraft>(DRAFT_DB, DRAFT_STORE);
 
@@ -650,6 +652,7 @@ export class QuizPlayerComponent implements OnInit {
 
       if (outcome.graded && outcome.grade) {
         this.grade.set(outcome.grade);
+        this.sfx.play(outcome.grade.passed ? 'pass' : 'fail');
       } else if (outcome.queued) {
         // Offline / transient failure: the attempt is safely queued and will be
         // graded on reconnect (grading stays server-authoritative).

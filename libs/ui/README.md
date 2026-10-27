@@ -10,6 +10,38 @@ A shared Angular component library providing PrimeNG-based UI components with pe
 - **ThemeService** — an Angular service (provided in root) that holds the active theme as a reactive signal and writes `--forge-*` CSS custom properties onto `document.documentElement.style` at runtime.
 - **Components** — thin wrappers over PrimeNG primitives (`forge-button`, `forge-card`, `forge-page-shell`) that use signal inputs/outputs and `ChangeDetectionStrategy.OnPush`.
 
+## Soteria Forge design kit
+
+The Forge kit (source of truth: `materials/soteria-forge-design-kit/`, see its
+`CLAUDE.md`) ships inside this library so nothing references `materials/` at runtime.
+
+| What                                  | Where                                     | Notes                                                                                                                                  |
+| ------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens, components CSS, Inter         | `src/styles/forge/`                       | `tokens.css`, `forge.css`, `fonts/` are verbatim kit copies. `forge-app.css` (a11y extensions) and `forge-shell.css` (shell) are ours. |
+| Icons sprite, logo                    | `src/assets/forge/`                       | Served at `assets/forge/` (configure via `SF_ASSET_BASE_URL`).                                                                         |
+| `<sf-icon name="home" [label]="...">` | `src/lib/forge/sf-icon.component.ts`      | Decorative (`aria-hidden`) unless `label` is set (`role="img"`).                                                                       |
+| `<sf-app-shell>`                      | `src/lib/forge/sf-app-shell.component.ts` | 88 px rail, 64 px top bar, cream canvas; bottom tab bar ≤ 48rem; `variant="dark"` for Engage.                                          |
+| PrimeNG mapping                       | `src/lib/forge/forge-preset.ts`           | `FORGE_PRIMENG_TOKENS` + `FORGE_PRIMENG_OPTIONS`.                                                                                      |
+
+Wire an app up in three places:
+
+```jsonc
+// apps/<app>/project.json → build.options
+"assets": [{ "glob": "**/*", "input": "libs/ui/src/assets/forge", "output": "assets/forge" }],
+"styles": ["libs/ui/src/styles/forge/index.css", "apps/<app>/src/styles.scss"]
+```
+
+```ts
+// app.config.ts — @primeng/themes is ESM-only, so the preset is composed in the app
+providePrimeNG({
+  theme: { preset: definePreset(Aura, FORGE_PRIMENG_TOKENS), options: FORGE_PRIMENG_OPTIONS },
+});
+```
+
+Tenants re-skin Forge by putting kit tokens in `branding.colors`, e.g.
+`{ "--sf-ember": "#0057B8" }`; `ThemeService.applyBranding` writes any `--sf-*` key
+onto `:root`. The legacy `--assurance-*` defaults now resolve to Forge tokens.
+
 ## White-label Theming Approach
 
 ### CSS Custom Properties at Runtime

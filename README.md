@@ -55,6 +55,29 @@ npm run lint                # lint all projects
 Copy `.env.example` → `.env` per app and fill Firebase web config. Backend
 secrets (Stripe, etc.) live in Secret Manager — never commit them.
 
+## Run with Docker
+
+Build and start all four frontend apps:
+
+```bash
+docker compose up --build
+```
+
+Open the learner app at `http://localhost:8080`, admin at
+`http://localhost:8081`, superadmin at `http://localhost:8082`, and the
+server-rendered storefront at `http://localhost:8083`. The learner, admin, and
+superadmin apps are served by Nginx; the storefront runs on Node.js. Stop the
+containers with `docker compose down`.
+
+The frontend Firebase configuration is compiled into each Angular app during
+the image build; setting container environment variables does not override it.
+Configure the apps' production environment files before building. The API's
+local Postgres/Redis Compose stack remains in `backend/docker-compose.yml`.
+The storefront SSR host allowlist defaults to `localhost,127.0.0.1`; set
+`NG_ALLOWED_HOSTS` in the Compose environment to a comma-separated list of
+hostnames (for example, `soteriaforge.com,*.soteriaforge.com`) when using
+different domains.
+
 ## Build roadmap
 
 10 phases (0–9): Foundation → Multi-tenant core → Content & delivery →

@@ -1,0 +1,28 @@
+# Local services for the Forge API. Ports avoid the defaults so other local stacks keep theirs.
+name: forge
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge
+    ports: ['5433:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U forge']
+      interval: 2s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    ports: ['6380:6379']
+  livekit:
+    image: livekit/livekit-server:v1.13.11
+    profiles: ['media']
+    command: ['--dev', '--bind', '0.0.0.0', '--node-ip', '127.0.0.1']
+    ports:
+      - '127.0.0.1:7880:7880'
+      - '127.0.0.1:7881:7881'
+      - '127.0.0.1:7882:7882/udp'
+volumes:
+  pgdata:

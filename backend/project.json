@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["scope:backend", "type:app"],
+  "targets": {
+    "py-test": {
+      "command": "uv run pytest",
+      "options": { "cwd": "backend" }
+    },
+    "py-lint": {
+      "command": "uv run ruff check . && uv run ruff format --check .",
+      "options": { "cwd": "backend" }
+    },
+    "serve": {
+      "command": "docker compose up -d --wait && uv run --env-file .env python manage.py migrate && uv run --env-file .env python manage.py runserver 8000",
+      "options": { "cwd": "backend" },
+      "continuous": true
+    }
+  }
+}

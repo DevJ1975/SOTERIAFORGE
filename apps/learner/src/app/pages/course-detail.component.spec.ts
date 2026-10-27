@@ -1,309 +1,155 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { signal } from '@angular/core';
-import {
-  ASSURANCE_ENV,
-  type AssuranceEnvironment,
-  AuthService,
-  TenantService,
-} from '@assurance/auth';
-import { ModuleRepository, EnrollmentRepository, CourseRepository } from '@assurance/data-access';
-import { EnrollmentService } from '@assurance/lms-core';
-import { PlayerProgressService, DownloadService } from '@assurance/player';
-import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AuthService, TenantService } from '@assurance/auth';
+import { TutorService, CoachApi } from '@assurance/ai-tutor';
+import { LearningApi, type ApiCourseOutline } from '@assurance/lms-core';
 import { CourseDetailComponent } from './course-detail.component';
-import type { Course, Enrollment, Module, ChatMessage } from '@assurance/shared';
-import { of } from 'rxjs';
 
-const testEnv: AssuranceEnvironment = {
-  production: false,
-  rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
-};
+function outline(overrides: Partial<ApiCourseOutline> = {}): ApiCourseOutline {
+  return {
+    id: 'c1',
+    title: 'Intro to Safety',
+    description: 'Learn the basics',
+    status: 'published',
+    tags: [],
+    availableOffline: false,
+    createdAt: '',
+    updatedAt: '',
+    enrollment: {
+      id: 'e1',
+      courseId: 'c1',
+      memberId: 'm1',
+      assigned: false,
+      dueAt: null,
+      progressPct: 40,
+      completedAt: null,
+      lastActivityAt: null,
+      createdAt: '',
+    },
+    modules: [
+      {
+        id: 'm1',
+        courseId: 'c1',
+        title: 'Foundations',
+        label: 'Week 5',
+        order: 1,
+        lessons: [
+          {
+            id: 'l1',
+            title: 'Hazards',
+            order: 1,
+            contentType: 'video',
+            estimatedMinutes: 10,
+            frameworkTags: ['OSHA'],
+            hasQuiz: true,
+            completed: true,
+          },
+          {
+            id: 'l2',
+            title: 'PPE',
+            order: 2,
+            contentType: 'scorm',
+            estimatedMinutes: 5,
+            frameworkTags: [],
+            hasQuiz: false,
+            completed: false,
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
 
-const mockModule: Module = {
-  id: 'mod-1',
-  courseId: 'course-1',
-  tenantId: 'tenant-1',
-  title: 'Lesson 1',
-  order: 1,
-  contentType: 'video',
-  externalUrl: 'https://www.youtube.com/watch?v=test',
-  estimatedMinutes: 5,
-  xpReward: 0,
-  badgeRefs: [],
-  completion: {},
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const mockModule2: Module = {
-  id: 'mod-2',
-  courseId: 'course-1',
-  tenantId: 'tenant-1',
-  title: 'Lesson 2',
-  order: 2,
-  contentType: 'video',
-  externalUrl: 'https://www.youtube.com/watch?v=test2',
-  estimatedMinutes: 7,
-  xpReward: 0,
-  badgeRefs: [],
-  completion: {},
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const mockCourse: Course = {
-  id: 'course-1',
-  tenantId: 'tenant-1',
-  title: 'Test Course',
-  description: '',
-  status: 'published',
-  tags: [],
-  badgeRefs: [],
-  xpReward: 0,
-  availableOffline: true,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const mockCourseRepository: Partial<CourseRepository> = {
-  getById: jest.fn().mockResolvedValue(mockCourse),
-};
-
-const mockEnrollment: Enrollment = {
-  uid: 'user-1',
-  courseId: 'course-1',
-  tenantId: 'tenant-1',
-  progressPct: 0,
-  completed: false,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-const mockModuleRepository: Partial<ModuleRepository> = {
-  listOrdered: jest.fn().mockResolvedValue([mockModule, mockModule2]),
-};
-
-const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
-  get: jest.fn().mockResolvedValue(mockEnrollment),
-  watch: jest.fn().mockReturnValue(of(mockEnrollment)),
-  upsert: jest.fn().mockResolvedValue(undefined),
-};
-
-const mockEnrollmentService: Partial<EnrollmentService> = {
-  enroll: jest.fn().mockResolvedValue(mockEnrollment),
-};
-
-const mockAuthService = {
-  principal: () => ({
-    uid: 'user-1',
-    email: 'test@example.com',
-    claims: { role: 'learner', tenantId: 'tenant-1' },
-  }),
-};
-
-const mockTenantService = {
-  tenantId: () => 'tenant-1',
-};
-
-const mockPlayerProgressService: Partial<PlayerProgressService> = {
-  recordProgress: jest.fn().mockResolvedValue(undefined),
-  recordCompletion: jest.fn().mockResolvedValue(undefined),
-};
-
-const mockTutorMessages = signal<ChatMessage[]>([]);
-const mockTutorPending = signal(false);
-const mockTutorError = signal<string | null>(null);
-
-const mockTutorService = {
-  messages: mockTutorMessages.asReadonly(),
-  pending: mockTutorPending.asReadonly(),
-  error: mockTutorError.asReadonly(),
-  ask: jest.fn(),
-};
+async function flush(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 0));
+}
 
 describe('CourseDetailComponent', () => {
   let fixture: ComponentFixture<CourseDetailComponent>;
+  const api = { course: jest.fn(), enroll: jest.fn() };
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  async function render(): Promise<HTMLElement> {
+    fixture = TestBed.createComponent(CourseDetailComponent);
+    fixture.componentRef.setInput('id', 'c1');
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    return fixture.nativeElement;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    TestBed.configureTestingModule({
       imports: [CourseDetailComponent],
       providers: [
         provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: ModuleRepository, useValue: mockModuleRepository },
-        { provide: EnrollmentRepository, useValue: mockEnrollmentRepository },
-        { provide: CourseRepository, useValue: mockCourseRepository },
-        { provide: EnrollmentService, useValue: mockEnrollmentService },
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: TenantService, useValue: mockTenantService },
-        { provide: PlayerProgressService, useValue: mockPlayerProgressService },
-        { provide: TutorService, useValue: mockTutorService },
-        { provide: TUTOR_FUNCTIONS, useValue: {} },
+        { provide: LearningApi, useValue: api },
+        { provide: AuthService, useValue: { principal: () => null } },
+        { provide: TenantService, useValue: { tenantId: () => null } },
+        { provide: TutorService, useValue: {} },
+        { provide: CoachApi, useValue: { courses: async () => [], profiles: async () => [] } },
       ],
-    }).compileComponents();
+    });
+  });
 
+  it('shows a loading state first', () => {
+    api.course.mockReturnValue(new Promise(() => undefined));
     fixture = TestBed.createComponent(CourseDetailComponent);
-    fixture.componentRef.setInput('id', 'course-1');
+    fixture.componentRef.setInput('id', 'c1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Loading course');
   });
 
-  it('creates the component', () => {
-    expect(fixture.componentInstance).toBeTruthy();
+  it('renders title, progress, total minutes, module label and lessons', async () => {
+    api.course.mockResolvedValue(outline());
+    const el = await render();
+    const text = el.textContent ?? '';
+    expect(text).toContain('Intro to Safety');
+    expect(text).toContain('40% complete');
+    expect(text).toContain('Total: 15 min');
+    expect(text).toContain('Week 5');
+    expect(text).toContain('Knowledge check');
+    expect(text).toContain('OSHA');
+    expect(text).toContain('Completed');
+    expect(text).toContain('Not completed');
+    const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('a.cd__lesson'));
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      '/courses/c1/lessons/l1',
+      '/courses/c1/lessons/l2',
+    ]);
+    expect(api.enroll).not.toHaveBeenCalled();
   });
 
-  it('renders loading state then module list', async () => {
-    fixture.detectChanges();
-    // Wait for all microtasks (Promise chains from ngOnInit)
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Course: course-1');
+  it('enrolls a published course with no enrollment, then refreshes', async () => {
+    api.course
+      .mockResolvedValueOnce(outline({ enrollment: null }))
+      .mockResolvedValueOnce(outline());
+    api.enroll.mockResolvedValue({});
+    const el = await render();
+    expect(api.enroll).toHaveBeenCalledWith('c1');
+    expect(api.course).toHaveBeenCalledTimes(2);
+    expect(el.textContent).toContain('40% complete');
   });
 
-  it('shows module title after loading', async () => {
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Lesson 1');
+  it('does not enroll in an unpublished course', async () => {
+    api.course.mockResolvedValue(outline({ enrollment: null, status: 'draft' }));
+    await render();
+    expect(api.enroll).not.toHaveBeenCalled();
   });
 
-  it('auto-enrolls when no enrollment exists', async () => {
-    (mockEnrollmentRepository.get as jest.Mock).mockResolvedValueOnce(null);
+  it('shows the API error and retries', async () => {
+    api.course.mockImplementationOnce(async () => {
+      throw new HttpErrorResponse({ status: 404, error: { detail: 'Course not found.' } });
+    });
+    const el = await render();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Course not found.');
+
+    api.course.mockResolvedValue(outline());
+    el.querySelector<HTMLButtonElement>('[role="alert"] button')!.click();
+    await flush();
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    expect(mockEnrollmentService.enroll).toHaveBeenCalledWith('tenant-1', 'course-1', 'user-1');
-  });
-
-  it('does not enroll again when enrollment already exists', async () => {
-    jest.clearAllMocks();
-    (mockEnrollmentRepository.get as jest.Mock).mockResolvedValueOnce(mockEnrollment);
-    (mockEnrollmentRepository.watch as jest.Mock).mockReturnValue(of(mockEnrollment));
-
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    expect(mockEnrollmentService.enroll).not.toHaveBeenCalled();
-  });
-
-  it('shows the offline download control for an offline-available course (MO-07)', async () => {
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Download for offline');
-  });
-
-  it('flags YouTube/Vimeo modules as "Requires connection" (MO-07)', async () => {
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-
-    const comp = fixture.componentInstance as unknown as {
-      requiresConnection(id: string): boolean;
-      cacheableCount(): number;
-    };
-    // mockModule is a YouTube URL → not cacheable.
-    expect(comp.requiresConnection('mod-1')).toBe(true);
-    expect(comp.cacheableCount()).toBe(0);
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Requires connection');
-  });
-
-  // ----- MO-14: estimated duration + stepped/focused mode -----
-
-  async function load(): Promise<void> {
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture.detectChanges();
-  }
-
-  it('renders the per-module estimated duration (MO-14)', async () => {
-    await load();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('5 min');
-    expect(el.textContent).toContain('7 min');
-  });
-
-  it('sums module minutes into a course-level total (MO-14)', async () => {
-    await load();
-    const comp = fixture.componentInstance as unknown as { totalEstimatedMinutes(): number };
-    expect(comp.totalEstimatedMinutes()).toBe(12);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Total: 12 min');
-  });
-
-  it('toggles into stepped/focused mode showing "1 of M" and large controls (MO-14)', async () => {
-    await load();
-    const comp = fixture.componentInstance as unknown as {
-      toggleStepped(): void;
-      stepped(): boolean;
-    };
-    comp.toggleStepped();
-    fixture.detectChanges();
-
-    expect(comp.stepped()).toBe(true);
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('1 of 2');
-    expect(el.textContent).toContain('Continue');
-    expect(el.textContent).toContain('Back');
-  });
-
-  it('advances and rewinds steps with Next/Back, keeping selection in sync (MO-14)', async () => {
-    await load();
-    const comp = fixture.componentInstance as unknown as {
-      toggleStepped(): void;
-      nextStep(): void;
-      prevStep(): void;
-      stepIndex(): number;
-      isFirstStep(): boolean;
-      isLastStep(): boolean;
-      selectedModule(): Module | null;
-    };
-    comp.toggleStepped();
-    fixture.detectChanges();
-    expect(comp.stepIndex()).toBe(0);
-    expect(comp.isFirstStep()).toBe(true);
-
-    comp.nextStep();
-    fixture.detectChanges();
-    expect(comp.stepIndex()).toBe(1);
-    expect(comp.isLastStep()).toBe(true);
-    // The player follows the step.
-    expect(comp.selectedModule()?.id).toBe('mod-2');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('2 of 2');
-
-    comp.prevStep();
-    fixture.detectChanges();
-    expect(comp.stepIndex()).toBe(0);
-    expect(comp.selectedModule()?.id).toBe('mod-1');
-  });
-
-  it('does not advance past the last step (MO-14)', async () => {
-    await load();
-    const comp = fixture.componentInstance as unknown as {
-      toggleStepped(): void;
-      nextStep(): void;
-      stepIndex(): number;
-    };
-    comp.toggleStepped();
-    comp.nextStep();
-    comp.nextStep(); // already last — should be a no-op
-    fixture.detectChanges();
-    expect(comp.stepIndex()).toBe(1);
+    expect(el.textContent).toContain('Intro to Safety');
   });
 });

@@ -14,6 +14,11 @@ export interface AssuranceEnvironment {
     appId: string;
     measurementId?: string;
   };
+  /**
+   * Forge API (Django on Railway), e.g. "https://api.soteriaforge.com". Optional
+   * during the migration: without it the apps don't call the API.
+   */
+  apiBaseUrl?: string;
   /** reCAPTCHA Enterprise site key for App Check. */
   appCheckSiteKey?: string;
   /**

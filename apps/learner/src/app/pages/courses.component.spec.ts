@@ -1,136 +1,99 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import {
-  ASSURANCE_ENV,
-  type AssuranceEnvironment,
-  AuthService,
-  TenantService,
-} from '@assurance/auth';
-import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
+import { LearningApi } from '@assurance/lms-core';
+import type { ApiCourse, ApiMyEnrollment } from '@assurance/lms-core';
 import { CoursesComponent } from './courses.component';
-import type { Course } from '@assurance/shared';
 
-const testEnv: AssuranceEnvironment = {
-  production: false,
-  rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
-};
-
-const mockCourse: Course = {
-  id: 'course-1',
-  tenantId: 'tenant-1',
-  title: 'Intro to Testing',
-  description: 'A test course',
+const course = (id: string, title: string): ApiCourse => ({
+  id,
+  title,
+  description: `About ${title}`,
   status: 'published',
   tags: [],
-  badgeRefs: [],
-  xpReward: 0,
   availableOffline: false,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+});
 
-const mockCourseRepository: Partial<CourseRepository> = {
-  listPublished: jest.fn().mockResolvedValue([mockCourse]),
-};
+const enrollment = (courseId: string, over: Partial<ApiMyEnrollment> = {}): ApiMyEnrollment => ({
+  id: `e-${courseId}`,
+  courseId,
+  memberId: 'm1',
+  assigned: false,
+  dueAt: null,
+  progressPct: 0,
+  completedAt: null,
+  lastActivityAt: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  course: { id: courseId, title: 'x' },
+  nextLesson: null,
+  ...over,
+});
 
-const mockEnrollmentRepository: Partial<EnrollmentRepository> = {
-  get: jest.fn().mockResolvedValue(null),
-};
-
-const mockAuthService = {
-  principal: () => ({
-    uid: 'user-1',
-    email: 'test@example.com',
-    claims: { role: 'learner', tenantId: 'tenant-1' },
-  }),
-};
-
-const mockTenantService = {
-  tenantId: () => 'tenant-1',
-};
-
-/** Flush all pending microtasks and macrotasks. */
-async function flushAll(): Promise<void> {
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
+async function flush(fixture: ComponentFixture<CoursesComponent>): Promise<void> {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
 }
 
 describe('CoursesComponent', () => {
+  const api = { courses: jest.fn(), myEnrollments: jest.fn() };
   let fixture: ComponentFixture<CoursesComponent>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    api.courses.mockResolvedValue([course('c1', 'Intro to Testing')]);
+    api.myEnrollments.mockResolvedValue([]);
     await TestBed.configureTestingModule({
       imports: [CoursesComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: CourseRepository, useValue: mockCourseRepository },
-        { provide: EnrollmentRepository, useValue: mockEnrollmentRepository },
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: TenantService, useValue: mockTenantService },
-      ],
+      providers: [provideRouter([]), { provide: LearningApi, useValue: api }],
     }).compileComponents();
-
     fixture = TestBed.createComponent(CoursesComponent);
   });
 
-  it('creates the component', () => {
-    expect(fixture.componentInstance).toBeTruthy();
+  const text = (): string => (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+  it('shows a loading state first', () => {
+    fixture.detectChanges();
+    expect(text()).toContain('Loading courses');
   });
 
-  it('shows loading state initially', () => {
-    fixture.detectChanges();
-    // loading signal is set to true initially, but after detectChanges it may complete
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Courses');
+  it('lists courses with a link to the course', async () => {
+    await flush(fixture);
+    expect(text()).toContain('Intro to Testing');
+    const a = (fixture.nativeElement as HTMLElement).querySelector('a');
+    expect(a?.getAttribute('href')).toBe('/courses/c1');
   });
 
-  it('displays courses after loading', async () => {
-    fixture.detectChanges();
-    await flushAll();
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Intro to Testing');
+  it('shows empty message when there are no courses', async () => {
+    api.courses.mockResolvedValue([]);
+    await flush(fixture);
+    expect(text()).toContain('No published courses');
   });
 
-  it('shows "no courses" message when empty', async () => {
-    (mockCourseRepository.listPublished as jest.Mock).mockResolvedValueOnce([]);
-    fixture.detectChanges();
-    await flushAll();
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('No published courses');
+  it('shows Assigned tag, due date and progress for an assigned enrollment', async () => {
+    api.myEnrollments.mockResolvedValue([
+      enrollment('c1', { assigned: true, dueAt: '2026-12-31T00:00:00Z', progressPct: 40 }),
+    ]);
+    await flush(fixture);
+    expect(text()).toContain('Assigned');
+    expect(text()).toContain('Due: 2026-12-31');
+    expect(text()).toContain('Progress: 40%');
   });
 
-  it('shows Assigned tag when enrollment is assigned', async () => {
-    const assignedEnrollment = {
-      uid: 'user-1',
-      courseId: 'course-1',
-      tenantId: 'tenant-1',
-      progressPct: 0,
-      completed: false,
-      assigned: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    (mockEnrollmentRepository.get as jest.Mock).mockResolvedValue(assignedEnrollment);
+  it('does not show Assigned for an unassigned enrollment', async () => {
+    api.myEnrollments.mockResolvedValue([enrollment('c1')]);
+    await flush(fixture);
+    expect(text()).not.toContain('Assigned');
+  });
 
-    fixture.detectChanges();
-    await flushAll();
-    fixture.detectChanges();
-
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Assigned');
+  it('shows an error with retry when loading fails', async () => {
+    api.courses.mockRejectedValueOnce(new Error('boom'));
+    await flush(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Could not load courses');
+    (el.querySelector('[role="alert"] button') as HTMLButtonElement).click();
+    await flush(fixture);
+    expect(text()).toContain('Intro to Testing');
   });
 });

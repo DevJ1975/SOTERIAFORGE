@@ -7,7 +7,7 @@ import {
   AuthService,
   TenantService,
 } from '@assurance/auth';
-import { TutorService, TUTOR_FUNCTIONS } from '@assurance/ai-tutor';
+import { TutorService, CoachApi } from '@assurance/ai-tutor';
 import { TutorPageComponent } from './tutor.component';
 import type { ChatMessage } from '@assurance/shared';
 
@@ -61,8 +61,7 @@ describe('TutorPageComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: TutorService, useValue: mockTutorService },
-        // Prevent TutorService factory from trying to inject real Firebase Functions
-        { provide: TUTOR_FUNCTIONS, useValue: {} },
+        { provide: CoachApi, useValue: { courses: async () => [], profiles: async () => [] } },
       ],
     }).compileComponents();
 
@@ -104,7 +103,7 @@ describe('TutorPageComponent', () => {
         { provide: AuthService, useValue: noUidAuthService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: TutorService, useValue: mockTutorService },
-        { provide: TUTOR_FUNCTIONS, useValue: {} },
+        { provide: CoachApi, useValue: { courses: async () => [], profiles: async () => [] } },
       ],
     });
 

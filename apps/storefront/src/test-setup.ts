@@ -5,5 +5,6 @@ g['fetch'] ??= () => Promise.reject(new Error('fetch is not available in unit te
 g['Headers'] ??= class Headers {};
 g['Request'] ??= class Request {};
 g['Response'] ??= class Response {};
+import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 
-import 'jest-preset-angular/setup-jest';
+setupZoneTestEnv();

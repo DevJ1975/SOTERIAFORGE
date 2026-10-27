@@ -1,18 +1,20 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
-  Auth,
-  authState,
+  type Auth,
+  type User,
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  onIdTokenChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  user,
-} from '@angular/fire/auth';
+} from 'firebase/auth';
 import { Firestore, clearIndexedDbPersistence, terminate } from '@angular/fire/firestore';
 import type { CustomClaims, Principal } from '@assurance/shared';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Observable, of } from 'rxjs';
 import { parseClaims } from './claims';
+import { FIREBASE_AUTH } from './firebase-auth';
 import { TenantService } from './tenant.service';
 
 /**
@@ -41,19 +43,30 @@ const OFFLINE_CACHE_NAME = 'assurance-offline-v1';
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly auth = inject(Auth);
+  /** Null on the server (SSR / prerender): every server render is signed out. */
+  private readonly auth = inject(FIREBASE_AUTH);
   private readonly tenant = inject(TenantService);
   /** Optional: not every AuthService consumer provides Firestore. */
   private readonly firestore = inject(Firestore, { optional: true });
 
-  /** The raw Firebase user (null when signed out). */
-  private readonly firebaseUser = toSignal(user(this.auth), { initialValue: null });
+  /** The raw Firebase user (null when signed out); follows ID-token changes. */
+  private readonly firebaseUser = signal<User | null>(null);
+
+  constructor() {
+    if (this.auth) {
+      const unsubscribe = onIdTokenChanged(this.auth, (u) => this.firebaseUser.set(u));
+      inject(DestroyRef).onDestroy(unsubscribe);
+    }
+  }
 
   /** Validated custom claims, refreshed on auth state changes. */
   private readonly _claims = signal<CustomClaims | null>(null);
   readonly claims = this._claims.asReadonly();
 
   readonly isAuthenticated = computed(() => !!this.firebaseUser());
+
+  /** Firebase uid of the signed-in user, before claims exist (null when signed out). */
+  readonly uid = computed(() => this.firebaseUser()?.uid ?? null);
 
   readonly principal = computed<Principal | null>(() => {
     const u = this.firebaseUser();
@@ -69,12 +82,18 @@ export class AuthService {
 
   /** Bind the active GCIP tenant onto the Auth instance. */
   applyTenantScope(): void {
-    this.auth.tenantId = this.tenant.gcipTenantId();
+    if (this.auth) this.auth.tenantId = this.tenant.gcipTenantId();
+  }
+
+  /** Sign-in flows only run in the browser; fail loudly if reached on the server. */
+  private requireAuth(): Auth {
+    if (!this.auth) throw new Error('Firebase Auth is unavailable outside the browser');
+    return this.auth;
   }
 
   async signInWithPassword(email: string, password: string): Promise<void> {
     this.applyTenantScope();
-    const cred = await signInWithEmailAndPassword(this.auth, email, password);
+    const cred = await signInWithEmailAndPassword(this.requireAuth(), email, password);
     await this.refreshClaims();
     if (cred.user && !this._claims()) {
       // No claims yet (e.g. just-provisioned user) — force a token refresh once.
@@ -85,7 +104,7 @@ export class AuthService {
 
   async signUp(email: string, password: string, displayName?: string): Promise<void> {
     this.applyTenantScope();
-    const cred = await createUserWithEmailAndPassword(this.auth, email, password);
+    const cred = await createUserWithEmailAndPassword(this.requireAuth(), email, password);
     if (displayName && cred.user) {
       await updateProfile(cred.user, { displayName });
     }
@@ -104,11 +123,11 @@ export class AuthService {
    */
   async sendPasswordResetEmail(email: string): Promise<void> {
     this.applyTenantScope();
-    await sendPasswordResetEmail(this.auth, email);
+    await sendPasswordResetEmail(this.requireAuth(), email);
   }
 
   async signOutUser(): Promise<void> {
-    await signOut(this.auth);
+    if (this.auth) await signOut(this.auth);
     this._claims.set(null);
     // Shared-device hygiene: purge this user's local offline data so the next
     // user cannot read it. Best-effort and never throws — sign-out must succeed
@@ -174,7 +193,7 @@ export class AuthService {
 
   /** Force-refresh the ID token and re-parse custom claims. */
   async refreshClaims(forceRefresh = false): Promise<CustomClaims | null> {
-    const u = this.auth.currentUser;
+    const u = this.auth?.currentUser;
     if (!u) {
       this._claims.set(null);
       return null;
@@ -186,7 +205,15 @@ export class AuthService {
   }
 
   /** Observable of auth state for guards that prefer async resolution. */
-  authState$() {
-    return authState(this.auth);
+  authState$(): Observable<User | null> {
+    const auth = this.auth;
+    if (!auth) return of(null);
+    return new Observable<User | null>((sub) =>
+      onAuthStateChanged(
+        auth,
+        (u) => sub.next(u),
+        (e) => sub.error(e),
+      ),
+    );
   }
 }

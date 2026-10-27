@@ -60,4 +60,8 @@ export class CourseRepository {
   set(tenantId: string, c: Course) {
     return this.repo(tenantId).set(c.id, c);
   }
+
+  update(tenantId: string, courseId: string, partial: Partial<Course>) {
+    return this.repo(tenantId).update(courseId, partial);
+  }
 }

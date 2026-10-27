@@ -1,4 +1,4 @@
-import { updateStreak } from './streaks';
+import { streakStrip, updateStreak } from './streaks';
 
 describe('updateStreak', () => {
   describe('no prior activity', () => {
@@ -108,5 +108,36 @@ describe('updateStreak', () => {
       const result = updateStreak('2024-03-15T01:00:00+05:30', '2024-03-16T00:00:00+05:30', 3);
       expect(result).toEqual({ streakDays: 4, incremented: true });
     });
+  });
+});
+
+describe('streakStrip', () => {
+  const now = '2026-11-18T15:00:00.000Z';
+
+  it('fills the trailing days through today when active today', () => {
+    expect(streakStrip(3, '2026-11-18T08:00:00.000Z', now, 5)).toEqual([
+      false,
+      false,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('ends the run yesterday and leaves today open when last active yesterday', () => {
+    const strip = streakStrip(22, '2026-11-17T20:00:00.000Z', now, 14);
+    expect(strip.filter(Boolean).length).toBe(13);
+    expect(strip[13]).toBe(false);
+    expect(strip[0]).toBe(true);
+  });
+
+  it('is empty when the streak is broken or unknown', () => {
+    expect(streakStrip(5, '2026-11-15T10:00:00.000Z', now, 7).some(Boolean)).toBe(false);
+    expect(streakStrip(5, undefined, now, 7).some(Boolean)).toBe(false);
+    expect(streakStrip(0, now, now, 7).some(Boolean)).toBe(false);
+  });
+
+  it('defaults to 14 days', () => {
+    expect(streakStrip(1, now, now)).toHaveLength(14);
   });
 });

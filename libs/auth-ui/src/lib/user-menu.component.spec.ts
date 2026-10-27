@@ -49,4 +49,18 @@ describe('UserMenuComponent', () => {
     expect(auth.signOutUser).toHaveBeenCalled();
     expect(nav).toHaveBeenCalledWith('/login');
   });
+
+  it('compact variant renders a single Forge "Sign out" button that signs out', async () => {
+    const nav = jest.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    fixture.componentRef.setInput('variant', 'compact');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.user-menu')).toBeNull();
+    const btn = el.querySelector('button.sf-btn') as HTMLButtonElement;
+    expect(btn.textContent?.trim()).toBe('Sign out');
+    btn.click();
+    await fixture.whenStable();
+    expect(auth.signOutUser).toHaveBeenCalled();
+    expect(nav).toHaveBeenCalledWith('/login');
+  });
 });

@@ -1,0 +1,107 @@
+/* Soteria Forge design tokens v1.0 (SFG-SPC-FRG-011)
+   Source of truth: tokens.json. Import this file once, before components/forge.css. */
+:root {
+  /* Brand */
+  --sf-charcoal: #1B1E23;      /* rail, dark surfaces, learner chat bubbles */
+  --sf-charcoal-2: #242830;
+  --sf-charcoal-3: #2E333C;    /* active rail tile */
+  --sf-ember: #DC481B;         /* primary action, active state, progress */
+  --sf-ember-dark: #AE3A14;    /* pressed / shield shade */
+  --sf-ember-soft: #FFF1EB;    /* ember tint backgrounds (tags, pills) */
+  --sf-ember-on-soft: #B33A12; /* ember text on soft tint, passes 4.5:1 */
+  --sf-flame: #F69A3C;         /* gradient end, XP bars */
+  --sf-gold: #FFC774;          /* scores and timers on dark */
+  --sf-flame-cream: #FFE6B0;
+
+  /* Neutrals */
+  --sf-cream: #F6F3EC;         /* app canvas */
+  --sf-surface: #FFFFFF;       /* cards */
+  --sf-line: #E6E1D8;          /* borders, dividers */
+  --sf-muted-bg: #F1EEE7;      /* neutral tags, empty bars */
+  --sf-ink: #1B1E23;           /* body text */
+  --sf-ink-2: #4B5563;         /* secondary text */
+  --sf-muted: #6B7280;         /* captions, meta */
+  --sf-placeholder: #9AA3AF;
+
+  /* Status */
+  --sf-success: #1E9E6A;
+  --sf-success-soft: #E6F6EF;
+  --sf-success-ink: #0F5E3C;
+  --sf-danger: #C0392B;        /* Leave call, destructive */
+  --sf-danger-soft: #FFF5F5;
+  --sf-warning: #F2A900;
+
+  /* Engage (dark) */
+  --sf-dark-bg: #16181C;
+  --sf-dark-pane: #1F2228;
+  --sf-dark-line: #2B2F36;
+  --sf-dark-inset: #15171B;
+  --sf-dark-text: #C9CED6;
+
+  /* SFG (parent brand, use only for SFG lockup and SFG-issued credentials) */
+  --sfg-navy: #0B3D5C;
+  --sfg-navy-soft: #E6EEF5;
+  --sfg-teal: #128C9E;
+  --sfg-teal-light: #5CC6D0;
+  --sfg-gold: #F2A900;
+
+  /* Gradients */
+  --sf-grad-ember: linear-gradient(90deg, #DC481B, #F69A3C);
+  --sf-grad-badge: radial-gradient(circle at 40% 35%, #FFD9A8, #DC481B);
+  --sf-grad-credential: radial-gradient(circle at 40% 35%, #FFF1C2, #F2A900);
+
+  /* Type */
+  --sf-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sf-text-xs: 12px;
+  --sf-text-sm: 13px;
+  --sf-text-base: 15px;
+  --sf-text-md: 16px;
+  --sf-text-lg: 20px;   /* section titles */
+  --sf-text-xl: 30px;   /* page titles */
+  --sf-text-display: 88px;
+  --sf-weight-regular: 400;
+  --sf-weight-medium: 500;
+  --sf-weight-semibold: 600;
+  --sf-weight-bold: 700;
+  --sf-weight-black: 800;
+  --sf-leading-tight: 1.2;
+  --sf-leading-body: 1.5;
+
+  /* Spacing (4 px base) */
+  --sf-space-1: 4px;
+  --sf-space-2: 8px;
+  --sf-space-3: 12px;
+  --sf-space-4: 16px;
+  --sf-space-5: 20px;
+  --sf-space-6: 24px;
+  --sf-space-8: 32px;
+  --sf-space-10: 40px;
+
+  /* Radius */
+  --sf-radius-sm: 8px;    /* tags, chips, stage cells */
+  --sf-radius-md: 12px;   /* buttons, inputs, list rows */
+  --sf-radius-lg: 14px;   /* rail tiles, chat bubbles */
+  --sf-radius-xl: 16px;   /* cards, video player */
+  --sf-radius-full: 999px;
+
+  /* Elevation */
+  --sf-shadow-card: 0 1px 2px rgba(27, 30, 35, 0.04);
+  --sf-shadow-panel: -12px 0 40px rgba(27, 30, 35, 0.12);
+  --sf-shadow-badge: 0 8px 24px rgba(220, 72, 27, 0.35);
+
+  /* Layout */
+  --sf-rail-width: 88px;
+  --sf-topbar-height: 64px;
+  --sf-panel-width: 640px;   /* Ask Forge slide-in */
+  --sf-control-height: 44px; /* buttons, min touch target */
+
+  /* Motion */
+  --sf-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --sf-dur-fast: 150ms;
+  --sf-dur-base: 300ms;
+  --sf-dur-slow: 800ms;     /* diagram node build-in */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --sf-dur-fast: 0ms; --sf-dur-base: 0ms; --sf-dur-slow: 0ms; }
+}

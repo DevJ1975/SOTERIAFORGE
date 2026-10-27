@@ -9,3 +9,18 @@ package-lock.json
 # Generated build output
 apps/functions/lib
 **/*.min.js
+# Python backend tooling and generated schema
+backend/.venv
+backend/.pytest_cache
+backend/.ruff_cache
+backend/staticfiles
+backend/openapi.yaml
+# Vendored design kit: keep byte-for-byte with the source kit
+materials
+# Agent worktrees
+.claude
+# Verbatim copies of design-kit files (see libs/ui/src/styles/forge)
+libs/ui/src/styles/forge/tokens.css
+libs/ui/src/styles/forge/tokens.json
+libs/ui/src/styles/forge/forge.css
+libs/ui/src/styles/forge/fonts/inter.css

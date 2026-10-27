@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'gamification',
   preset: '../../jest.preset.js',
   setupFilesAfterEach: ['<rootDir>/src/test-setup.ts'],
@@ -10,7 +10,7 @@ export default {
       { tsconfig: '<rootDir>/tsconfig.spec.json', stringifyContentPathRegex: '\\.(html|svg)$' },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$|@angular|rxjs)'],
+  transformIgnorePatterns: ['node_modules/(?!.*\\.mjs$|@angular|rxjs|@jsverse)'],
   moduleFileExtensions: ['ts', 'html', 'js', 'json', 'mjs'],
   snapshotSerializers: [
     'jest-preset-angular/build/serializers/no-ng-attributes',

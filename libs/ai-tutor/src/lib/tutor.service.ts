@@ -1,6 +1,6 @@
-import { Injectable, InjectionToken, inject, signal } from '@angular/core';
-import { Functions, httpsCallable } from '@angular/fire/functions';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import type { ChatMessage } from '@assurance/shared';
+import { CoachApi, coachError, type CoachAgentId, type TutorAnswer } from './coach-api';
 
 /** UUID generator compatible with both browser (Web Crypto) and Node ≥ 19+/Jest. */
 function newUUID(): string {
@@ -17,35 +17,15 @@ function newUUID(): string {
   });
 }
 
-interface AskTutorRequest {
-  question: string;
-  tenantId: string;
-  uid: string;
-}
-
-interface AskTutorResponse {
-  answer: string;
-  citations: Array<{
-    sourceId: string;
-    label?: string;
-    moduleId?: string;
-  }>;
-}
-
-/**
- * Internal injection token that holds the Firebase Functions instance.
- * Injecting via this token (rather than directly injecting `Functions`) lets
- * tests provide a plain sentinel without importing `@angular/fire/functions`,
- * which triggers a module-load chain that requires a browser `fetch` global.
- */
-export const TUTOR_FUNCTIONS = new InjectionToken<Functions>('TUTOR_FUNCTIONS', {
-  providedIn: 'root',
-  factory: () => inject(Functions),
-});
-
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class TutorService {
-  private readonly functions = inject(TUTOR_FUNCTIONS);
+  private readonly api = inject(CoachApi);
+  private generation = 0;
+  private request: AbortController | undefined;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.reset());
+  }
 
   private readonly _messages = signal<ChatMessage[]>([]);
   readonly messages = this._messages.asReadonly();
@@ -56,16 +36,26 @@ export class TutorService {
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
 
-  /**
-   * Invokes the `askTutor` Firebase callable function.
-   * Override this method in tests to avoid real Firebase calls.
-   */
-  protected invoke(question: string, tenantId: string, uid: string): Promise<AskTutorResponse> {
-    const callable = httpsCallable<AskTutorRequest, AskTutorResponse>(this.functions, 'askTutor');
-    return callable({ question, tenantId, uid }).then((result) => result.data);
+  reset(): void {
+    this.generation++;
+    this.request?.abort();
+    this.request = undefined;
+    this._messages.set([]);
+    this._pending.set(false);
+    this._error.set(null);
   }
 
-  async ask(question: string, ctx: { tenantId: string; uid: string }): Promise<void> {
+  protected invoke(question: string, courseId: string, agent: CoachAgentId): Promise<TutorAnswer> {
+    return this.api.ask(question, courseId, this.request?.signal, agent);
+  }
+
+  async ask(
+    question: string,
+    ctx: { tenantId: string; uid: string; courseId: string; agent?: CoachAgentId },
+  ): Promise<void> {
+    if (this._pending()) return;
+    const generation = this.generation;
+    this.request = new AbortController();
     const { tenantId, uid } = ctx;
     const now = new Date().toISOString();
 
@@ -84,7 +74,8 @@ export class TutorService {
     this._error.set(null);
 
     try {
-      const response = await this.invoke(question, tenantId, uid);
+      const response = await this.invoke(question, ctx.courseId, ctx.agent ?? 'general');
+      if (generation !== this.generation) return;
 
       const assistantMessage: ChatMessage = {
         id: newUUID(),
@@ -98,10 +89,12 @@ export class TutorService {
 
       this._messages.update((msgs) => [...msgs, assistantMessage]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error from AI tutor.';
-      this._error.set(message);
+      if (generation === this.generation) this._error.set(coachError(err));
     } finally {
-      this._pending.set(false);
+      if (generation === this.generation) {
+        this._pending.set(false);
+        this.request = undefined;
+      }
     }
   }
 }

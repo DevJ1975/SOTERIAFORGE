@@ -1,29 +1,21 @@
-/* Learner PWA global styles. PrimeIcons + per-tenant theming via CSS custom
-   properties applied at runtime by @forge/ui ThemeService. */
+/* Learner PWA global styles.
+   The Soteria Forge kit (Inter, --sf-* tokens, sf-* components, shell) is loaded
+   first from libs/ui/src/styles/forge/index.css (see project.json). Per-tenant
+   theming overrides --sf-* / --assurance-* at runtime via @assurance/ui ThemeService.
+   PrimeIcons stays for PrimeNG widgets that render their own glyphs; Forge UI uses
+   <sf-icon> (kit sprite) only. */
 @import 'primeicons/primeicons.css';
-
-:root {
-  --assurance-primary: #0b5fff;
-  --assurance-surface: #ffffff;
-  --assurance-text: #1a1a1a;
-}
-
-* {
-  box-sizing: border-box;
-}
 
 html,
 body {
   margin: 0;
   min-height: 100%;
-  font-family: var(--assurance-font, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
-  color: var(--assurance-text);
-  background: var(--assurance-surface);
+  font-family: var(--sf-font);
+  color: var(--sf-ink);
+  background: var(--sf-cream);
 }
 
-/* Visually-hidden utility – keeps content in the accessibility tree while
-   hiding it from sighted users. Use for skip links (shown on focus) and
-   sr-only labels. */
+/* Visually-hidden utility (legacy name; prefer .sf-visually-hidden). */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -36,18 +28,17 @@ body {
   border: 0;
 }
 
-/* The skip link is sr-only until focused so keyboard users can jump straight
-   to main content without tabbing through navigation. */
+/* Skip link for the shell-less frame (auth pages); the Forge shell has its own. */
 .skip-link {
   position: absolute;
   top: -999px;
   left: 0;
   z-index: 9999;
-  padding: 0.5rem 1rem;
-  background: var(--assurance-primary, #0b5fff);
-  color: #fff;
-  font-weight: 700;
-  border-radius: 0 0 0.25rem 0.25rem;
+  padding: var(--sf-space-2) var(--sf-space-4);
+  background: var(--sf-charcoal);
+  color: var(--sf-surface);
+  font-weight: var(--sf-weight-bold);
+  border-radius: 0 0 var(--sf-radius-sm) var(--sf-radius-sm);
   text-decoration: none;
 
   &:focus {

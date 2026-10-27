@@ -3,11 +3,13 @@ import {
   Component,
   OnInit,
   computed,
+  inject,
   input,
   output,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { SfxService } from '@assurance/sfx';
 import {
   type CardGameConfig,
   type FlipRevealConfig,
@@ -273,6 +275,8 @@ export class AccessibleCardGameComponent implements OnInit {
   readonly config = input.required<CardGameConfig>();
   readonly completed = output<GameResult>();
 
+  private readonly sfx = inject(SfxService);
+
   protected readonly configError = signal<string | null>(null);
   protected readonly announce = signal('');
   protected readonly done = signal(false);
@@ -313,6 +317,7 @@ export class AccessibleCardGameComponent implements OnInit {
       this.configError.set(errors[0]);
       return;
     }
+    this.sfx.preload(['card-flip', 'select', 'match', 'correct', 'incorrect', 'lesson-complete']);
     if (cfg.kind === 'match_pairs') {
       this.matchCells.set(this.buildMatchCells(cfg));
     } else if (cfg.kind === 'sort_buckets') {
@@ -331,6 +336,7 @@ export class AccessibleCardGameComponent implements OnInit {
     const next = new Set(this.revealed());
     next.add(id);
     this.revealed.set(next);
+    this.sfx.play('card-flip');
     const total = this.flip().cards.length;
     this.announce.set(`Revealed ${next.size} of ${total}.`);
     if (next.size === total) {
@@ -371,6 +377,7 @@ export class AccessibleCardGameComponent implements OnInit {
     }
     if (!first) {
       this.firstPickId.set(cell.id);
+      this.sfx.play('select');
       this.announce.set(`Selected ${cell.label}. Choose its match.`);
       return;
     }
@@ -384,6 +391,7 @@ export class AccessibleCardGameComponent implements OnInit {
       this.matched.set(next);
       this.announce.set(`Matched ${firstCell.label} with ${cell.label}.`);
       const totalPairs = this.match().pairs.length;
+      if (next.size < totalPairs) this.sfx.play('match');
       if (next.size === totalPairs) {
         const score = Math.min(100, Math.round((totalPairs / this.attempts()) * 100));
         this.finish(
@@ -392,6 +400,7 @@ export class AccessibleCardGameComponent implements OnInit {
         );
       }
     } else {
+      this.sfx.play('incorrect');
       this.announce.set(`${firstCell.label} and ${cell.label} do not match. Try again.`);
     }
   }
@@ -425,6 +434,7 @@ export class AccessibleCardGameComponent implements OnInit {
     if (this.scenario().showImmediateFeedback !== false) {
       const msg = choice.feedback ?? (choice.isCorrect ? 'Correct.' : 'Not the best choice.');
       this.feedback.set({ ...this.feedback(), [scenario.id]: msg });
+      this.sfx.play(choice.isCorrect ? 'correct' : 'incorrect');
       this.announce.set(msg);
     }
   }
@@ -450,6 +460,7 @@ export class AccessibleCardGameComponent implements OnInit {
     this.done.set(true);
     this.doneMessage.set(message);
     this.announce.set(message);
+    this.sfx.play('lesson-complete');
     this.completed.emit(result);
   }
 }

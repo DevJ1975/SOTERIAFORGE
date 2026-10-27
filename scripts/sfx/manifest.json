@@ -1,0 +1,122 @@
+{
+  "$comment": "Source of truth for the courseware sound-effect library. Prompts are for ElevenLabs eleven_text_to_sound_v2. Tone: subtle, polished, professional with light warmth.",
+  "model": "eleven_text_to_sound_v2",
+  "targetLufs": -20,
+  "maxBytesPerFile": 51200,
+  "sounds": [
+    {
+      "id": "correct",
+      "use": "Correct answer in quiz or game",
+      "maxSeconds": 1.0,
+      "prompt": "Short soft two-note rising chime, bright glassy bell tone, clean, gentle"
+    },
+    {
+      "id": "incorrect",
+      "use": "Incorrect answer (non-punishing)",
+      "maxSeconds": 1.0,
+      "prompt": "Short soft low muted two-note descending tone, rounded marimba, gentle and not harsh"
+    },
+    {
+      "id": "select",
+      "use": "Selecting an option or card",
+      "maxSeconds": 0.5,
+      "prompt": "Very short soft UI click, subtle tick, clean and dry"
+    },
+    {
+      "id": "card-flip",
+      "use": "Flipping a game card",
+      "maxSeconds": 0.6,
+      "prompt": "Quick paper playing card flip, soft whoosh with a light snap"
+    },
+    {
+      "id": "match",
+      "use": "Matching pair found",
+      "maxSeconds": 1.0,
+      "prompt": "Pleasant short sparkle chime, three quick ascending bell notes, airy"
+    },
+    {
+      "id": "lesson-complete",
+      "use": "Lesson completed",
+      "maxSeconds": 2.0,
+      "prompt": "Warm uplifting resolve chord on soft synth pad with a gentle bell shimmer, short"
+    },
+    {
+      "id": "module-complete",
+      "use": "Module or course completed",
+      "maxSeconds": 3.0,
+      "prompt": "Triumphant but tasteful short fanfare, warm brass and bells, quick swell and clean ending"
+    },
+    {
+      "id": "level-up",
+      "use": "Level up",
+      "maxSeconds": 2.0,
+      "prompt": "Fast rising arpeggio of glassy bell notes ending on a bright sparkle"
+    },
+    {
+      "id": "badge-earned",
+      "use": "Badge awarded",
+      "maxSeconds": 2.0,
+      "prompt": "Shiny metallic ding followed by a soft sparkle shimmer, rewarding"
+    },
+    {
+      "id": "streak",
+      "use": "Daily streak extended",
+      "maxSeconds": 1.5,
+      "prompt": "Quick warm whoosh into a crackling flame flicker with a soft chime"
+    },
+    {
+      "id": "timer-warning",
+      "use": "Timer nearly out",
+      "maxSeconds": 1.0,
+      "prompt": "Two soft urgent wooden clock ticks, dry, close-mic"
+    },
+    {
+      "id": "time-up",
+      "use": "Timer expired",
+      "maxSeconds": 1.5,
+      "prompt": "Soft single low gong-like bell tone with gentle decay"
+    },
+    {
+      "id": "notification",
+      "use": "In-app notification",
+      "maxSeconds": 1.0,
+      "prompt": "Gentle single soft bell ping, short, friendly"
+    },
+    {
+      "id": "page-turn",
+      "use": "Moving between slides or steps",
+      "maxSeconds": 0.7,
+      "prompt": "Soft quick page turn, light paper swish"
+    },
+    {
+      "id": "submit",
+      "use": "Submitting an answer or form",
+      "maxSeconds": 0.7,
+      "prompt": "Soft confident button press with a short airy whoosh"
+    },
+    {
+      "id": "error",
+      "use": "System error or invalid input",
+      "maxSeconds": 0.8,
+      "prompt": "Short soft low double buzz, muted, unobtrusive"
+    },
+    {
+      "id": "unlock",
+      "use": "Content unlocked",
+      "maxSeconds": 1.5,
+      "prompt": "Soft metallic latch click followed by a light rising shimmer"
+    },
+    {
+      "id": "pass",
+      "use": "Assessment passed",
+      "maxSeconds": 2.5,
+      "prompt": "Bright positive success jingle, short, glockenspiel and soft strings"
+    },
+    {
+      "id": "fail",
+      "use": "Assessment not passed",
+      "maxSeconds": 2.0,
+      "prompt": "Soft sympathetic descending three-note phrase, warm piano, gentle and encouraging"
+    }
+  ]
+}

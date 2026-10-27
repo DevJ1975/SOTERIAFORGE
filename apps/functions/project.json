@@ -8,10 +8,10 @@
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": ["typecheck"],
+      "outputs": ["{projectRoot}/lib"],
       "options": {
         "command": "node apps/functions/build.mjs"
-      },
-      "outputs": ["{projectRoot}/lib"]
+      }
     },
     "typecheck": {
       "executor": "nx:run-commands",
@@ -19,20 +19,18 @@
         "command": "node ./node_modules/typescript/bin/tsc --noEmit -p apps/functions/tsconfig.app.json"
       }
     },
-    "lint": { "executor": "@nx/eslint:lint" },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": { "jestConfig": "apps/functions/jest.config.ts" }
-    },
     "serve": {
       "executor": "nx:run-commands",
-      "options": { "command": "firebase emulators:start --only functions,firestore,auth" }
+      "options": {
+        "command": "firebase emulators:start --only functions,firestore,auth"
+      }
     },
     "deploy": {
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
-      "options": { "command": "firebase deploy --only functions" }
+      "options": {
+        "command": "firebase deploy --only functions"
+      }
     }
   }
 }

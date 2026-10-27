@@ -1,78 +1,120 @@
-/**
- * Mock @angular/fire/functions before any imports so the module initialisation
- * (which transitively requires @firebase/auth → fetch) never runs in Jest/Node.
- */
-const callableImpl = jest.fn();
-jest.mock('@angular/fire/functions', () => ({
-  Functions: class Functions {},
-  httpsCallable: (_fns: unknown, name: string) => {
-    return (data: unknown) => callableImpl(name, data);
-  },
-}));
-
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { Functions } from '@angular/fire/functions';
+import { ASSURANCE_ENV } from '@assurance/auth';
 import { IngestService } from './ingest.service';
+import { CoachApi } from './coach-api';
 
-describe('IngestService', () => {
+describe('Local coach HTTP API', () => {
+  let http: HttpTestingController;
+
   beforeEach(() => {
-    callableImpl.mockReset();
     TestBed.configureTestingModule({
-      providers: [{ provide: Functions, useValue: {} }],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ASSURANCE_ENV, useValue: { apiBaseUrl: 'http://localhost:8000' } },
+      ],
     });
+    http = TestBed.inject(HttpTestingController);
+  });
+  afterEach(() => http.verify());
+
+  it('ingests approved course text via Django, not Firebase', async () => {
+    const promise = TestBed.inject(IngestService).ingest({
+      sourceId: 's1',
+      courseId: 'c1',
+      label: 'Guide',
+      text: 'Course material',
+      approved: true,
+    });
+    const request = http.expectOne('http://localhost:8000/api/coach/sources/s1');
+    expect(request.request.method).toBe('PUT');
+    const body = request.request.body as FormData;
+    expect(body.get('courseId')).toBe('c1');
+    expect(body.get('text')).toBe('Course material');
+    expect(body.get('approved')).toBe('true');
+    expect(body.has('tenantId')).toBe(false);
+    request.flush({ ok: true, chunks: 1 });
+    expect(await promise).toEqual({ ok: true, chunks: 1 });
   });
 
-  it('creates the service', () => {
-    const service = TestBed.inject(IngestService);
-    expect(service).toBeTruthy();
+  it('uploads a file without also sending stale pasted text', async () => {
+    const promise = TestBed.inject(IngestService).ingest({
+      sourceId: 's1',
+      courseId: 'c1',
+      label: 'Guide',
+      text: 'Old text',
+      file: new File(['# Guide'], 'guide.md'),
+      approved: true,
+    });
+    const request = http.expectOne('http://localhost:8000/api/coach/sources/s1');
+    expect((request.request.body as FormData).has('file')).toBe(true);
+    expect((request.request.body as FormData).has('text')).toBe(false);
+    request.flush({ ok: true, chunks: 1 });
+    await promise;
   });
 
-  it('calls the ingestKnowledge callable with the provided input and returns data', async () => {
-    callableImpl.mockResolvedValue({ data: { ok: true, chunks: 12 } });
-
-    const service = TestBed.inject(IngestService);
-    const result = await service.ingest({
-      tenantId: 'acme',
-      sourceId: 'src-001',
-      text: 'Some long document text',
-      label: 'Biology 101',
+  it('asks Django with course ID, question, and the default general agent', async () => {
+    const promise = TestBed.inject(CoachApi).ask('Question', 'c1');
+    const request = http.expectOne('http://localhost:8000/api/coach/ask');
+    expect(request.request.body).toEqual({
+      question: 'Question',
+      courseId: 'c1',
+      agent: 'general',
     });
-
-    expect(callableImpl).toHaveBeenCalledWith('ingestKnowledge', {
-      tenantId: 'acme',
-      sourceId: 'src-001',
-      text: 'Some long document text',
-      label: 'Biology 101',
-    });
-    expect(result.ok).toBe(true);
-    expect(result.chunks).toBe(12);
+    request.flush({ answer: 'Unavailable in sources', citations: [], abstained: true });
+    expect((await promise).abstained).toBe(true);
   });
 
-  it('forwards optional moduleId when provided', async () => {
-    callableImpl.mockResolvedValue({ data: { ok: true, chunks: 3 } });
-
-    const service = TestBed.inject(IngestService);
-    await service.ingest({
-      tenantId: 'acme',
-      sourceId: 'src-002',
-      text: 'Module-specific text',
-      moduleId: 'mod-abc',
+  it('sends specialist provenance with explicitly approved source content', async () => {
+    const promise = TestBed.inject(IngestService).ingest({
+      sourceId: 's1',
+      courseId: 'c1',
+      label: 'Reviewed guidance',
+      text: 'Approved excerpt',
+      approved: true,
+      agent: 'workplace-ai',
+      referenceUrl: 'https://www.nist.gov/',
+      edition: 'Instructor review, 2026-10-27',
     });
-
-    expect(callableImpl).toHaveBeenCalledWith('ingestKnowledge', {
-      tenantId: 'acme',
-      sourceId: 'src-002',
-      text: 'Module-specific text',
-      moduleId: 'mod-abc',
-    });
+    const request = http.expectOne('http://localhost:8000/api/coach/sources/s1');
+    const body = request.request.body as FormData;
+    expect(body.get('agent')).toBe('workplace-ai');
+    expect(body.get('referenceUrl')).toBe('https://www.nist.gov/');
+    expect(body.get('edition')).toBe('Instructor review, 2026-10-27');
+    request.flush({ ok: true, chunks: 1 });
+    await promise;
   });
 
-  it('propagates callable errors to the caller', async () => {
-    callableImpl.mockRejectedValue(new Error('Firebase error'));
+  it('propagates outages to the caller', async () => {
+    const promise = TestBed.inject(CoachApi).ask('Question', 'c1');
+    http
+      .expectOne('http://localhost:8000/api/coach/ask')
+      .flush({ detail: 'Busy' }, { status: 503, statusText: 'Unavailable' });
+    await expect(promise).rejects.toMatchObject({ status: 503 });
+  });
 
-    const service = TestBed.inject(IngestService);
-    await expect(
-      service.ingest({ tenantId: 'acme', sourceId: 's1', text: 'text' }),
-    ).rejects.toThrow('Firebase error');
+  it('cancels the browser HTTP request when the chat context is reset', async () => {
+    const controller = new AbortController();
+    const promise = TestBed.inject(CoachApi).ask('Question', 'c1', controller.signal);
+    const rejection = expect(promise).rejects.toBeDefined();
+    const request = http.expectOne('http://localhost:8000/api/coach/ask');
+    controller.abort();
+    expect(request.cancelled).toBe(true);
+    await rejection;
+  });
+
+  it('reports missing API configuration through a rejected promise', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ASSURANCE_ENV, useValue: {} },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    await expect(TestBed.inject(CoachApi).courses()).rejects.toThrow('Configure the Forge API URL');
   });
 });

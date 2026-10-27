@@ -4,12 +4,6 @@
   "sourceRoot": "libs/payments/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:feature"],
-  "targets": {
-    "lint": { "executor": "@nx/eslint:lint" },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
-      "options": { "jestConfig": "libs/payments/jest.config.ts" }
-    }
-  }
+  "// targets": "to see all targets run: nx show project payments --web",
+  "targets": {}
 }
