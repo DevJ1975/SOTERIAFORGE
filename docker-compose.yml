@@ -1,0 +1,44 @@
+name: soteriaforge
+
+services:
+  learner:
+    build:
+      context: .
+      target: static-runtime
+      args:
+        APP: learner
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      target: static-runtime
+      args:
+        APP: admin
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+
+  superadmin:
+    build:
+      context: .
+      target: static-runtime
+      args:
+        APP: superadmin
+    ports:
+      - "8082:80"
+    restart: unless-stopped
+
+  storefront:
+    build:
+      context: .
+      target: storefront-runtime
+      args:
+        APP: storefront
+    environment:
+      NG_ALLOWED_HOSTS: "${NG_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+    ports:
+      - "8083:4000"
+    restart: unless-stopped
