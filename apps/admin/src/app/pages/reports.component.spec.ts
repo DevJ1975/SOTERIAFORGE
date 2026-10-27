@@ -1,8 +1,8 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
-import { MemberRepository, EnrollmentRepository } from '@assurance/data-access';
-import type { Member, Enrollment } from '@assurance/shared';
+import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { ReportsComponent } from './reports.component';
 
 // Polyfill URL.createObjectURL / revokeObjectURL for jsdom
@@ -22,133 +22,88 @@ if (typeof URL.revokeObjectURL === 'undefined') {
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'http://api.test',
 };
 
-const testMember: Member = {
-  uid: 'user-1',
+const member = {
+  id: 'm1',
+  uid: 'm1',
   tenantId: 'acme',
-  role: 'learner',
-  status: 'active',
   email: 'alice@example.com',
   displayName: 'Alice',
-  xp: 120,
-  level: 2,
-  streakDays: 5,
-  earnedBadgeIds: [],
-  createdAt: '2024-01-01T00:00:00.000Z',
+  role: 'learner',
+  status: 'active',
 };
 
-const testEnrollment: Enrollment = {
-  uid: 'user-1',
-  courseId: 'course-abc',
-  tenantId: 'acme',
+const row = {
+  memberId: 'm1',
+  memberName: 'Alice',
+  email: 'alice@example.com',
+  courseId: 'c1',
+  courseTitle: 'Forklift Safety',
   progressPct: 100,
-  completed: true,
-  createdAt: '2024-01-02T00:00:00.000Z',
-};
-
-const memberRepoStub = {
-  listActive: jest.fn(async (): Promise<Member[]> => [testMember]),
-};
-
-const enrollmentRepoStub = {
-  listForTenant: jest.fn(async (): Promise<Enrollment[]> => [testEnrollment]),
+  completedAt: '2026-01-02T00:00:00Z',
+  dueAt: null,
+  lastActivityAt: '2026-01-02T00:00:00Z',
 };
 
 describe('ReportsComponent', () => {
+  let http: HttpTestingController;
+
   beforeEach(async () => {
-    jest.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [ReportsComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: MemberRepository, useValue: memberRepoStub },
-        { provide: EnrollmentRepository, useValue: enrollmentRepoStub },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
       ],
     }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
-  });
+  afterEach(() => http.verify());
 
-  it('renders the Reports heading', () => {
+  async function load() {
     const fixture = TestBed.createComponent(ReportsComponent);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Reports');
-  });
-
-  it('renders Export CSV buttons', () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Export Members CSV');
-    expect(el.textContent).toContain('Export Enrollments CSV');
-  });
-
-  it('calls MemberRepository.listActive and EnrollmentRepository.listForTenant on init', async () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
+    http.expectOne('http://api.test/api/members').flush([member]);
+    http.expectOne('http://api.test/api/reports/enrollments').flush([row]);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(memberRepoStub.listActive).toHaveBeenCalledWith('acme');
-    expect(enrollmentRepoStub.listForTenant).toHaveBeenCalledWith('acme');
+    return fixture;
+  }
+
+  it('renders the heading, export buttons and the enrollment rows', async () => {
+    const fixture = await load();
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).toContain('Reports');
+    expect(text).toContain('Export Members CSV');
+    expect(text).toContain('Export Enrollments CSV');
+    expect(text).toContain('Forklift Safety');
+    expect(text).not.toContain('Loading report data');
   });
 
-  it('loads data: members and enrollments signals are populated after whenStable', async () => {
+  it('shows an error when the report fails to load', async () => {
     const fixture = TestBed.createComponent(ReportsComponent);
     fixture.detectChanges();
+    http.expectOne('http://api.test/api/members').flush([member]);
+    http
+      .expectOne('http://api.test/api/reports/enrollments')
+      .flush({ detail: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
     fixture.detectChanges();
-    // Verify the repos were called (data loading path executed)
-    expect(memberRepoStub.listActive).toHaveBeenCalledTimes(1);
-    expect(enrollmentRepoStub.listForTenant).toHaveBeenCalledTimes(1);
-    // Verify no error state was set
+    expect(fixture.nativeElement.textContent).toContain('Forbidden');
+  });
+
+  it('exports both CSVs without throwing', async () => {
+    const fixture = await load();
     const comp = fixture.componentInstance as unknown as {
-      error: () => string | null;
-      loading: () => boolean;
+      exportMembers(): void;
+      exportEnrollments(): void;
     };
-    expect(comp.error()).toBeNull();
-  });
-
-  it('exportMembers does not throw after load', async () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const comp = fixture.componentInstance as unknown as { exportMembers(): void };
     expect(() => comp.exportMembers()).not.toThrow();
-  });
-
-  it('exportEnrollments does not throw after load', async () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const comp = fixture.componentInstance as unknown as { exportEnrollments(): void };
     expect(() => comp.exportEnrollments()).not.toThrow();
-  });
-
-  it('table columns header is rendered when not loading', async () => {
-    const fixture = TestBed.createComponent(ReportsComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    // After load, loading() should be false; either table or empty message is shown
-    const el: HTMLElement = fixture.nativeElement;
-    // The table should not show loading message anymore
-    expect(el.textContent).not.toContain('Loading report data');
   });
 });

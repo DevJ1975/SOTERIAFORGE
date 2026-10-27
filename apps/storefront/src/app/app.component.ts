@@ -1,14 +1,7 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  PLATFORM_ID,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { AuthService } from '@assurance/auth';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { RouterLink, RouterOutlet } from '@angular/router';
+import { STOREFRONT_ENV } from '../environments/storefront-environment';
+import { requestAccessHref } from './core/catalog-data';
 
 @Component({
   selector: 'assurance-storefront-root',
@@ -36,12 +29,7 @@ import { AuthService } from '@assurance/auth';
         aria-label="Primary"
       >
         <a routerLink="/catalog" (click)="closeMenu()">Catalog</a>
-        @if (authenticated()) {
-          <a routerLink="/account" (click)="closeMenu()">My learning</a>
-          <button type="button" class="store-header__signout" (click)="signOut()">Sign out</button>
-        } @else {
-          <a routerLink="/auth" (click)="closeMenu()">Sign in</a>
-        }
+        <a [href]="requestHref" (click)="closeMenu()">Request access</a>
       </nav>
     </header>
     <main id="main-content" tabindex="-1">
@@ -99,8 +87,7 @@ import { AuthService } from '@assurance/auth';
         display: flex;
         align-items: center;
       }
-      .store-header__nav a,
-      .store-header__signout {
+      .store-header__nav a {
         display: inline-flex;
         align-items: center;
         /* >= 44px touch targets. */
@@ -109,12 +96,6 @@ import { AuthService } from '@assurance/auth';
         margin-left: 0.75rem;
         color: #fff;
         text-decoration: none;
-      }
-      .store-header__signout {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font: inherit;
       }
       @media (max-width: 40rem) {
         .store-header__toggle {
@@ -131,8 +112,7 @@ import { AuthService } from '@assurance/auth';
         .store-header__nav--open {
           display: flex;
         }
-        .store-header__nav a,
-        .store-header__signout {
+        .store-header__nav a {
           margin-left: 0;
           padding: 0 0.25rem;
           width: 100%;
@@ -154,29 +134,10 @@ import { AuthService } from '@assurance/auth';
 export class AppComponent {
   protected readonly year = new Date().getFullYear();
 
-  /** Always false on the server; updated reactively from Firebase auth in the browser. */
-  protected readonly authenticated = signal(false);
+  protected readonly requestHref = requestAccessHref(inject(STOREFRONT_ENV).contactEmail);
 
   /** Mobile nav menu visibility (only meaningful at narrow viewports). */
   protected readonly menuOpen = signal(false);
-
-  // Stored for signOut — only set in the browser.
-  private authSvc?: AuthService;
-  private routerSvc?: Router;
-
-  constructor() {
-    // inject() is valid inside the constructor (injection context).
-    // We guard with isBrowser so that AuthService (and Firebase Auth) is never
-    // instantiated during SSR prerender — avoiding auth/invalid-api-key crashes.
-    if (isPlatformBrowser(inject(PLATFORM_ID))) {
-      const auth = inject(AuthService);
-      const router = inject(Router);
-      this.authSvc = auth;
-      this.routerSvc = router;
-      // Mirror the auth signal; effect auto-disposes with the component (no leak).
-      effect(() => this.authenticated.set(auth.isAuthenticated()));
-    }
-  }
 
   protected toggleMenu(): void {
     this.menuOpen.update((v) => !v);
@@ -184,10 +145,5 @@ export class AppComponent {
 
   protected closeMenu(): void {
     this.menuOpen.set(false);
-  }
-
-  protected signOut(): void {
-    this.closeMenu();
-    void this.authSvc?.signOutUser().then(() => this.routerSvc?.navigate(['/']));
   }
 }

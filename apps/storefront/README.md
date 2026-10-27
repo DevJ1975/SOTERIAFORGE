@@ -1,16 +1,16 @@
-# storefront (B2C, SSR)
+# storefront (public catalog, SSR)
 
-Public, SEO-optimized B2C marketplace for the dedicated B2C tenant. Server-side
+Public, SEO-optimized course catalog with a request-access path. Server-side
 rendered with **incremental hydration** + **event replay** for fast, indexable
 pages and cheap interactivity.
 
 - **Rendering:** `@angular/ssr` via the `@angular-devkit/build-angular:application`
   builder (`outputMode: server`, Express entry `src/server.ts`). Static routes
-  are prerendered; dynamic catalog/checkout are SSR'd.
+  are prerendered; the catalog is SSR'd.
 - **Hydration:** `provideClientHydration(withIncrementalHydration(), withEventReplay())`.
-- **Payments:** `@assurance/payments` `CheckoutService` → Stripe Checkout. Entitlements
-  are granted only by the verified Stripe webhook (server-side); the client never
-  sets entitlement state.
+- **Access:** no checkout or accounts. "Request access" is a `mailto:` link to
+  `contactEmail` (see `src/environments`). The catalog list is a static placeholder
+  in `src/app/core/catalog-data.ts` until a public course endpoint exists.
 - **Deploy:** Vercel (`vercel.json`, `framework: angular`). The apex + `www`
   resolve to this app; tenant subdomains resolve to the learner/admin apps.
 
@@ -21,6 +21,3 @@ nx serve storefront        # dev server with SSR
 nx build storefront        # production build (browser + server + prerender)
 node dist/apps/storefront/server/server.mjs   # run the SSR server locally
 ```
-
-Phase 7 sources the catalog SSR-side from `/b2c/catalog` (for SEO), wires the
-Stripe customer portal, and gates purchased content.

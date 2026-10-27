@@ -1,77 +1,31 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  PLATFORM_ID,
-  afterNextRender,
-  inject,
-  signal,
-} from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
-import { CheckoutService } from '@assurance/payments';
-import { CatalogRepository } from '@assurance/data-access';
-import { ASSURANCE_ENV } from '@assurance/auth';
-import type { CatalogProduct } from '@assurance/shared';
+import { STOREFRONT_ENV } from '../../environments/storefront-environment';
+import { PLACEHOLDER_COURSES, requestAccessHref, type CatalogCourse } from '../core/catalog-data';
 import { SeoService } from '../core/seo.service';
 
-// NOTE: True SSR-for-SEO with live product data requires a real Firebase config
-// at build/render time (deploy-time enhancement). In the current setup the
-// environment has an empty apiKey so ANY Firestore read during prerender would
-// crash with auth/invalid-api-key. The server renders the page shell + SEO meta
-// tags; the browser fetches and hydrates the product list after bootstrap.
+// The course list is a static placeholder (see core/catalog-data.ts), so the
+// whole page renders on the server with no data fetching.
 
 @Component({
   selector: 'assurance-catalog',
   standalone: true,
-  imports: [CardModule, ButtonModule],
+  imports: [CardModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- Purchase-required banner when redirected back after an entitlement gate -->
-    @if (lockedProductId()) {
-      <div class="catalog__banner" role="alert">
-        <strong>Purchase required.</strong> Please purchase the product below to continue.
-      </div>
-    }
-
     <section class="catalog">
       <h1>Course Catalog</h1>
-
-      <!--
-        When Firebase is configured at render time the product list is fetched
-        during SSR (so it appears in the server HTML for crawlers). Otherwise the
-        server emits a shell and the browser hydrates the list. Both paths share
-        the same markup below.
-      -->
-      @if (!isBrowser && !ssrData()) {
-        <!-- SSR shell (no render-time Firebase config): hydrated in the browser -->
-        <p class="catalog__loading">Loading courses&hellip;</p>
-      } @else {
-        @if (loading()) {
-          <p class="catalog__loading">Loading courses&hellip;</p>
-        } @else if (products().length === 0) {
-          <p class="catalog__empty">No courses are available at this time.</p>
-        } @else {
-          <div class="catalog__grid">
-            @for (product of products(); track product.id) {
-              <p-card [header]="product.title">
-                <p>{{ product.description }}</p>
-                <div class="catalog__buy">
-                  <span class="catalog__mode">
-                    {{ product.mode === 'subscription' ? 'Subscription' : 'One-time purchase' }}
-                  </span>
-                  <p-button label="Buy" (onClick)="buy(product.id)" />
-                </div>
-              </p-card>
-            }
-          </div>
+      <p class="catalog__intro">
+        Courses are assigned by your organization. Request access and we will set you up.
+      </p>
+      <div class="catalog__grid">
+        @for (course of courses; track course.id) {
+          <p-card [header]="course.title">
+            <p>{{ course.description }}</p>
+            <a class="catalog__request" [href]="href(course)">Request access</a>
+          </p-card>
         }
-
-        @if (checkoutService.lastError()) {
-          <p class="catalog__error" role="alert">{{ checkoutService.lastError() }}</p>
-        }
-      }
+      </div>
     </section>
   `,
   styles: [
@@ -85,11 +39,11 @@ import { SeoService } from '../core/seo.service';
         font-size: clamp(1.5rem, 5vw, 2.25rem);
         line-height: 1.2;
       }
+      .catalog__intro {
+        color: var(--text-color-secondary, #6c757d);
+      }
       .catalog__grid {
         display: grid;
-        /* Single column on the smallest phones (no card wider than the viewport);
-           multi-column once there is room. min() keeps cards from overflowing at
-           320px where 16rem + padding would exceed the width. */
         grid-template-columns: 1fr;
         gap: 1rem;
       }
@@ -98,108 +52,31 @@ import { SeoService } from '../core/seo.service';
           grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
         }
       }
-      .catalog__buy {
-        display: flex;
+      .catalog__request {
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
+        min-height: 44px;
         margin-top: 1rem;
-      }
-      .catalog__mode {
-        font-size: 0.875rem;
-        opacity: 0.7;
-      }
-      .catalog__loading,
-      .catalog__empty {
-        color: var(--text-color-secondary, #6c757d);
-        margin-top: 1rem;
-      }
-      .catalog__error {
-        color: var(--red-600, #c0392b);
-        margin-top: 1rem;
-      }
-      .catalog__banner {
-        background: var(--yellow-100, #fffde7);
-        border-left: 4px solid var(--yellow-600, #f9a825);
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
+        font-weight: 600;
       }
     `,
   ],
 })
 export class CatalogComponent {
-  protected readonly checkoutService = inject(CheckoutService);
-  private readonly catalogRepo = inject(CatalogRepository);
-  private readonly route = inject(ActivatedRoute);
-  private readonly seo = inject(SeoService);
-  private readonly env = inject(ASSURANCE_ENV);
+  private readonly env = inject(STOREFRONT_ENV);
 
-  /** Set to true only in the browser — safe to read in template. */
-  protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-
-  /**
-   * True when a real Firebase config is present at render time. Only then can the
-   * catalog be safely read during SSR; with an empty apiKey any Firestore read
-   * crashes the prerender with `auth/invalid-api-key`, so we must NOT attempt it.
-   */
-  private readonly firebaseConfigured = !!this.env.firebase?.apiKey?.trim();
-
-  /** Set during SSR once the product list has been server-fetched (gated path). */
-  protected readonly ssrData = signal(false);
-
-  protected readonly products = signal<CatalogProduct[]>([]);
-  protected readonly loading = signal(true);
-  protected readonly lockedProductId = signal<string | null>(null);
+  protected readonly courses = PLACEHOLDER_COURSES;
 
   constructor() {
-    // SEO tags are SSR-safe — Title/Meta + DOCUMENT write server-side too.
-    this.seo.setSeo({
+    inject(SeoService).setSeo({
       title: 'Course Catalog — Soteria Assurance',
-      description:
-        'Browse ASSURANCE safety-training courses. One-time purchase or all-access subscription.',
+      description: 'Browse ASSURANCE safety-training courses and request access for your team.',
       path: '/catalog',
       type: 'website',
     });
-
-    if (this.isBrowser) {
-      // Read query params synchronously from the snapshot (safe in constructor).
-      const locked = this.route.snapshot.queryParamMap.get('locked');
-      if (locked) {
-        this.lockedProductId.set(locked);
-      }
-
-      // Browser hydration path (always available): fetch after first render.
-      afterNextRender(() => {
-        void this.loadProducts();
-      });
-    } else if (this.firebaseConfigured) {
-      // SSR-dynamic-catalog (gated): when (and ONLY when) a real public Firebase
-      // config exists at render time, fetch the product list during SSR so the
-      // listings are in the server HTML for crawlers. The pending promise keeps
-      // SSR awaiting the data. With an empty apiKey (the only mode verifiable in
-      // this environment) we skip this entirely and rely on browser hydration —
-      // see the note at the top of this file. Verifying real SSR of the product
-      // list requires deploy-time read-only Firebase credentials we do not have.
-      this.ssrData.set(true);
-      void this.loadProducts();
-    } else {
-      // No render-time Firebase config: leave the SSR shell; the browser hydrates.
-      this.loading.set(false);
-    }
   }
 
-  private async loadProducts(): Promise<void> {
-    this.loading.set(true);
-    try {
-      const items = await this.catalogRepo.listPublished();
-      this.products.set(items);
-    } catch {
-      // Silently fall back to an empty list; the Buy button is hidden.
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  protected buy(productId: string): void {
-    void this.checkoutService.startCheckout(productId);
+  protected href(course: CatalogCourse): string {
+    return requestAccessHref(this.env.contactEmail, course);
   }
 }

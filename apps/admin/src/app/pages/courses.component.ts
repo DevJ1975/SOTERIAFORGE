@@ -4,10 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { CourseRepository } from '@assurance/data-access';
-import { CourseAuthoringService } from '@assurance/lms-core';
-import { TenantService } from '@assurance/auth';
-import type { Course } from '@assurance/shared';
+import { type ApiCourse, AuthoringApi, authoringErrorMessage } from '@assurance/lms-core';
 
 @Component({
   selector: 'assurance-admin-courses',
@@ -77,7 +74,7 @@ import type { Course } from '@assurance/shared';
               <td>{{ c.status }}</td>
               <td class="courses__actions">
                 <p-button
-                  label="Manage Modules"
+                  label="Edit"
                   severity="secondary"
                   size="small"
                   [routerLink]="['/courses', c.id]"
@@ -89,6 +86,14 @@ import type { Course } from '@assurance/shared';
                     size="small"
                     [loading]="publishingId() === c.id"
                     (onClick)="publish(c)"
+                  />
+                } @else {
+                  <p-button
+                    label="Unpublish"
+                    severity="secondary"
+                    size="small"
+                    [loading]="publishingId() === c.id"
+                    (onClick)="unpublish(c)"
                   />
                 }
               </td>
@@ -137,11 +142,9 @@ import type { Course } from '@assurance/shared';
   ],
 })
 export class CoursesComponent implements OnInit {
-  private readonly courseRepo = inject(CourseRepository);
-  private readonly authoringService = inject(CourseAuthoringService);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
 
-  protected readonly courses = signal<Course[]>([]);
+  protected readonly courses = signal<ApiCourse[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly creating = signal(false);
@@ -156,28 +159,23 @@ export class CoursesComponent implements OnInit {
   }
 
   private async loadCourses(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const list = await this.courseRepo.listAll(tid);
-      this.courses.set(list);
+      this.courses.set(await this.api.courses());
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load courses');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load courses'));
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async createCourse(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid || !this.newTitle.trim()) return;
+    if (!this.newTitle.trim()) return;
     this.creating.set(true);
     this.createError.set(null);
     try {
-      await this.authoringService.createCourse({
-        tenantId: tid,
+      await this.api.createCourse({
         title: this.newTitle.trim(),
         description: this.newDescription.trim() || undefined,
       });
@@ -185,19 +183,29 @@ export class CoursesComponent implements OnInit {
       this.newDescription = '';
       await this.loadCourses();
     } catch (err) {
-      this.createError.set((err as Error).message ?? 'Failed to create course');
+      this.createError.set(authoringErrorMessage(err, 'Failed to create course'));
     } finally {
       this.creating.set(false);
     }
   }
 
-  protected async publish(c: Course): Promise<void> {
+  protected publish(c: ApiCourse): Promise<void> {
+    return this.setPublished(c, true);
+  }
+
+  protected unpublish(c: ApiCourse): Promise<void> {
+    return this.setPublished(c, false);
+  }
+
+  private async setPublished(c: ApiCourse, published: boolean): Promise<void> {
     this.publishingId.set(c.id);
     try {
-      await this.authoringService.publish(c);
+      await (published ? this.api.publish(c.id) : this.api.unpublish(c.id));
       await this.loadCourses();
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Publish failed');
+      this.loadError.set(
+        authoringErrorMessage(err, published ? 'Publish failed' : 'Unpublish failed'),
+      );
     } finally {
       this.publishingId.set(null);
     }

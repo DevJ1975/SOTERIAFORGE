@@ -4,7 +4,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { ASSURANCE_ENV, forgeApiInterceptor, provideForgeApi } from '@assurance/auth';
-import { provideForgeFirebase } from '@assurance/data-access';
 import { provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
@@ -23,10 +22,5 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     providePrimeNG({ theme: { preset: Aura } }),
     { provide: ASSURANCE_ENV, useValue: environment },
-    provideForgeFirebase({
-      firebase: environment.firebase,
-      appCheckSiteKey: environment.appCheckSiteKey,
-      useEmulators: !environment.production,
-    }),
   ],
 };

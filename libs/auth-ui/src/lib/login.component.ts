@@ -11,7 +11,7 @@ import { AuthShellComponent } from './auth-shell.component';
  * Accessible, tenant-scoped sign-in used by every app's `/login` route.
  *
  * Template-driven form (repo convention) + signals. On success it honours the
- * `returnUrl` query param attached by `authGuard`, defaulting to `/`. Firebase
+ * `returnUrl` query param attached by `authGuard`, defaulting to `/`. Sign-in
  * errors are mapped to friendly, translated messages via `authErrorMessageKey`.
  */
 @Component({

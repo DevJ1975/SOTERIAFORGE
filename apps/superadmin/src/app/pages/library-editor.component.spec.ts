@@ -1,153 +1,139 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
-import { LibraryRepository } from '@assurance/data-access';
-import type { Course, Module } from '@assurance/shared';
+import type { ApiCourseOutline } from '@assurance/lms-core';
+import { LibraryService } from '../services/library.service';
 import { LibraryEditorComponent } from './library-editor.component';
-
-// Polyfill crypto.randomUUID for jsdom
-if (!('randomUUID' in crypto)) {
-  Object.defineProperty(crypto, 'randomUUID', {
-    value: () =>
-      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      }),
-    configurable: true,
-  });
-}
 
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'https://api.example.com',
 };
 
-const mockCourse: Course = {
-  id: 'lib-course-1',
-  tenantId: 'platform',
-  title: 'Library Editor Course',
-  description: 'Description for editor test',
-  status: 'published',
-  badgeRefs: [],
+const outline: ApiCourseOutline = {
+  id: 'c1',
+  title: 'Lockout Basics',
+  description: 'Intro',
+  status: 'draft',
   tags: [],
-  xpReward: 0,
   availableOffline: false,
   createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+  enrollment: null,
+  modules: [
+    {
+      id: 'm1',
+      courseId: 'c1',
+      title: 'Module One',
+      label: '',
+      order: 0,
+      lessons: [
+        {
+          id: 'l1',
+          title: 'Watch this',
+          order: 0,
+          contentType: 'video',
+          estimatedMinutes: 5,
+          frameworkTags: [],
+          hasQuiz: false,
+          completed: false,
+        },
+      ],
+    },
+  ],
 };
 
-const mockModule: Module = {
-  id: 'mod-1',
-  courseId: 'lib-course-1',
-  tenantId: 'platform',
-  title: 'Intro Video',
-  order: 0,
-  contentType: 'video',
-  xpReward: 0,
-  badgeRefs: [],
-  completion: {},
-  createdAt: '2024-01-01T00:00:00.000Z',
+const libraryStub = {
+  course: jest.fn(async (): Promise<ApiCourseOutline> => outline),
+  updateCourse: jest.fn(async () => outline),
+  addModule: jest.fn(async () => ({})),
+  deleteModule: jest.fn(async () => undefined),
+  addLesson: jest.fn(async () => ({})),
+  deleteLesson: jest.fn(async () => undefined),
 };
 
-const libraryRepoStub = {
-  getCourse: jest.fn(async (_id: string): Promise<Course | undefined> => mockCourse),
-  listModules: jest.fn(async (_id: string): Promise<Module[]> => []),
-  setCourse: jest.fn(async (_c: Course): Promise<void> => undefined),
-  setModule: jest.fn(async (_courseId: string, _m: Module): Promise<void> => undefined),
-  list: jest.fn(async (): Promise<Course[]> => []),
-};
+interface Internals {
+  title: string;
+  status: string;
+  newModuleTitle: string;
+  saveDetails(): Promise<boolean>;
+  addModule(): Promise<void>;
+  setDraft(moduleId: string, key: string, value: string): void;
+  addLesson(moduleId: string): Promise<void>;
+  deleteLesson(id: string): Promise<boolean>;
+  saveError(): string | null;
+}
 
 describe('LibraryEditorComponent', () => {
+  async function create() {
+    const fixture = TestBed.createComponent(LibraryEditorComponent);
+    fixture.componentRef.setInput('id', 'c1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [LibraryEditorComponent],
       providers: [
-        provideRouter([]),
         { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: LibraryRepository, useValue: libraryRepoStub },
+        { provide: LibraryService, useValue: libraryStub },
       ],
     }).compileComponents();
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(LibraryEditorComponent);
-    // Set required signal input before detectChanges to avoid NG0950
-    fixture.componentRef.setInput('id', 'lib-course-1');
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
+  it('loads the outline and renders modules and lessons', async () => {
+    const fixture = await create();
+    expect(libraryStub.course).toHaveBeenCalledWith('c1');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Lockout Basics');
+    expect(text).toContain('Module One');
+    expect(text).toContain('Watch this');
   });
 
-  it('calls LibraryRepository.getCourse and listModules on init', async () => {
-    const fixture = TestBed.createComponent(LibraryEditorComponent);
-    fixture.componentRef.setInput('id', 'lib-course-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(libraryRepoStub.getCourse).toHaveBeenCalledWith('lib-course-1');
-    expect(libraryRepoStub.listModules).toHaveBeenCalledWith('lib-course-1');
+  it('saves course details including the publish status', async () => {
+    const fixture = await create();
+    const comp = fixture.componentInstance as unknown as Internals;
+    comp.title = 'Renamed';
+    comp.status = 'published';
+    await comp.saveDetails();
+    expect(libraryStub.updateCourse).toHaveBeenCalledWith('c1', {
+      title: 'Renamed',
+      description: 'Intro',
+      status: 'published',
+    });
   });
 
-  it('renders the course title after load', async () => {
-    const fixture = TestBed.createComponent(LibraryEditorComponent);
-    fixture.componentRef.setInput('id', 'lib-course-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Library Editor Course');
-  });
-
-  it('renders modules in the table', async () => {
-    libraryRepoStub.listModules.mockResolvedValueOnce([mockModule]);
-    const fixture = TestBed.createComponent(LibraryEditorComponent);
-    fixture.componentRef.setInput('id', 'lib-course-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Intro Video');
-  });
-
-  it('calls LibraryRepository.setModule with a new module on addModule', async () => {
-    const fixture = TestBed.createComponent(LibraryEditorComponent);
-    fixture.componentRef.setInput('id', 'lib-course-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    await fixture.whenStable();
-
-    const comp = fixture.componentInstance as unknown as {
-      newModuleTitle: string;
-      newContentType: string;
-      newExternalUrl: string;
-      newAssetRef: string;
-      addModule(): Promise<void>;
-    };
-
-    comp.newModuleTitle = 'Test Video Module';
-    comp.newContentType = 'video';
-    comp.newExternalUrl = 'https://example.com/video.mp4';
-    comp.newAssetRef = '';
+  it('adds a module and a lesson, reloading the outline each time', async () => {
+    const fixture = await create();
+    const comp = fixture.componentInstance as unknown as Internals;
+    comp.newModuleTitle = 'Module Two';
     await comp.addModule();
+    expect(libraryStub.addModule).toHaveBeenCalledWith('c1', {
+      title: 'Module Two',
+      label: undefined,
+    });
 
-    expect(libraryRepoStub.setModule).toHaveBeenCalledTimes(1);
-    const [calledCourseId, calledModule] = libraryRepoStub.setModule.mock.calls[0] as [
-      string,
-      Module,
-    ];
-    expect(calledCourseId).toBe('lib-course-1');
-    expect(calledModule.title).toBe('Test Video Module');
-    expect(calledModule.contentType).toBe('video');
-    expect(calledModule.externalUrl).toBe('https://example.com/video.mp4');
-    expect(calledModule.order).toBe(0);
-    expect(calledModule.tenantId).toBe('platform');
-    expect(calledModule.createdAt).toBeTruthy();
+    comp.setDraft('m1', 'title', 'Read this');
+    comp.setDraft('m1', 'contentType', 'video');
+    comp.setDraft('m1', 'assetRef', 'asset:abc');
+    await comp.addLesson('m1');
+    expect(libraryStub.addLesson).toHaveBeenCalledWith('m1', {
+      title: 'Read this',
+      contentType: 'video',
+      assetRef: 'asset:abc',
+    });
+    expect(libraryStub.course).toHaveBeenCalledTimes(3);
+  });
+
+  it('surfaces a failure when a write fails', async () => {
+    libraryStub.deleteLesson.mockRejectedValueOnce(new Error('nope'));
+    const fixture = await create();
+    const comp = fixture.componentInstance as unknown as Internals;
+    expect(await comp.deleteLesson('l1')).toBe(false);
+    expect(comp.saveError()).toBe('Failed to delete lesson');
   });
 });

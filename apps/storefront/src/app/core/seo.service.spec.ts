@@ -1,20 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
 import { Meta, Title } from '@angular/platform-browser';
-import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
+import {
+  STOREFRONT_ENV,
+  type StorefrontEnvironment,
+} from '../../environments/storefront-environment';
 import { SeoService } from './seo.service';
 
-const testEnv: AssuranceEnvironment = {
+const testEnv: StorefrontEnvironment = {
   production: false,
   rootDomain: 'soteria.example',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  contactEmail: 'hello@soteria.example',
 };
 
 describe('SeoService', () => {
@@ -25,7 +21,7 @@ describe('SeoService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [SeoService, Title, Meta, { provide: ASSURANCE_ENV, useValue: testEnv }],
+      providers: [SeoService, Title, Meta, { provide: STOREFRONT_ENV, useValue: testEnv }],
     });
     service = TestBed.inject(SeoService);
     meta = TestBed.inject(Meta);

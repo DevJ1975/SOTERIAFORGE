@@ -5,9 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
-import { GameRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
-import type { Game } from '@assurance/shared';
+import { type ApiGame, AuthoringApi, authoringErrorMessage } from '@assurance/lms-core';
 import type { CardGameConfig } from '@assurance/games/model';
 
 /** Minimal valid configs for each CardGameConfig kind. */
@@ -197,10 +195,9 @@ const GAME_KIND_OPTIONS: { label: string; value: GameKind }[] = [
   ],
 })
 export class GamesComponent implements OnInit {
-  private readonly gameRepo = inject(GameRepository);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
 
-  protected readonly games = signal<Game[]>([]);
+  protected readonly games = signal<ApiGame[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly creating = signal(false);
@@ -216,43 +213,35 @@ export class GamesComponent implements OnInit {
   }
 
   private async loadGames(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const list = await this.gameRepo.list(tid);
-      this.games.set(list);
+      this.games.set(await this.api.games());
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load games');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load games'));
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async createGame(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid || !this.newTitle.trim() || !this.newKind) return;
+    if (!this.newTitle.trim() || !this.newKind) return;
     this.creating.set(true);
     this.createError.set(null);
     try {
-      const now = new Date().toISOString();
-      const config = makeDefaultConfig(this.newKind, this.newTitle.trim());
-      const newGame: Game = {
-        id: crypto.randomUUID(),
-        tenantId: tid,
-        title: this.newTitle.trim(),
+      const title = this.newTitle.trim();
+      const config = makeDefaultConfig(this.newKind, title);
+      await this.api.createGame({
+        title,
         engine: 'phaser',
         config: config as unknown as Record<string, unknown>,
         assetRefs: [],
-        createdAt: now,
-      };
-      await this.gameRepo.set(tid, newGame);
+      });
       this.newTitle = '';
       this.newKind = null;
       await this.loadGames();
     } catch (err) {
-      this.createError.set((err as Error).message ?? 'Failed to create game');
+      this.createError.set(authoringErrorMessage(err, 'Failed to create game'));
     } finally {
       this.creating.set(false);
     }

@@ -1,21 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
-import { GameRepository } from '@assurance/data-access';
+import { AuthoringApi } from '@assurance/lms-core';
 import { GameEditorComponent } from './game-editor.component';
-
-const testEnv: AssuranceEnvironment = {
-  production: false,
-  rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
-};
 
 const sampleFlipGame = {
   id: 'game-1',
@@ -28,7 +14,9 @@ const sampleFlipGame = {
     cards: [{ id: 'c1', label: 'Card 1', revealText: 'Reveal 1' }],
   },
   assetRefs: [],
-  createdAt: new Date().toISOString(),
+  riveAssetRef: '',
+  createdAt: '2026-10-01T00:00:00Z',
+  updatedAt: '2026-10-01T00:00:00Z',
 };
 
 const sampleMatchGame = {
@@ -53,136 +41,78 @@ const sampleMatchGame = {
     ],
   },
   assetRefs: [],
-  createdAt: new Date().toISOString(),
+  riveAssetRef: '',
+  createdAt: '2026-10-01T00:00:00Z',
+  updatedAt: '2026-10-01T00:00:00Z',
 };
 
-describe('GameEditorComponent — flip_reveal', () => {
+describe('GameEditorComponent', () => {
+  const api = { game: jest.fn(), updateGame: jest.fn() };
+
+  async function render(id: string) {
+    const fixture = TestBed.createComponent(GameEditorComponent);
+    fixture.componentRef.setInput('id', id);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
   beforeEach(async () => {
+    jest.resetAllMocks();
+    api.game.mockImplementation(async (id: string) =>
+      id === 'game-2' ? sampleMatchGame : sampleFlipGame,
+    );
+    api.updateGame.mockImplementation(async (_id: string, patch: object) => ({
+      ...sampleFlipGame,
+      ...patch,
+    }));
     await TestBed.configureTestingModule({
       imports: [GameEditorComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: GameRepository,
-          useValue: {
-            getById: async () => sampleFlipGame,
-            set: jest.fn(),
-          },
-        },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
-      ],
+      providers: [provideRouter([]), { provide: AuthoringApi, useValue: api }],
     }).compileComponents();
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
+  it('loads the game and renders the flip_reveal editor', async () => {
+    const fixture = await render('game-1');
+    const text = fixture.nativeElement.textContent;
+    expect(api.game).toHaveBeenCalledWith('game-1');
+    expect(text).toContain('Back to Games');
+    expect(text).toContain('Flip Game');
+    expect(text).toContain('Save Game');
+    expect(text).toContain('Flip');
   });
 
-  it('renders the back link to games', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Back to Games');
-  });
-
-  it('renders the game title after loading', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Flip Game');
-  });
-
-  it('renders the Save Game button', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Save Game');
-  });
-
-  it('renders the flip_reveal card editor', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Flip');
-  });
-});
-
-describe('GameEditorComponent — match_pairs', () => {
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [GameEditorComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: GameRepository,
-          useValue: {
-            getById: async () => sampleMatchGame,
-            set: jest.fn(),
-          },
-        },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
-      ],
-    }).compileComponents();
-  });
-
-  it('creates the component for match_pairs', () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-2');
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  it('renders Match Game title', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-2');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+  it('renders a match_pairs game', async () => {
+    const fixture = await render('game-2');
     expect(fixture.nativeElement.textContent).toContain('Match Game');
   });
-});
 
-describe('GameEditorComponent — save game', () => {
-  let setMock: jest.Mock;
-
-  beforeEach(async () => {
-    setMock = jest.fn().mockResolvedValue(undefined);
-    await TestBed.configureTestingModule({
-      imports: [GameEditorComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: GameRepository,
-          useValue: { getById: async () => sampleFlipGame, set: setMock },
-        },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
-      ],
-    }).compileComponents();
-  });
-
-  it('calls GameRepository.set when saving the game', async () => {
-    const fixture = TestBed.createComponent(GameEditorComponent);
-    fixture.componentRef.setInput('id', 'game-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
+  it('validates, then saves config and Rive ref through the API', async () => {
+    const fixture = await render('game-1');
+    fixture.componentInstance['editRiveAssetRef'] = ' asset:abc ';
     await fixture.componentInstance['saveGame']();
 
-    expect(setMock).toHaveBeenCalledWith('acme', expect.objectContaining({ id: 'game-1' }));
+    expect(api.updateGame).toHaveBeenCalledWith('game-1', {
+      config: expect.objectContaining({ kind: 'flip_reveal' }),
+      riveAssetRef: 'asset:abc',
+    });
+  });
+
+  it('does not save a config that fails validation', async () => {
+    const fixture = await render('game-1');
+    fixture.componentInstance['flipCards'].set([]);
+    await fixture.componentInstance['saveGame']();
+
+    expect(api.updateGame).not.toHaveBeenCalled();
+    expect(fixture.componentInstance['validationErrors']().length).toBeGreaterThan(0);
+  });
+
+  it('shows the error when the save fails', async () => {
+    api.updateGame.mockRejectedValue(new Error('nope'));
+    const fixture = await render('game-1');
+    await fixture.componentInstance['saveGame']();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Failed to save game');
   });
 });

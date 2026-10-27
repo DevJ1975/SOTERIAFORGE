@@ -1,138 +1,76 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import type { Course, Enrollment, Module } from '@assurance/shared';
-import { CourseRepository, EnrollmentRepository } from '@assurance/data-access';
-import { computeCourseProgress, nextIncompleteModule } from './progress';
+import {
+  type ApiCourseOutline,
+  type ApiLessonSummary,
+  LearningApi,
+  apiErrorMessage,
+} from './learning-api';
 
 export interface CourseStoreState {
-  tenantId: string;
   courseId: string;
-  course: Course | null;
-  modules: Module[];
-  enrollment: Enrollment | null;
+  /** The course, its modules and lesson summaries, and the caller's enrollment. */
+  outline: ApiCourseOutline | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: CourseStoreState = {
-  tenantId: '',
   courseId: '',
-  course: null,
-  modules: [],
-  enrollment: null,
+  outline: null,
   loading: false,
   error: null,
 };
 
 /**
- * NgRx SignalStore for a single course context.
+ * NgRx SignalStore for a single course context, backed by the Forge API.
  *
- * Consumers must call `load(tenantId, courseId, uid)` after injection to
- * populate the store. Computed signals update reactively as state changes.
- *
- * Provide per-component (not root) so each course view gets its own isolated
- * store instance. Modules can be externally patched after load if a
- * ModuleRepository is added to @assurance/data-access in the future.
+ * Call `load(courseId)` after injection. Provide per-component (not root) so each
+ * course view gets its own isolated store instance.
  */
 export const CourseStore = signalStore(
   withState<CourseStoreState>(initialState),
 
-  withComputed((store) => ({
-    /** Percentage of modules completed (0–100). */
-    progressPct: computed(() =>
-      computeCourseProgress(
-        store.modules(),
-        completedIdsFromEnrollment(store.enrollment(), store.modules()),
-      ),
-    ),
-
-    /** Next module the learner should work on. */
-    nextModule: computed(() =>
-      nextIncompleteModule(
-        store.modules(),
-        completedIdsFromEnrollment(store.enrollment(), store.modules()),
-      ),
-    ),
-
-    /** True when all modules are completed (derived from enrollment flag). */
-    isComplete: computed(() => store.enrollment()?.completed ?? false),
-  })),
+  withComputed((store) => {
+    const lessons = computed<ApiLessonSummary[]>(() =>
+      (store.outline()?.modules ?? []).flatMap((m) => m.lessons),
+    );
+    return {
+      /** Every lesson in learner order. */
+      lessons,
+      /** Percentage of lessons completed (0-100), as the server computed it. */
+      progressPct: computed(() => store.outline()?.enrollment?.progressPct ?? 0),
+      /** The next lesson the learner should work on. */
+      nextLesson: computed(() => lessons().find((l) => !l.completed) ?? null),
+      /** True once the enrollment is marked complete. */
+      isComplete: computed(() => store.outline()?.enrollment?.completedAt != null),
+    };
+  }),
 
   withMethods((store) => {
-    const courseRepo = inject(CourseRepository);
-    const enrollmentRepo = inject(EnrollmentRepository);
+    const api = inject(LearningApi);
 
     return {
-      /**
-       * Loads the course and the user's enrollment in parallel.
-       * Modules are not loaded here because CourseRepository does not expose a
-       * modules sub-collection. Patch modules externally after obtaining them
-       * from a resolver or a dedicated ModuleRepository.
-       */
-      async load(tenantId: string, courseId: string, uid: string): Promise<void> {
-        patchState(store, { loading: true, error: null, tenantId, courseId });
-
+      /** Loads the course outline together with the caller's enrollment. */
+      async load(courseId: string): Promise<void> {
+        patchState(store, { loading: true, error: null, courseId });
         try {
-          const [course, enrollment] = await Promise.all([
-            courseRepo.getById(tenantId, courseId),
-            enrollmentRepo.get(tenantId, courseId, uid),
-          ]);
-
-          patchState(store, { course, enrollment, loading: false });
+          patchState(store, { outline: await api.course(courseId), loading: false });
         } catch (err) {
           // Surface the failure instead of silently rendering an empty course.
-          const message = err instanceof Error ? err.message : 'Failed to load course.';
-          console.error('CourseStore.load failed', err);
-          patchState(store, { loading: false, error: message });
+          patchState(store, {
+            loading: false,
+            error: apiErrorMessage(err, 'Failed to load course.'),
+          });
         }
       },
 
-      /** Refreshes only the enrollment (e.g. after a module-complete event). */
-      async refreshEnrollment(uid: string): Promise<void> {
-        const tenantId = store.tenantId();
+      /** Reloads the outline (e.g. after a lesson completes). */
+      async refresh(): Promise<void> {
         const courseId = store.courseId();
-        if (!tenantId || !courseId) return;
-
-        const enrollment = await enrollmentRepo.get(tenantId, courseId, uid);
-        patchState(store, { enrollment });
-      },
-
-      /**
-       * Allows external callers (e.g. route resolvers) to supply the module
-       * list once it has been fetched independently.
-       */
-      setModules(modules: Module[]): void {
-        patchState(store, { modules });
+        if (!courseId) return;
+        patchState(store, { outline: await api.course(courseId) });
       },
     };
   }),
 );
-
-// ---------------------------------------------------------------------------
-// Internal helpers (not exported)
-// ---------------------------------------------------------------------------
-
-/**
- * Derives the list of completed module ids from an enrollment's stored
- * progress. Completed module ids are stored inside `enrollment.cmi` under the
- * key `completedModuleIds` as a string array (kept general-purpose via cmi).
- *
- * Fallback: if `enrollment.completed` is true and no explicit list is stored,
- * all module ids are returned (covers legacy / externally written enrollments).
- */
-function completedIdsFromEnrollment(enrollment: Enrollment | null, modules: Module[]): string[] {
-  if (!enrollment) return [];
-
-  // Prefer explicit CMI-stored list
-  const raw = enrollment.cmi?.['completedModuleIds'];
-  if (Array.isArray(raw)) {
-    return raw.filter((v): v is string => typeof v === 'string');
-  }
-
-  // Fallback: enrollment is 100 % complete — treat all modules as done
-  if (enrollment.completed) {
-    return modules.map((m) => m.id);
-  }
-
-  return [];
-}

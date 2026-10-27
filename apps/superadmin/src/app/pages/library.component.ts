@@ -7,9 +7,10 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TextareaModule } from 'primeng/textarea';
 import { CheckboxModule } from 'primeng/checkbox';
-import { LibraryRepository, LIBRARY_TENANT, TenantRepository } from '@assurance/data-access';
+import type { ApiCourse } from '@assurance/lms-core';
+import { apiErrorMessage } from '../services/api-error';
 import { LibraryService } from '../services/library.service';
-import type { Course, Tenant } from '@assurance/shared';
+import { type TenantRow, TenantsService } from '../services/tenants.service';
 
 @Component({
   selector: 'assurance-superadmin-library',
@@ -133,7 +134,7 @@ import type { Course, Tenant } from '@assurance/shared';
               </div>
               @if (shareResult()) {
                 <p class="library__share-result">
-                  Shared successfully — {{ shareResult()!.created }} course(s) created.
+                  Shared successfully — {{ shareResult()!.created }} draft course(s) created.
                 </p>
               }
               @if (shareError()) {
@@ -197,11 +198,10 @@ import type { Course, Tenant } from '@assurance/shared';
   ],
 })
 export class LibraryComponent implements OnInit {
-  private readonly libraryRepo = inject(LibraryRepository);
-  private readonly tenantRepo = inject(TenantRepository);
-  private readonly librarySvc = inject(LibraryService);
+  private readonly library = inject(LibraryService);
+  private readonly tenantsApi = inject(TenantsService);
 
-  protected readonly courses = signal<Course[]>([]);
+  protected readonly courses = signal<ApiCourse[]>([]);
   protected readonly loading = signal(false);
   protected readonly createError = signal<string | null>(null);
 
@@ -209,12 +209,12 @@ export class LibraryComponent implements OnInit {
   protected newDescription = '';
 
   // Share state
-  protected readonly shareTarget = signal<Course | null>(null);
-  protected readonly tenants = signal<Tenant[]>([]);
+  protected readonly shareTarget = signal<ApiCourse | null>(null);
+  protected readonly tenants = signal<TenantRow[]>([]);
   protected readonly tenantsLoading = signal(false);
   protected readonly selectedTenantIds = signal<string[]>([]);
   protected readonly shareLoading = signal(false);
-  protected readonly shareResult = signal<{ ok: boolean; created: number } | null>(null);
+  protected readonly shareResult = signal<{ created: number } | null>(null);
   protected readonly shareError = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -225,10 +225,9 @@ export class LibraryComponent implements OnInit {
     this.loading.set(true);
     this.createError.set(null);
     try {
-      const result = await this.libraryRepo.list();
-      this.courses.set(result);
+      this.courses.set(await this.library.list());
     } catch (err) {
-      this.createError.set((err as Error).message ?? 'Failed to load courses');
+      this.createError.set(apiErrorMessage(err, 'Failed to load courses'));
     } finally {
       this.loading.set(false);
     }
@@ -239,41 +238,29 @@ export class LibraryComponent implements OnInit {
     this.loading.set(true);
     this.createError.set(null);
     try {
-      const id = crypto.randomUUID();
-      const now = new Date().toISOString();
-      const c: Course = {
-        id,
-        tenantId: LIBRARY_TENANT,
+      await this.library.createCourse({
         title: this.newTitle,
         description: this.newDescription,
-        status: 'published',
-        badgeRefs: [],
-        tags: [],
-        xpReward: 0,
-        availableOffline: false,
-        createdAt: now,
-      };
-      await this.libraryRepo.setCourse(c);
+      });
       this.newTitle = '';
       this.newDescription = '';
       await this.loadCourses();
     } catch (err) {
-      this.createError.set((err as Error).message ?? 'Failed to create course');
+      this.createError.set(apiErrorMessage(err, 'Failed to create course'));
       this.loading.set(false);
     }
   }
 
-  protected async openShare(course: Course): Promise<void> {
+  protected async openShare(course: ApiCourse): Promise<void> {
     this.shareTarget.set(course);
     this.selectedTenantIds.set([]);
     this.shareResult.set(null);
     this.shareError.set(null);
     this.tenantsLoading.set(true);
     try {
-      const result = await this.tenantRepo.list();
-      this.tenants.set(result);
+      this.tenants.set(await this.tenantsApi.list());
     } catch (err) {
-      this.shareError.set((err as Error).message ?? 'Failed to load tenants');
+      this.shareError.set(apiErrorMessage(err, 'Failed to load tenants'));
     } finally {
       this.tenantsLoading.set(false);
     }
@@ -306,14 +293,11 @@ export class LibraryComponent implements OnInit {
     this.shareError.set(null);
     this.shareResult.set(null);
     try {
-      const result = await this.librarySvc.share({
-        libraryCourseId: target.id,
-        tenantIds: this.selectedTenantIds(),
-      });
-      this.shareResult.set(result);
+      const result = await this.library.share(target.id, this.selectedTenantIds());
+      this.shareResult.set({ created: result.created.length });
       this.selectedTenantIds.set([]);
     } catch (err) {
-      this.shareError.set((err as Error).message ?? 'Failed to share course');
+      this.shareError.set(apiErrorMessage(err, 'Failed to share course'));
     } finally {
       this.shareLoading.set(false);
     }
