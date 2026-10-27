@@ -103,15 +103,9 @@ export const appRoutes: Routes = [
     },
     loadComponent: placeholder,
   },
-  {
-    // Individual, tenant-wide ranking: kept reachable by URL but not linked from
-    // the Forge rail until it is reworked to crews only (SFG-SPC-FRG-011).
-    path: 'leaderboard',
-    canActivate: [authGuard, tenantGuard],
-    data: { crumbs: crumb('Leaderboard') },
-    loadComponent: () =>
-      import('./pages/leaderboard.component').then((m) => m.LeaderboardPageComponent),
-  },
+  // The leaderboard is crews-only and lives on My Progress (SFG-SPC-FRG-011); the old
+  // individual ranking is gone, so keep bookmarks and the bottom-nav link working.
+  { path: 'leaderboard', redirectTo: 'progress', pathMatch: 'full' },
   {
     path: 'tutor',
     canActivate: [authGuard, tenantGuard],
