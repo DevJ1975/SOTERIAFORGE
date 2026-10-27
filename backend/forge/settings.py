@@ -29,6 +29,9 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 # Railway sets RAILWAY_PUBLIC_DOMAIN on services with a public domain.
 if os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
     ALLOWED_HOSTS.append(os.environ["RAILWAY_PUBLIC_DOMAIN"])
+# Railway's deploy health check sends this Host header; without it /healthz is a 400.
+if os.environ.get("RAILWAY_ENVIRONMENT_NAME"):
+    ALLOWED_HOSTS.append("healthcheck.railway.app")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

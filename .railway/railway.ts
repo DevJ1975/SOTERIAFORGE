@@ -14,7 +14,8 @@ export default defineRailway((ctx) => {
   const api = service('api', {
     source: github('DevJ1975/SOTERIAFORGE', {
       rootDirectory: 'backend',
-      branch: ctx.isEnvironment('production') ? 'main' : null,
+      // Staging tracks the Angular 22 + Django branch until it merges to main.
+      branch: ctx.isEnvironment('production') ? 'main' : 'feat/angular-22-upgrade',
     }),
     build: { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile', watchPatterns: ['backend/**'] },
     // Migrate as the database owner, then refresh the RLS-bound runtime role the
