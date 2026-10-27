@@ -20,7 +20,7 @@ describe('Local coach HTTP API', () => {
   });
   afterEach(() => http.verify());
 
-  it('ingests approved course text via Django, not Firebase', async () => {
+  it('ingests approved course text via the Forge API', async () => {
     const promise = TestBed.inject(IngestService).ingest({
       sourceId: 's1',
       courseId: 'c1',

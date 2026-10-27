@@ -20,14 +20,6 @@ test-output/
 playwright-report/
 test-results/
 
-# Firebase
-.firebase/
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-firebase-export-*/
-*-debug.log
-
 # Vercel
 .vercel
 

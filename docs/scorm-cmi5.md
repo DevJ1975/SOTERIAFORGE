@@ -22,9 +22,8 @@ hosted assets, offline package playback, cmi5 launch/fetch/state/lifecycle and
 arbitrary browser xAPI statement ingestion are not supported. Unsupported
 manifest structures are rejected explicitly.
 
-Legacy Firebase standards/player code remains for older paths. It is not the
-storage, authorization, completion, or reporting path for managed Django lessons.
-Existing non-managed external-link lessons are unchanged.
+The managed Django path is the only storage, authorization, completion and
+reporting path for SCORM lessons. Non-managed external-link lessons are unchanged.
 
 ## Architecture
 
@@ -39,8 +38,8 @@ Existing non-managed external-link lessons are unchanged.
   Extracted objects are published only after validation; failures are visible.
   Interrupted processing older than ten minutes becomes failed; reupload it.
 - `POST /api/standards/packages/{id}/attach`: adds a SCORM lesson to a tenant's
-  existing Django course module. The separate legacy Firebase course editor does
-  not create these modules; use the Django course authoring API when necessary.
+  existing Django course module. Create the module with the Django course
+  authoring API (the admin course editor uses it).
 - `POST /api/standards/lessons/{id}/launch`: requires active membership, a published
   course and enrollment. Issues a two-hour read-only content capability. A new
   launch revokes the prior launch for that enrollment/lesson and restores its CMI.
@@ -49,7 +48,7 @@ Existing non-managed external-link lessons are unchanged.
   can find its same-origin parent API. It never runs on the authenticated Angular
   or API origin. The content URLconf has no authenticated API/admin routes.
 - The wrapper exchanges messages with Angular. Both sides check origin, window
-  source and launch ID. Firebase tokens and LRS credentials never enter the
+  source and launch ID. Access tokens and LRS credentials never enter the
   package origin. Iframes cannot navigate the top window or open popups; CSP
   blocks external assets/connections, workers, plugins, and unauthorized framing.
 - `POST /api/standards/launches/{id}/commit`: the authenticated Angular parent
@@ -113,7 +112,7 @@ No live Railway resources are created by this implementation.
 
    Share the API's `DJANGO_SECRET_KEY` (content capability verification), database
    connection/runtime role, and bucket variables securely. Do not give the
-   content service Firebase service-account or LRS authorization credentials.
+   content service any LRS authorization credentials.
    Default Docker start command and `/healthz` work with either settings module.
    Set the same content/app origin variables on the API. Do not use wildcard
    framing origins. Cap content-service resources and configure trusted proxy/
@@ -138,7 +137,7 @@ Completion of any Django lesson, including native quiz/check grading and SCORM,
 can atomically enqueue one xAPI `completed` statement alongside authoritative
 progress and XP. Browser telemetry, individual quiz interactions, failed attempts
 and cmi5 statements are not yet exported. There is no IndexedDB/offline replay
-of these server events, and the legacy Firebase xAPI client is not reused.
+of these server events.
 
 Enable recording only after selecting the destination and tenant data policy:
 

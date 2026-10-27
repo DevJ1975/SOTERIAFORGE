@@ -12,12 +12,6 @@
  * dispatchEvent so the online-flush and startup-flush paths are exercisable.
  */
 
-// Stub @angular/fire/functions so nothing Firebase-related is imported.
-jest.mock('@angular/fire/functions', () => ({
-  Functions: class Functions {},
-  httpsCallable: jest.fn(() => jest.fn()),
-}));
-
 import { TestBed } from '@angular/core/testing';
 import { OfflineXapiQueue } from './offline-xapi-queue.service';
 import { installFakeIndexedDb, uninstallFakeIndexedDb } from './fake-indexed-db.testkit';
@@ -214,7 +208,7 @@ describe('OfflineXapiQueue (IndexedDB-backed)', () => {
       await flushMicrotasks();
       expect(reloaded.size()).toBe(1);
 
-      // XapiClient would register its sender on startup — that triggers a flush.
+      // A sender registers on startup — that triggers a flush.
       const sender = jest.fn().mockResolvedValue(undefined);
       reloaded.registerSender(sender);
       await flushMicrotasks();

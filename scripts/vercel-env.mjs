@@ -4,7 +4,6 @@
 //   usage: node scripts/vercel-env.mjs <app>        (e.g. learner)
 // Does nothing outside Vercel, so local and CI builds keep the committed file. On Vercel
 // it fails the build when FORGE_API_BASE_URL is missing: without it nobody can sign in.
-// Firebase values are optional and only matter to screens still reading Firestore.
 import { writeFileSync } from 'node:fs';
 
 const app = process.argv[2];
@@ -27,23 +26,10 @@ if (missing.length > 0) {
 }
 
 const optional = (value) => (value?.trim() ? value.trim() : undefined);
-const text = (value) => value?.trim() ?? '';
 const environment = {
   production: true,
   apiBaseUrl: env.FORGE_API_BASE_URL.trim().replace(/\/+$/, ''),
   rootDomain: optional(env.FORGE_ROOT_DOMAIN) ?? 'soteriaforge.com',
-  // Empty unless set: the apps then skip Firebase entirely (isFirebaseConfigured).
-  firebase: {
-    apiKey: text(env.FIREBASE_API_KEY),
-    authDomain: text(env.FIREBASE_AUTH_DOMAIN),
-    projectId: text(env.FIREBASE_PROJECT_ID),
-    storageBucket: text(env.FIREBASE_STORAGE_BUCKET),
-    messagingSenderId: text(env.FIREBASE_MESSAGING_SENDER_ID),
-    appId: text(env.FIREBASE_APP_ID),
-    measurementId: optional(env.FIREBASE_MEASUREMENT_ID),
-  },
-  appCheckSiteKey: optional(env.APP_CHECK_SITE_KEY),
-  fcmVapidKey: optional(env.FCM_VAPID_KEY),
 };
 
 const file = `apps/${app}/src/environments/environment.ts`;

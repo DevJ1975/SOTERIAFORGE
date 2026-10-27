@@ -17,8 +17,7 @@ export const knowledgeSource = auditable.extend({
 export type KnowledgeSource = z.infer<typeof knowledgeSource>;
 
 /**
- * A vector chunk. Stored either in Firestore (native vector search) or an
- * external index keyed by tenantId. Retrieval is ALWAYS filtered by tenantId.
+ * A vector chunk. Stored in the API's vector index keyed by tenantId. Retrieval is ALWAYS filtered by tenantId.
  */
 export const vectorChunk = z.object({
   id: docId,

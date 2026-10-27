@@ -17,7 +17,7 @@ export const course = auditable.extend({
   sourceLibraryId: docId.optional(),
   /**
    * Author opt-in (MO-07): when true, learners may download this course's
-   * cacheable content (uploaded/same-origin media, Firebase Storage assets) for
+   * cacheable content (uploaded/same-origin media) for
    * offline use. Defaults to false so existing course docs validate unchanged.
    * Non-cacheable modules (YouTube/Vimeo/iframe) are surfaced as "requires
    * connection" in the learner UI rather than blocking the opt-in.

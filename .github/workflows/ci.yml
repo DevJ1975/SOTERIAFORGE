@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [learner, admin, superadmin, storefront, functions]
+        project: [learner, admin, superadmin, storefront]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -97,25 +97,6 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: E2E tests
         run: npx nx e2e learner-e2e
-
-  rules-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      # The Firestore emulator requires a JRE.
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - run: npm ci --legacy-peer-deps
-      # Use the workspace-pinned firebase-tools (verified locally), not latest global.
-      - name: Firestore rules tests (emulator)
-        # demo-* project ids run the emulator with no credentials required.
-        run: npx firebase emulators:exec --only firestore --project demo-soteria-forge "npx nx test-rules data-access --skip-nx-cache"
 
   backend:
     runs-on: ubuntu-latest

@@ -5,7 +5,7 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/node_modules', '**/.angular', '**/.nx', 'apps/functions/lib'],
+    ignores: ['**/dist', '**/node_modules', '**/.angular', '**/.nx', '**/.venv', '**/staticfiles'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

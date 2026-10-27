@@ -12,14 +12,6 @@ const env: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
   apiBaseUrl: 'https://api.test',
-  firebase: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
-  },
 };
 
 const ME: ForgeMe = {

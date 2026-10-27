@@ -199,7 +199,7 @@ export class AuthService {
   /**
    * Best-effort deletion of all app-owned offline local data on sign-out: the
    * offline IndexedDB databases, the offline Cache Storage bucket, and anything
-   * registered under `SIGN_OUT_CLEANUP` (e.g. the Firestore cache). None of
+   * registered under `SIGN_OUT_CLEANUP` (e.g. a feature-owned cache). None of
    * these are uid-scoped, so on a shared device they would leak the prior
    * user's data. Browser-guarded and fully swallowed: this MUST NOT break
    * sign-out if any step fails or is unsupported.

@@ -1,34 +1,20 @@
 import Foundation
-import FirebaseFirestore
 
-/// Reads tenant-scoped content. All paths are rooted at `/tenants/{tenantId}/...`
-/// so Firestore rules enforce isolation server-side (`claims.tenantId == tenantId`);
-/// this client layer is a convenience only.
+/// Reads the signed-in member's content from the Forge API. The API scopes every call
+/// to the member's tenant (Postgres row-level security); this client layer is a
+/// convenience only.
 struct CourseService {
-    private var db: Firestore { Firestore.firestore() }
-
-    private func courses(_ tenantId: String) -> CollectionReference {
-        db.collection("tenants").document(tenantId).collection("courses")
+    /// Published courses for the tenant, ordered by title.
+    func listPublishedCourses() async throws -> [Course] {
+        let courses: [Course] = try await ForgeAPI.request("GET", "courses")
+        return courses
+            .filter { $0.status == "published" }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
-    func listPublishedCourses(tenantId: String) async throws -> [Course] {
-        let snapshot = try await courses(tenantId)
-            .whereField("status", isEqualTo: "published")
-            .order(by: "title")
-            .getDocuments()
-        return try snapshot.documents.map { try $0.data(as: Course.self) }
-    }
-
-    func getCourse(tenantId: String, courseId: String) async throws -> Course {
-        try await courses(tenantId).document(courseId).getDocument(as: Course.self)
-    }
-
-    func listModules(tenantId: String, courseId: String) async throws -> [Module] {
-        let snapshot = try await courses(tenantId)
-            .document(courseId)
-            .collection("modules")
-            .order(by: "order")
-            .getDocuments()
-        return try snapshot.documents.map { try $0.data(as: Module.self) }
+    /// A course's modules, each with its lessons, in order.
+    func listModules(courseId: String) async throws -> [Module] {
+        let outline: CourseOutline = try await ForgeAPI.request("GET", "courses/\(courseId)")
+        return outline.modules.sorted { $0.order < $1.order }
     }
 }

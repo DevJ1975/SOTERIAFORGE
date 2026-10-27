@@ -1,44 +1,58 @@
 package com.soteria.assurance.data.auth
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import com.soteria.assurance.data.model.Principal
-import kotlinx.coroutines.tasks.await
+import com.soteria.assurance.data.net.ForgeApi
+import com.soteria.assurance.data.net.Session
+import org.json.JSONObject
 
 /**
- * Wraps Firebase Auth with **GCIP multi-tenancy**. The Identity Platform tenant
- * id must be set on the FirebaseAuth instance *before* sign-in, and custom
- * claims (`role`, `tenantId`, `entitlements`) are read from the ID token after.
+ * Signs in against the Forge API (Django). The organization (tenant) id scopes the
+ * lookup; superadmin accounts sign in with it blank. Roles and tenant membership come
+ * from `GET /api/me` (Postgres is the source of truth), never from the token.
  */
-class AuthRepository(private val auth: FirebaseAuth = Firebase.auth) {
+class AuthRepository {
 
-    /** Builds the current principal from the cached/refreshed ID token claims. */
-    suspend fun currentPrincipal(forceRefresh: Boolean = false): Principal? {
-        val user = auth.currentUser ?: return null
-        val token = user.getIdToken(forceRefresh).await()
-        val claims = token.claims
+    /** The signed-in member as the API sees them, or null when there is no session. */
+    suspend fun currentPrincipal(): Principal? {
+        if (Session.access == null) return null
+        val me = ForgeApi.request("GET", "me") as JSONObject
+        val member = me.getJSONObject("member")
         return Principal(
-            uid = user.uid,
-            email = user.email,
-            role = (claims["role"] as? String) ?: "",
-            tenantId = claims["tenantId"] as? String,
-            @Suppress("UNCHECKED_CAST")
-            entitlements = (claims["entitlements"] as? List<String>) ?: emptyList(),
+            id = member.getString("id"),
+            email = member.optString("email").ifBlank { null },
+            role = member.optString("role"),
+            tenantId = member.optString("tenantId").ifBlank { null },
         )
     }
 
-    /**
-     * Signs in against a specific GCIP tenant. Pass [gcipTenantId] = null only
-     * for superadmin (project-level) accounts.
-     */
-    suspend fun signIn(email: String, password: String, gcipTenantId: String?): Principal {
-        auth.tenantId = gcipTenantId
-        auth.signInWithEmailAndPassword(email.trim(), password).await()
-        // Force-refresh so freshly-set custom claims are reflected immediately.
-        return currentPrincipal(forceRefresh = true)
-            ?: error("Sign-in succeeded but no principal could be resolved")
+    /** Signs in; pass a blank [tenantId] only for superadmin (platform-level) accounts. */
+    suspend fun signIn(email: String, password: String, tenantId: String?): Principal {
+        val body = JSONObject()
+            .put("email", email.trim())
+            .put("password", password)
+            .put("client", "mobile")
+        if (!tenantId.isNullOrBlank()) body.put("tenant", tenantId.trim())
+        Session.tenantId = tenantId?.trim()?.ifBlank { null }
+        try {
+            val tokens = ForgeApi.request("POST", "auth/login", body, authenticated = false) as JSONObject
+            Session.access = tokens.getString("access")
+            Session.refresh = tokens.optString("refresh").ifBlank { null }
+            return currentPrincipal() ?: error("Sign-in succeeded but no principal could be resolved")
+        } catch (e: Exception) {
+            Session.clear()
+            throw e
+        }
     }
 
-    fun signOut() = auth.signOut()
+    suspend fun signOut() {
+        val refresh = Session.refresh
+        runCatching {
+            ForgeApi.request(
+                "POST",
+                "auth/logout",
+                JSONObject().apply { refresh?.let { put("refresh", it) }; put("client", "mobile") },
+            )
+        }
+        Session.clear()
+    }
 }

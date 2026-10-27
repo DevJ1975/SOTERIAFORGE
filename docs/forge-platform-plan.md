@@ -5,6 +5,14 @@
 - **Supersedes (on acceptance):** ADR 0001 decisions 5–7 and the "Firebase/GCP hosts
   data and business logic" split in `docs/deployment.md`
 
+> **Status update (2026-10-27): Firebase has been removed completely.** This plan
+> originally kept Firebase Auth/GCIP and FCM; that was reversed. Sign-in is
+> Django-native, push notifications are dropped, `apps/functions`, Firestore,
+> Storage rules and `libs/data-access` are deleted, and Django on Railway is the
+> only backend. The sections below are the original plan and are kept as a
+> historical record: where they say "keep Firebase" or describe Firebase token
+> auth, FCM or `firebase-admin`, they no longer apply.
+
 ### Local AI pilot (2026-10-27)
 
 The [local course tutor](./local-ai-tutor.md) now connects Angular tutor and

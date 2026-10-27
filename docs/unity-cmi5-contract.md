@@ -54,31 +54,29 @@ For UI niceties (e.g. "request fullscreen"), the iframe may `postMessage` to the
 host; `forge-unity-embed` forwards these via its `signal` output. **This path is
 never used for completion/score** — only cmi5/xAPI is authoritative.
 
-## 5. Launch flow (implemented)
+## 5. Launch flow (target, to be built on the Forge API)
 
-The `ModulePlayerComponent` orchestrates the launch sequence for both `cmi5`
-and `unity` content types:
+The earlier launch used a Firebase callable and a Firestore-backed module player;
+both were removed with Firebase. `forge-cmi5-launcher` (which builds the launch URL
+and renders the sandboxed iframe) remains. The Django `standards` app already
+serves managed SCORM; the cmi5/Unity launch endpoints below are still to be added:
 
-1. **`launchCmi5` (callable)** — on first browser render, the player calls
-   `Cmi5LaunchService.launch(activityId, auUrl)`, which invokes the
-   `launchCmi5` Firebase callable function. The server validates the caller's
-   tenant claim, mints a short-lived fetch token, and returns a
-   `Cmi5LaunchResult` with `{ auUrl, endpoint, fetch, actor, registration, activityId }`.
-2. **`cmi5Fetch` (fetch URL → auth token)** — the AU calls the `fetch` URL once
-   to exchange it for a short-lived auth token. The token is scoped to the
-   caller's tenant; the server's auth claim is authoritative and an AU cannot
+1. **Launch** — the learner app asks the API for launch parameters for the lesson
+   (`activityId`, `auUrl`). The API validates the caller's membership and tenant,
+   mints a short-lived fetch token, and returns `{ auUrl, endpoint, fetch, actor,
+registration, activityId }`.
+2. **Fetch (fetch URL -> auth token)** — the AU calls the `fetch` URL once to
+   exchange it for a short-lived auth token. The token is scoped to the caller's
+   tenant; the server's authenticated tenant is authoritative and an AU cannot
    post statements to another tenant's LRS endpoint.
-3. **`xapi` (Bearer auth-token → tenant-stamped statements)** — the AU posts
-   xAPI statements to `endpoint` using `Authorization: Bearer <token>`. The LRS
-   pipeline stamps each statement with the tenant ID from the auth token,
-   regardless of any client-supplied value.
+3. **xAPI (Bearer auth-token -> tenant-stamped statements)** — the AU posts xAPI
+   statements to `endpoint` using `Authorization: Bearer <token>`. The LRS pipeline
+   stamps each statement with the tenant ID from the auth token, regardless of any
+   client-supplied value.
 
-The `actor` field in the launch result is the server-canonical xAPI Agent for
-the learner. `ModulePlayerComponent` JSON-serialises it via the `actorJson`
-computed signal before passing it to `forge-cmi5-launcher`'s `actor` input.
-
-The component is SSR-safe: the `launchCmi5` call is wrapped in
-`afterNextRender`, so it never runs during server-side pre-render.
+The `actor` field in the launch result is the server-canonical xAPI Agent for the
+learner, JSON-serialised into `forge-cmi5-launcher`'s `actor` input. The launch call
+must run in the browser only (`afterNextRender`), never during server-side pre-render.
 
 ## 6. Versioning
 

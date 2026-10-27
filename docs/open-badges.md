@@ -5,17 +5,17 @@ portable, employer-verifiable — not vanity images.
 
 ## Data model
 
-- Badge **definitions**: `tenants/{tenantId}/badges/{badgeId}` (`Badge` schema —
-  name, description, image, criteria narrative, issuerId). Authored by
-  tenant_admins via `BadgeRepository` (author-gated by `firestore.rules`).
+- Badge **definitions**: a per-tenant `Badge` (name, description, image, criteria
+  narrative, issuerId), authored by tenant_admins through the Forge API. Badges are
+  not yet modelled in Django (see `docs/todo.md`).
 - Badge **awards** (earned credentials): issued server-side and recorded on the
-  learner (e.g. `members/{uid}.earnedBadgeIds` + a signed assertion document).
+  learner (e.g. an awards table plus a signed assertion document).
 
 ## Issuance flow (server-authoritative)
 
 1. A completion event (course/module completion, quiz pass) references
    `badgeRefs` on the course/module.
-2. A Cloud Function verifies the learner genuinely earned it (same anti-cheat
+2. The API verifies the learner genuinely earned it (same anti-cheat
    path as XP — never client-asserted) and **mints an OB 3.0 assertion**: a
    `VerifiableCredential` / `OpenBadgeCredential` JSON-LD with `issuer`,
    `credentialSubject` (the recipient), `achievement` (the badge), and `proof`.
@@ -26,7 +26,7 @@ portable, employer-verifiable — not vanity images.
 
 Minting a _verifiable_ credential requires an **issuer key pair** (Ed25519 /
 `eddsa-rdfc-2022`) whose public key is published at a stable issuer DID/URL, with
-the private key held in **Secret Manager**. This needs live infrastructure (key,
+the private key held in a Railway secret variable. This needs live infrastructure (key,
 hosted issuer profile, optional status list for revocation), so it is designed
 here and wired at deployment rather than stubbed with a throwaway key.
 
@@ -36,7 +36,7 @@ exportable VC is generated once the issuer key is configured.
 
 ## Status
 
-- ✅ Badge definitions + authoring (`BadgeRepository`, schema)
+- ⏳ Badge definitions + authoring in Django (schema exists in `@assurance/shared`)
 - ✅ Award recording design (server-authoritative, tied to verified completion)
-- ⏳ VC signing + hosted issuer profile — deployment-time (issuer key in Secret
-  Manager)
+- ⏳ VC signing + hosted issuer profile — deployment-time (issuer key as a Railway
+  secret)

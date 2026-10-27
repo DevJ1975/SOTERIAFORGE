@@ -1,5 +1,7 @@
 # Soteria Forge — Plan: Rewrite the Backend in Rust
 
+> **Historical document. Draft written before Firebase was removed; references to Firebase Auth / GCIP and FCM describe the stack at the time. Identity is now Django-native (`apps/accounts`) and push is dropped.**
+
 - **Status:** Draft v0.1 · 2026-10-27 · Jamil Jones
 - **Changes (on acceptance):** the "Django 5 + DRF", "Celery" and "Django Channels" rows
   of [forge-platform-plan.md](./forge-platform-plan.md) §1; needs ADR 0002 and an update

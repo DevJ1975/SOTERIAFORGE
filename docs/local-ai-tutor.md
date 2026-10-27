@@ -1,8 +1,7 @@
 # Local course tutor
 
-The Angular tutor and admin Knowledge Base now call Django's `apps.coach`, not
-the legacy Firebase `askTutor` / `ingestKnowledge` functions. Firebase still
-verifies identity. The local pilot uses native macOS Ollama and Postgres
+The Angular tutor and admin Knowledge Base call Django's `apps.coach`, and the
+Django API verifies identity. The local pilot uses native macOS Ollama and Postgres
 pgvector; no model training, cloud inference, or Railway configuration is
 performed.
 
@@ -44,7 +43,7 @@ uv run --env-file .env python manage.py runserver
 ```
 
 Configure each Angular app's existing `apiBaseUrl` to the local Forge API.
-Keep `forgeApiInterceptor` enabled: it supplies Firebase identity and the
+Keep `forgeApiInterceptor` enabled: it supplies the access token and the
 acting tenant only to that configured API. A running Railway API cannot
 reach the Mac's localhost. Never enable this pilot on Railway expecting it
 to connect to the Mac.
@@ -220,8 +219,8 @@ COACH_SMOKE=1 uv run pytest tests/test_coach_smoke.py --reuse-db
 The real smoke test ingests a generated text PDF, checks a page-cited answer,
 and verifies abstention on a question absent from the source. It also checks
 both specialist prompts with clearly labeled synthetic sources and verifies
-that another agent cannot retrieve them. Firebase
-verification alone is mocked; retrieval and inference are real.
+that another agent cannot retrieve them. Authentication
+alone is mocked; retrieval and inference are real.
 
 Before production, evaluate an instructor-reviewed corpus (~50 questions),
 tenant/course isolation, citation entailment, unsupported/adversarial questions,

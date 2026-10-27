@@ -13,7 +13,7 @@ test.afterEach(() => {
   compiledDirectory = undefined;
 });
 
-// The UI and media are real; Firebase/HTTP transport is covered by API/unit tests.
+// The UI and media are real; HTTP transport is covered by API/unit tests.
 // Only the classroom list and credential HTTP responses are supplied by this fixture.
 test('Chrome participants exchange camera and microphone through self-hosted LiveKit', async ({
   browser,

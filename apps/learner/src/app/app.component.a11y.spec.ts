@@ -19,14 +19,7 @@ const authStub = { principal: signal(null), signOutUser: jest.fn() };
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: '',
 };
 
 describe('AppComponent – accessibility', () => {

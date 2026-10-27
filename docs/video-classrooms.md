@@ -81,7 +81,7 @@ uv run --env-file .env python manage.py runserver 8000
 ```
 
 Start the learner app with `npm run start:learner` from the repository root.
-Use your existing Firebase/Auth emulator configuration and tenant-member sign-in.
+Sign in as a tenant member against a running Forge API (`http://localhost:8000` in development).
 Open `/engage` on that tenant's learner hostname. Instructors create rooms there;
 learners join from the same page. This feature does not create test accounts or
 bypass existing authentication.
@@ -132,7 +132,7 @@ end-to-end encryption** against the SFU. Treat the media host as part of the
 education-data boundary. There is no recording or caption service in this release.
 
 Join credentials last five minutes and are scoped to one classroom and one opaque
-membership ID. No emails or Firebase tokens are sent to LiveKit. Credentials do
+membership ID. No emails or access tokens are sent to LiveKit. Credentials do
 not grant room administration or data publishing. Both server-side provisioning
 and token room configuration preserve the capacity limit when an idle media room
 is recreated. Membership/role changes are checked on each credential request.
@@ -166,5 +166,5 @@ screen sharing and leave cleanup. HTTP classroom/authentication fixtures are
 isolated from the normal app; backend tests separately exercise authenticated
 tenant access, roles, provisioning failures, grants, expiry and Postgres RLS.
 Fake camera/microphone and screen-picker flags are confined to this automated
-test, not required by the app. It is not a full Firebase-to-media end-to-end test
+test, not required by the app. It is not a full sign-in-to-media end-to-end test
 or a 21-person load test.

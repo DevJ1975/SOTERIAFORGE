@@ -4,8 +4,8 @@
  * ## Single source of truth
  * The **default** curve is NOT redefined here — it is imported from
  * `@assurance/shared` ({@link LEVEL_BASE_XP}, {@link LEVEL_EXPONENT},
- * {@link sharedXpForLevel}), the one module both the server (Cloud Functions
- * authoritative awards) and this UI build on. This guarantees the client and
+ * {@link sharedXpForLevel}), the one module both the server (authoritative
+ * awards) and this UI build on. This guarantees the client and
  * server agree on a member's level at every threshold — fixing the level
  * "flicker" where the server said level 1 and the client said level 2 at the
  * same XP (MO-13a). These helpers add the richer within-level progress info the

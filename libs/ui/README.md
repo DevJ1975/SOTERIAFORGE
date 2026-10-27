@@ -72,7 +72,7 @@ export class AppComponent {
   private themeService = inject(ThemeService);
 
   ngOnInit() {
-    // From a Firestore tenant document:
+    // From the tenant branding returned by the API:
     this.themeService.applyBranding(tenant.branding);
   }
 }

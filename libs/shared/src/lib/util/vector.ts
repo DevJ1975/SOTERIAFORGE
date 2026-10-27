@@ -1,6 +1,6 @@
 /**
- * Pure vector + text utilities for the RAG pipeline. No Angular/Firebase deps so
- * they run identically in the client, Cloud Functions, and tests.
+ * Pure vector + text utilities for the RAG pipeline. No Angular deps so
+ * they run identically in the client, on Node, and in tests.
  */
 
 /** Cosine similarity of two equal-length vectors. Returns 0 for degenerate input. */

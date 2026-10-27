@@ -16,7 +16,7 @@ final class CoursesViewModel: ObservableObject {
     }
 
     func refresh() {
-        guard let tenantId = principal.tenantId else {
+        guard principal.tenantId != nil else {
             loading = false
             error = "No tenant bound to this account"
             return
@@ -25,7 +25,7 @@ final class CoursesViewModel: ObservableObject {
         error = nil
         Task {
             do {
-                courses = try await service.listPublishedCourses(tenantId: tenantId)
+                courses = try await service.listPublishedCourses()
                 loading = false
             } catch {
                 loading = false

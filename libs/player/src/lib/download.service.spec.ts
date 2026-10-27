@@ -124,8 +124,7 @@ const vimeoModule = makeModule({
 const storageModule = makeModule({
   id: 'm-storage',
   contentType: 'video',
-  externalUrl:
-    'https://firebasestorage.googleapis.com/v0/b/app.appspot.com/o/v.mp4?alt=media&token=abc',
+  externalUrl: 'http://localhost/assets/v.mp4',
 });
 const sameOriginModule = makeModule({
   id: 'm-local',
@@ -165,7 +164,7 @@ describe('DownloadService (MO-07)', () => {
       expect(svc.cacheableUrl(vimeoModule)).toBeNull();
     });
 
-    it('treats Firebase Storage and same-origin assets as cacheable', () => {
+    it('treats same-origin assets as cacheable', () => {
       const svc = newService();
       const report = svc.analyzeCacheability([storageModule, sameOriginModule, youtubeModule]);
       expect(report.cacheable.map((m) => m.id)).toEqual(['m-storage', 'm-local']);

@@ -1,7 +1,3 @@
-# --- Firebase config (secrets — never commit) ---
-android/app/google-services.json
-ios/GoogleService-Info.plist
-
 # --- Android ---
 android/.gradle/
 android/build/

@@ -8,6 +8,11 @@ and edit course content as that author.
 
 Code: `apps/admin/src/app/webmcp/` (registered by `apps/admin/src/app/courses.routes.ts`).
 
+A tool's "module" is a **lesson**, the content item a learner works through
+(`moduleId` arguments are lesson ids). Lessons sit in course **sections**
+(module groups): `forge_get_course` lists them and `forge_add_module` takes an
+optional `sectionId`, otherwise it appends to the last section.
+
 ## Tools
 
 | Tool                        | What it does                                                                           | Writes? |
@@ -15,17 +20,17 @@ Code: `apps/admin/src/app/webmcp/` (registered by `apps/admin/src/app/courses.ro
 | `forge_list_courses`        | All courses in the tenant with id, title, status, tags                                 | No      |
 | `forge_get_course`          | One course plus its modules in learner order                                           | No      |
 | `forge_create_course_draft` | New course, always `draft`                                                             | Yes     |
-| `forge_update_course`       | Title, description, tags, XP, offline availability                                     | Yes     |
+| `forge_update_course`       | Title, description, tags, offline availability                                         | Yes     |
 | `forge_add_module`          | Append a module (video URL, quiz/game id, cmi5, SCORM, Unity)                          | Yes     |
-| `forge_update_module`       | Title, URL, minutes, XP, completion rules                                              | Yes     |
-| `forge_reorder_modules`     | New learner order (must list every module once)                                        | Yes     |
+| `forge_update_module`       | Title, URL, minutes, XP (0 to 1000)                                                    | Yes     |
+| `forge_reorder_modules`     | New learner order within each section (must list every module once)                    | Yes     |
 | `forge_upload_module_video` | Upload a video (https URL ≤ 500 MB, or base64 ≤ 10 MB) and make it the module's source | Yes     |
 
 ## Guardrails
 
 - **Runs as the signed-in user.** Tools check that the user may author in the
   tenant resolved from the host. The agent never supplies a tenant id.
-  Firestore and Storage rules enforce the same thing server-side.
+  The Forge API enforces the same thing server-side.
 - **No publish, unpublish, archive or delete.** Agents draft and edit; a human
   publishes in the course editor. A spec asserts no such tool exists.
 - **Edits to published courses are live.** `forge_update_course` and
@@ -48,7 +53,8 @@ Code: `apps/admin/src/app/webmcp/` (registered by `apps/admin/src/app/courses.ro
 - The open course editor does not live-refresh; reload to see agent edits.
 - SCORM/cmi5 package upload is not exposed yet: the existing SCORM pipeline
   extracts packages but never resolves a launch URL for the player.
-- Uploads go to Firebase Storage for now. Phase 2 of
-  `docs/forge-platform-plan.md` swaps `CourseAssetUploader` for Django-issued
-  signed URLs, and the tools keep working because they only call
-  `CourseAuthoringService` and the uploader.
+- Uploads go through `POST /api/assets` (`CourseAssetUploader`) and the lesson
+  stores the returned `asset:<id>` reference. The tools only call `AuthoringApi`
+  and the uploader.
+- Completion rules (minScore, minProgressPct) and a course-level XP reward have
+  no equivalent in the API, so the tools no longer expose them.

@@ -22,8 +22,6 @@ export const tenant = auditable.extend({
   /** Custom domain mapped to this tenant, if any (Phase 1+). */
   customDomain: z.string().optional(),
   branding: branding.default({ colors: {} }),
-  /** GCIP Identity Platform tenant id. */
-  gcipTenantId: z.string().optional(),
 });
 export type Tenant = z.infer<typeof tenant>;
 
@@ -41,16 +39,8 @@ export const member = auditable.extend({
   level: count.default(1),
   streakDays: count.default(0),
   lastActiveAt: z.string().datetime({ offset: true }).optional(),
-  /**
-   * ISO timestamp of the last streak-reminder push (MO-11). Server-written by the
-   * `sendStreakReminders` scheduled function; backs the idempotent daily cap.
-   * Not client-writable (rules unchanged — the server uses the Admin SDK).
-   */
-  lastStreakReminderAt: z.string().datetime({ offset: true }).optional(),
   /** Open Badges earned (badgeIds); awarded server-side on completion. */
   earnedBadgeIds: z.array(z.string()).default([]),
-  /** Registered FCM device tokens for push notifications. */
-  fcmTokens: z.array(z.string()).optional(),
 });
 export type Member = z.infer<typeof member>;
 

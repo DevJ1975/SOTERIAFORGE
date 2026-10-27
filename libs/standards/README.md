@@ -21,7 +21,7 @@ when the learner is offline and flushes them automatically on reconnect.
   entry. Statements whose send succeeds are removed; those that reject are
   kept for the next flush.
 - **`registerSender(fn)`** — Registers the async send function used during
-  automatic `window` `online`-event flushes. Called once by `XapiClient`.
+  automatic `window` `online`-event flushes.
 
 SSR-safe and AOT strict. Fully unit-testable in jsdom because jsdom provides
 `localStorage`. The `window` `online` listener is registered only on the
@@ -31,25 +31,6 @@ browser platform.
 > offline lesson sessions. For higher-volume or background-sync scenarios,
 > migrate the persistence layer to IndexedDB — the public API surface is
 > unchanged.
-
-### `XapiClient` (`xapi-client.ts`)
-
-An Angular injectable service (provided in root) that:
-
-- **`buildStatement(opts)`** — Constructs a spec-compliant xAPI statement
-  object. The learner is represented as an Agent with a pseudonymous
-  `account.name` (Firebase UID) and `account.homePage` (platform URL). Every
-  statement is tenant-tagged via
-  `context.extensions[XAPI_TENANT_EXTENSION]` so that the LRS can enforce
-  tenant isolation.
-
-- **`send(statement)`** — Forwards a statement to the `ingestStatement` Firebase
-  callable function via `@angular/fire/functions`. Offline-first: if
-  `navigator.onLine === false` or the callable rejects, the statement is
-  transparently enqueued in `OfflineXapiQueue` and re-sent when the device
-  reconnects. `send` never throws to callers. Gracefully no-ops (with a
-  console warning) if `Functions` is not available in the current DI context,
-  e.g. during unit tests.
 
 ### `VERB_MAP` / `getVerb` (`verbs.ts`)
 
@@ -71,7 +52,7 @@ An Angular injectable service that hosts a SCORM runtime inside the LMS shell:
   communicate with the LMS.
 - Wires the SCORM commit and finish/terminate events to a caller-supplied
   `persist(cmi)` callback, allowing the host application to persist CMI state to
-  Firestore.
+  the Forge API.
 - Exposes Angular **signals**: `completed` (boolean) and `score` (number|null)
   that update automatically when the SCORM content reports progress.
 
@@ -81,7 +62,7 @@ API:
 await scormRuntime.initialize({
   version: '2004',          // '1.2' | '2004'
   initialCmi: { ... },     // optional seed data
-  persist: async (cmi) => { /* save to Firestore */ },
+  persist: async (cmi) => { /* save via the Forge API */ },
 });
 
 scormRuntime.terminate();   // clean up window globals
@@ -149,36 +130,21 @@ Pure functions for the cmi5 launch URL protocol:
 ## Completion and Score Flow
 
 ```
-SCORM / xAPI content
+SCORM content
       │  commit / finish events
       ▼
 ScormRuntimeService         cmi5 AU
-  signals: completed,   ←── sends xAPI statements directly to LRS
-           score              via XapiClient.send()
+  signals: completed,   ←── reports to the LRS directly
+           score
       │
       │  persist(cmi) callback
       ▼
-Firestore (enrolment doc)
-      │
-      │  Cloud Function trigger
-      ▼
-lms-core: EnrolmentService  →  completion event
+Forge API (Django): standards launch/commit endpoints
       │
       ▼
-gamification: GamificationService  →  XP, badges, leaderboard
+completion + XP / badges / leaderboard (server-side)
 ```
 
-When a SCORM commit fires, `ScormRuntimeService` calls the host's `persist`
-callback with the raw CMI object. The host (typically `lms-core`) writes this
-to the learner's enrolment document in Firestore. A Cloud Function watches for
-the `lesson_status` / `success_status` transition and:
-
-1. Marks the enrolment as complete.
-2. Publishes a completion event consumed by the gamification engine, which
-   awards XP, evaluates badge criteria, and updates the leaderboard.
-
-For xAPI-native (cmi5) content, the AU sends statements directly to the LRS via
-`XapiClient.send()`. The `ingestStatement` Cloud Function receives the
-statement, validates tenant scope, writes it to the LRS collection, and
-similarly triggers the gamification pipeline when a `completed` or `passed`
-statement arrives.
+`ManagedScormPlayerComponent` wires the SCORM runtime to `StandardsApi`: commits are
+posted to the API, which stores the CMI state, records completion and drives the
+gamification pipeline. For cmi5 content the AU talks to the LRS directly.

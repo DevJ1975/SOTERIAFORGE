@@ -26,7 +26,7 @@ export interface ResolveTenantOptions {
  *   custom domain (mapped)       -> mapped tenantId
  *
  * This is a pure function so it can run identically in the browser, in
- * Angular SSR/edge, and in Cloud Functions.
+ * Angular SSR/edge.
  */
 export function resolveTenantFromHost(
   host: string | null | undefined,

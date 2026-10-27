@@ -1,5 +1,7 @@
 # Competitor Benchmarking — Mobile-First & Offline Learning
 
+> **Historical document. Dated benchmark; its mention of the Firebase/Angular PWA reflects the stack at the time (Firebase has since been removed).**
+
 Benchmarks how leading LMS / mobile-learning products handle **mobile-first UX**
 and **offline learning**, then maps the gaps Soteria Assurance has versus the
 market. Focus is deliberately narrow: download-for-offline, offline assessment +

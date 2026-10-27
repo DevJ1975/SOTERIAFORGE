@@ -1,14 +1,14 @@
 /**
- * Pure gamification math usable on both client and server (Cloud Functions).
+ * Pure gamification math usable on both client and server.
  *
  * This module is the **single source of truth** for the XP level curve. Both the
- * backend (authoritative awards in `apps/functions`) and the Angular UI
+ * backend (authoritative awards in `backend/apps/gamification`) and the Angular UI
  * (`@assurance/gamification`'s richer `levelForXp` helper) build on the canonical
  * {@link xpForLevel} curve defined here, so the client and server can never
  * disagree about a member's level at a threshold (which previously caused a
  * level "flicker" at the boundaries — MO-13a).
  *
- * Dependency-free and Node-safe: imported by Cloud Functions (Node) and Angular.
+ * Dependency-free and Node-safe: imported by Node tooling and Angular.
  */
 
 /** Multiplier for the base XP cost of the canonical curve. */
@@ -67,56 +67,4 @@ export function nextStreak(
   if (diff <= 0) return { streakDays: currentStreak || 1, incremented: false };
   if (diff === 1) return { streakDays: (currentStreak || 0) + 1, incremented: true };
   return { streakDays: 1, incremented: true };
-}
-
-/** Upper bound (in days of inactivity) past which a streak is abandoned and not nudged. */
-export const STREAK_REMINDER_DECAY_DAYS = 7;
-
-/** The member fields {@link shouldSendStreakReminder} reads (a slice of `Member`). */
-export interface StreakReminderCandidate {
-  /** Current consecutive-day streak. */
-  streakDays?: number;
-  /** ISO timestamp of the member's last activity (drives the streak). */
-  lastActiveAt?: string;
-  /** ISO timestamp of the last streak reminder sent (the daily cap, server-written). */
-  lastStreakReminderAt?: string;
-}
-
-/**
- * Behavior-triggered streak-reminder selection + daily cap (MO-11), pure and
- * Node-safe so it is fully unit-testable headlessly (the scheduled function and
- * FCM delivery are the only integration parts).
- *
- * Returns `true` when **all** hold:
- *  - the member has a live streak (`streakDays > 0`) worth protecting;
- *  - they have **not** been active today (UTC) — i.e. `lastActiveAt` is on a
- *    strictly earlier UTC day, so the streak breaks unless they return today;
- *  - the inactivity gap is within the {@link STREAK_REMINDER_DECAY_DAYS}-day
- *    decay window (we stop nudging an abandoned streak after 7 days, mirroring
- *    Duolingo's decay) — the canonical at-risk case is exactly the previous day;
- *  - we have not already reminded them today (`lastStreakReminderAt` is on an
- *    earlier UTC day or absent) — the idempotent daily cap (≤1/day).
- *
- * All "today" comparisons are by UTC calendar day; callers pass `nowISO` so the
- * function stays pure.
- */
-export function shouldSendStreakReminder(member: StreakReminderCandidate, nowISO: string): boolean {
-  const streak = member.streakDays ?? 0;
-  if (streak <= 0) return false;
-  if (!member.lastActiveAt) return false;
-
-  const today = dayUTC(nowISO);
-
-  // Active today already → streak is safe, nothing to nudge.
-  const inactiveDays = today - dayUTC(member.lastActiveAt);
-  if (inactiveDays < 1) return false;
-  // Abandoned beyond the decay window → stop nudging.
-  if (inactiveDays > STREAK_REMINDER_DECAY_DAYS) return false;
-
-  // Daily cap: already reminded today → skip (idempotent).
-  if (member.lastStreakReminderAt && dayUTC(member.lastStreakReminderAt) >= today) {
-    return false;
-  }
-
-  return true;
 }

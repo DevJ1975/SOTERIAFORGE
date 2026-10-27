@@ -12,14 +12,7 @@ import { DashboardComponent } from './dashboard.component';
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: '',
 };
 
 const mockAuthService = {

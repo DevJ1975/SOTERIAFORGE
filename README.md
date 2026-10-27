@@ -4,16 +4,16 @@ Production-grade, multi-tenant Learning Management System (LMS) for the Soteria
 training ecosystem. Delivers compliance and skills training via video,
 interactive quizzes, card-game learning, and gamification, with a per-tenant RAG
 AI tutor. Serves **B2B multi-tenant** (white-labeled, isolated tenants) and a
-**B2C storefront** (Stripe-gated à-la-carte / subscription) simultaneously.
+public **course catalog** storefront with a request-access path.
 
 ## Locked architecture decisions (Phase 0)
 
 | Decision                 | Choice                                                          |
 | ------------------------ | --------------------------------------------------------------- |
-| Multi-tenancy & identity | **GCIP true multi-tenancy** (Identity Platform tenants)         |
+| Multi-tenancy & identity | **Django** — shared schema, tenant-scoped rows, Postgres RLS    |
 | UI component library     | **PrimeNG** (wrapped by `@assurance/ui` design system)          |
 | App layout               | **Four separate apps** — learner, admin, superadmin, storefront |
-| Tenant routing           | **Subdomain** (`acme.soteriaforge.com`); B2C on the apex        |
+| Tenant routing           | **Subdomain** (`acme.soteriaforge.com`); catalog on the apex    |
 
 See [`docs/adr/0001-phase0-decisions.md`](docs/adr/0001-phase0-decisions.md).
 Deferred decisions (LRS, vector store, LLM provider, video platform) carry the
@@ -21,22 +21,22 @@ spec's recommended defaults and are revisited in their phases.
 
 ## Tech stack
 
-- **Frontend:** Angular 20 (standalone, signals, new control flow, `@defer`,
+- **Frontend:** Angular 22 (standalone, signals, new control flow, `@defer`,
   SSR for storefront), Nx monorepo, NgRx SignalStore, PrimeNG, PWA.
-- **Backend/data:** Firebase — GCIP Auth, Cloud Firestore (+ vector search),
-  Cloud Functions (2nd gen), Cloud Storage, App Check, FCM, Security Rules.
+- **Backend/data:** Django 6 + DRF on Railway, Postgres (+ pgvector), Redis,
+  S3-compatible bucket for media. See `backend/`.
 - **Standards:** SCORM 1.2/2004 (`scorm-again`), xAPI, cmi5, Open Badges 3.0.
-- **AI:** Firebase Genkit RAG, per-tenant isolated retrieval.
-- **Payments:** Stripe Checkout/Billing (webhook-granted entitlements).
+- **AI:** course tutor on Django (pgvector retrieval), per-tenant isolated sources.
 - **Interactive:** Rive, Phaser/PixiJS, Unity WebGL via cmi5.
-- **Hosting:** Vercel (Angular SSR/edge) + Firebase (data/auth/logic/AI).
+- **Hosting:** Vercel (Angular SSR/edge) + Railway (Django API, Postgres, Redis).
 
 ## Workspace layout
 
 ```
-apps/        learner · admin · superadmin · storefront (SSR) · functions (backend)
-libs/        ui · auth · data-access · lms-core · standards · gamification
-             ai-tutor · games · payments · shared
+apps/        learner · admin · superadmin · storefront (SSR)
+backend/     Django API (uv, pytest, ruff)
+libs/        ui · auth · lms-core · standards · gamification
+             ai-tutor · games · player · shared
 docs/        data model, index manifest, runbooks, Unity contract, ADRs
 ```
 
@@ -46,14 +46,15 @@ Path aliases: `@assurance/<lib>` (see `tsconfig.base.json`).
 
 ```bash
 npm install                 # installs with legacy-peer-deps (see .npmrc)
-npm run emulators           # Firebase emulator suite (auth/firestore/functions/storage)
 npm run start:learner       # serve the learner PWA
 npm test                    # run all unit tests (Nx)
 npm run lint                # lint all projects
 ```
 
-Copy `.env.example` → `.env` per app and fill Firebase web config. Backend
-secrets (Stripe, etc.) live in Secret Manager — never commit them.
+The only frontend setting is `FORGE_API_BASE_URL` (the Django API's public URL),
+read by `scripts/vercel-env.mjs` on Vercel; see `.env.example`. Local builds use
+the committed `environment*.ts` files (`http://localhost:8000` in development).
+Backend settings live in `backend/.env.example`; secrets are never committed.
 
 ## Run with Docker
 
@@ -69,7 +70,7 @@ server-rendered storefront at `http://localhost:8083`. The learner, admin, and
 superadmin apps are served by Nginx; the storefront runs on Node.js. Stop the
 containers with `docker compose down`.
 
-The frontend Firebase configuration is compiled into each Angular app during
+The frontend environment (API URL, root domain) is compiled into each Angular app during
 the image build; setting container environment variables does not override it.
 Configure the apps' production environment files before building. The API's
 local Postgres/Redis Compose stack remains in `backend/docker-compose.yml`.
@@ -82,14 +83,13 @@ different domains.
 
 10 phases (0–9): Foundation → Multi-tenant core → Content & delivery →
 Standards engine → Quizzes & gamification → Interactive games → AI tutor →
-B2C + Stripe → Unity contract → Hardening. Each ships as a tested vertical slice.
+Public catalog → Unity contract → Hardening. Each ships as a tested vertical slice.
 
 ## Security model (summary)
 
-- Tenant isolation enforced authoritatively in **Firestore/Storage rules**;
-  client guards are a convenience layer.
-- Custom claims (`role`, `tenantId`, `entitlements`) are set **only** by Cloud
-  Functions, never the client.
-- Entitlements granted **only** on verified Stripe webhooks.
+- Tenant isolation enforced authoritatively by the Django API (tenant-scoped
+  querysets plus Postgres row-level security); client guards are a convenience layer.
+- Roles and tenant membership live in Postgres and change only through the API,
+  never the client.
 - AI retrieval is **hard-filtered by tenant** — no cross-tenant leakage.
-- App Check attests all client traffic. WCAG 2.1 AA is a compliance-grade goal.
+- WCAG 2.1 AA is a compliance-grade goal.

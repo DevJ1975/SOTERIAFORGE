@@ -1,9 +1,9 @@
 /**
  * Platform-wide constants for Soteria ASSURANCE.
- * Keep these aligned with Firestore security rules and Cloud Functions claim-setters.
+ * Keep these aligned with the Django role definitions (backend/apps/accounts).
  */
 
-/** Roles encoded as Firebase custom claims. */
+/** Member roles (the API issues them as claims). */
 export const ROLES = [
   'superadmin',
   'tenant_admin',

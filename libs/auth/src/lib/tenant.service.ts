@@ -19,13 +19,6 @@ export class TenantService {
   readonly tenantId = computed(() => this._resolution().tenantId);
   readonly isB2c = computed(() => this._resolution().isB2c);
 
-  /** GCIP Identity Platform tenant id for the active app tenant, if mapped. */
-  readonly gcipTenantId = computed(() => {
-    const id = this._resolution().tenantId;
-    if (!id) return null;
-    return this.env.gcipTenantMap?.[id] ?? null;
-  });
-
   /** Re-resolve (useful after client-side navigation across hosts in dev). */
   refresh(): void {
     this._resolution.set(this.resolve());

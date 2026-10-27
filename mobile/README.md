@@ -1,40 +1,43 @@
 # Soteria Assurance — Native Mobile Monorepo
 
 Two **separate, truly native** clients for the Soteria Assurance LMS, backed by the
-existing Firebase platform (GCIP multi-tenancy + Cloud Firestore):
+Forge API (Django on Railway):
 
-| App         | Stack                                   | Path       |
-| ----------- | --------------------------------------- | ---------- |
-| **Android** | Kotlin · Jetpack Compose · Firebase SDK | `android/` |
-| **iOS**     | Swift · SwiftUI · firebase-ios-sdk      | `ios/`     |
+| App         | Stack                    | Path       |
+| ----------- | ------------------------ | ---------- |
+| **Android** | Kotlin · Jetpack Compose | `android/` |
+| **iOS**     | Swift · SwiftUI          | `ios/`     |
 
 Both are independent apps with their own toolchains — no shared runtime code. The
-**data model and backend contract are shared** (Firestore collections + GCIP
-custom claims), mirrored from `libs/shared` in the main `soteriaforge` repo.
+**backend contract is shared** (the REST API under `/api/`, camelCase JSON), documented
+by the OpenAPI schema generated from `backend/`.
 
 ## Backend contract (must stay in sync with the web platform)
 
-- **Auth:** Firebase Auth with **GCIP multi-tenancy**. The client sets the
-  Identity Platform tenant id (`gcipTenantId`) _before_ sign-in. After sign-in,
-  read custom claims from the ID token: `role`, `tenantId`, `entitlements`.
+- **Auth:** `POST /api/auth/login` with `{email, password, tenant, client: "mobile"}`
+  returns `{access, refresh}`; refresh with `POST /api/auth/refresh`. Role and tenant
+  come from `GET /api/me`. Send `Authorization: Bearer <access>` and `X-Forge-Tenant`.
 - **Roles:** `superadmin · tenant_admin · instructor · learner · b2c_customer`.
-- **Courses:** `/tenants/{tenantId}/courses/{courseId}` — readable by any member
-  of the tenant (`claims.tenantId == tenantId`), enforced in Firestore rules.
-- **Modules:** `/tenants/{tenantId}/courses/{courseId}/modules/{moduleId}`.
-- **Enrollments:** `/tenants/{tenantId}/courses/{courseId}/enrollments/{uid}`.
+- **Courses:** `GET /api/courses`; `GET /api/courses/{id}` returns the outline with
+  `modules[].lessons[]`. Tenant isolation is enforced by the API (Postgres RLS).
+- **Enrollments:** `GET /api/enrollments/me`, `POST /api/courses/{id}/enroll`.
 
-Privileged writes (claims, provisioning, entitlements) are **Cloud Functions
-only** — the mobile clients never write them. See the main repo's
-`firestore.rules` and `libs/shared/src/lib/schemas`.
+Privileged writes (roles, provisioning) are API-only; the mobile clients never make
+them. See `backend/apps/*/serializers.py` for the exact shapes.
 
 ## What's implemented (foundation slice)
 
-- Tenant-scoped email/password sign-in (GCIP tenant id input).
-- Reading custom claims (role / tenantId) from the ID token.
-- Tenant-scoped course list from Firestore + course detail with modules.
+- Tenant-scoped email/password sign-in (organization id input).
+- Role and tenant from `GET /api/me`.
+- Tenant-scoped course list and course outline (modules and lessons) from the API.
+
+These data layers were rewritten for the Forge API without being compiled
+or run (no Android/Xcode toolchain in the porting environment); treat the first build
+as the verification step.
+
 - Clean separation: repository/service layer → view-model → UI.
 
-Not yet: SCORM/cmi5/Unity players, quizzes, games, offline xAPI, push. These map
+Not yet: SCORM/cmi5/Unity players, quizzes, games, offline xAPI. These map
 to the same backend and are the next slices.
 
 ## Getting started
@@ -44,12 +47,8 @@ Each app has its own README:
 - [`android/README.md`](android/README.md) — Android Studio / Gradle.
 - [`ios/README.md`](ios/README.md) — Xcode (requires macOS; **cannot build on Linux**).
 
-You must drop in your own Firebase config files (not committed):
-
-- Android: `android/app/google-services.json`
-- iOS: `ios/GoogleService-Info.plist`
-
-Example placeholders are provided as `*.example`.
+Both apps talk to `https://api.soteriaforge.com` by default; see each README to point
+them at another API.
 
 ## Extracting into a standalone repo
 
