@@ -62,7 +62,7 @@ class MemberRoleView(APIView):
             target = get_object_or_404(
                 Member.objects.select_for_update(), pk=member_id, tenant=request.tenant
             )
-            if target.firebase_uid == request.user.firebase_uid:
+            if target.pk == request.user.pk:
                 raise PermissionDenied("You can't change your own role.")
             old_role = target.role
             if old_role != new_role:
@@ -78,10 +78,11 @@ class MemberRoleView(APIView):
                 )
                 # Inside the transaction: if Firebase rejects the claim update, the
                 # role change rolls back rather than leaving the guards out of sync.
-                firebase.set_role_claims(
-                    uid=target.firebase_uid,
-                    gcip_tenant_id=request.tenant.gcip_tenant_id,
-                    role=new_role,
-                    tenant_id=request.tenant.id,
-                )
+                if target.firebase_uid:  # still signing in through Firebase
+                    firebase.set_role_claims(
+                        uid=target.firebase_uid,
+                        gcip_tenant_id=request.tenant.gcip_tenant_id,
+                        role=new_role,
+                        tenant_id=request.tenant.id,
+                    )
         return Response(MemberSerializer(target).data, status=status.HTTP_200_OK)

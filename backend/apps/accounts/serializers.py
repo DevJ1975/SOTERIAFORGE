@@ -13,13 +13,17 @@ class TenantSummarySerializer(serializers.ModelSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     tenantId = serializers.CharField(source="tenant_id", read_only=True, allow_null=True)
-    uid = serializers.CharField(source="firebase_uid", read_only=True)
+    # Firebase uid for members not yet moved over; otherwise the member id.
+    uid = serializers.SerializerMethodField()
     displayName = serializers.CharField(source="display_name", read_only=True)
 
     class Meta:
         model = Member
         fields = ["id", "uid", "tenantId", "email", "displayName", "role", "status"]
         read_only_fields = fields
+
+    def get_uid(self, obj: Member) -> str:
+        return obj.firebase_uid or str(obj.id)
 
 
 class MeSerializer(serializers.Serializer):

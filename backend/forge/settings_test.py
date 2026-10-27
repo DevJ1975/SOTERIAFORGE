@@ -11,3 +11,5 @@ from .settings import *  # noqa: E402, F403
 # No collected static files in tests.
 MIDDLEWARE = [m for m in MIDDLEWARE if "whitenoise" not in m]  # noqa: F405
 SECURE_SSL_REDIRECT = False
+# Real hashing is deliberately slow; tests only need it to round-trip.
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

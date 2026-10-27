@@ -1,5 +1,5 @@
 """Soteria Forge API settings. Everything environment-specific comes from env vars
-(Railway or Vercel project variables in deployed environments, `.env` locally)."""
+(Railway service variables in deployed environments, `.env` locally)."""
 
 import os
 from pathlib import Path
@@ -19,9 +19,6 @@ def env_list(name: str, default: str = "") -> list[str]:
 
 
 DEBUG = env_bool("DJANGO_DEBUG")
-# Vercel sets VERCEL=1 at build and run time. Functions there are short-lived and
-# may run many at once, which changes how we use the database (see DATABASES).
-ON_VERCEL = bool(os.environ.get("VERCEL"))
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if not DEBUG:
@@ -35,24 +32,9 @@ if os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
 # Railway's deploy health check sends this Host header; without it /healthz is a 400.
 if os.environ.get("RAILWAY_ENVIRONMENT_NAME"):
     ALLOWED_HOSTS.append("healthcheck.railway.app")
-# Vercel's own hostnames for this deployment (bare hosts, no scheme). Custom domains
-# and the project's other aliases go in DJANGO_ALLOWED_HOSTS.
-VERCEL_HOSTS = (
-    [
-        h
-        for h in (
-            os.environ.get(name)
-            for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL")
-        )
-        if h
-    ]
-    if ON_VERCEL
-    else []
-)
-ALLOWED_HOSTS.extend(VERCEL_HOSTS)
 # Only Django admin uses cookies/CSRF (the API authenticates with Firebase tokens),
 # and it must be served over https on the same host.
-CSRF_TRUSTED_ORIGINS = [*env_list("CSRF_TRUSTED_ORIGINS"), *(f"https://{h}" for h in VERCEL_HOSTS)]
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -108,26 +90,21 @@ TEMPLATES = [
     }
 ]
 
-if ON_VERCEL:
-    if not os.environ.get("DATABASE_URL"):
-        raise RuntimeError("DATABASE_URL must be set on Vercel")
-    # RlsMiddleware keeps the tenant in a *session* setting and resets it after each
-    # request. Transaction-mode poolers (pgbouncer / Supabase port 6543) hand the same
-    # server connection to different requests mid-session, which could expose one
-    # tenant's rows to another. Use a direct or session-mode connection string.
-    if any(m in os.environ["DATABASE_URL"] for m in (":6543", "pgbouncer=true")):
-        raise RuntimeError(
-            "DATABASE_URL points at a transaction-mode pooler; row-level security needs "
-            "a direct or session-mode Postgres connection"
-        )
+# RlsMiddleware keeps the tenant in a *session* setting and resets it after each
+# request. Transaction-mode poolers (pgbouncer / Supabase port 6543) hand the same
+# server connection to different requests mid-session, which could expose one
+# tenant's rows to another. Use a direct or session-mode connection string.
+if any(m in os.environ.get("DATABASE_URL", "") for m in (":6543", "pgbouncer=true")):
+    raise RuntimeError(
+        "DATABASE_URL points at a transaction-mode pooler; row-level security needs "
+        "a direct or session-mode Postgres connection"
+    )
 DATABASES = {
     "default": dj_database_url.config(
         env="DATABASE_URL",
         default="postgres://forge:forge@localhost:5433/forge",
-        # A function instance serves one request at a time and is frozen between
-        # requests, so a kept-open connection would only sit idle against the limit.
-        conn_max_age=0 if ON_VERCEL else 60,
-        conn_health_checks=not ON_VERCEL,
+        conn_max_age=60,
+        conn_health_checks=True,
     )
 }
 # The web process connects as the RLS-bound runtime role (apps/tenants/dbroles.py);
@@ -149,16 +126,15 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
-if ON_VERCEL:
-    # No collectstatic step runs for the function bundle, so skip the manifest and let
-    # WhiteNoise serve straight from each app's static/ folder (Django admin, DRF docs).
-    STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedStaticFilesStorage"
-    WHITENOISE_USE_FINDERS = True
 
 # --- API ---------------------------------------------------------------------
 REST_FRAMEWORK = {
     # Firebase ID tokens only: no session/basic auth on the API.
-    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.accounts.authentication.FirebaseAuthentication"],
+    # Django-issued tokens; Firebase ID tokens still accepted while clients move over.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.TokenAuthentication",
+        "apps.accounts.authentication.FirebaseAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["apps.accounts.permissions.IsActiveMember"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "UNAUTHENTICATED_USER": None,
@@ -180,12 +156,58 @@ SPECTACULAR_SETTINGS = {
 ROOT_DOMAIN = os.environ.get("FORGE_ROOT_DOMAIN", "soteriaforge.com")
 CORS_ALLOWED_ORIGIN_REGEXES = [rf"^https://([a-z0-9-]+\.)?{ROOT_DOMAIN.replace('.', r'\.')}$"]
 CORS_ALLOWED_ORIGINS = env_list("CORS_EXTRA_ORIGINS")
-# Firebase ID token + the host-resolved tenant (apps/accounts/authentication.py).
-CORS_ALLOW_HEADERS = (*default_headers, "x-forge-tenant")
+# Bearer token + the host-resolved tenant (apps/accounts/authentication.py), and the
+# client marker the refresh endpoint requires alongside its cookie.
+CORS_ALLOW_HEADERS = (*default_headers, "x-forge-tenant", "x-forge-client")
+# The refresh token travels in an HttpOnly cookie on /api/auth/.
+CORS_ALLOW_CREDENTIALS = True
 if DEBUG:
     CORS_ALLOWED_ORIGIN_REGEXES.append(r"^http://([a-z0-9-]+\.)?localhost(:\d+)?$")
 
-# --- Firebase (identity only) ------------------------------------------------
+# --- Sign-in (apps/accounts/auth_views.py) ------------------------------------
+AUTH_ACCESS_TTL = int(os.environ.get("AUTH_ACCESS_TTL_SECONDS", "900"))
+AUTH_REFRESH_TTL = int(os.environ.get("AUTH_REFRESH_TTL_SECONDS", str(14 * 86400)))
+AUTH_RESET_TTL = 3600
+AUTH_INVITE_TTL = 7 * 86400
+AUTH_LOCKOUT_ATTEMPTS = 5
+AUTH_LOCKOUT_SECONDS = 900
+AUTH_COOKIE_NAME = "forge_refresh"
+# "Lax" works when the app and API share a site (*.soteriaforge.com); a frontend on
+# another site (e.g. *.vercel.app previews) needs "None" (always with Secure).
+AUTH_COOKIE_SAMESITE = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
+# Base URL for emailed links; defaults to the member's tenant host.
+AUTH_LINK_BASE_URL = os.environ.get("AUTH_LINK_BASE_URL", "")
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# --- Email (password reset and invites) ----------------------------------------
+_mail_backend = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+MAILERS = {
+    "default": {
+        "BACKEND": _mail_backend,
+        "OPTIONS": (
+            {
+                "host": os.environ.get("EMAIL_HOST", ""),
+                "port": int(os.environ.get("EMAIL_PORT", "587")),
+                "username": os.environ.get("EMAIL_HOST_USER", ""),
+                "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+                "use_tls": env_bool("EMAIL_USE_TLS", True),
+            }
+            if _mail_backend.endswith("smtp.EmailBackend")
+            else {}
+        ),
+    }
+}
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"Soteria Forge <no-reply@{ROOT_DOMAIN}>")
+
+# --- Firebase (legacy identity, until every client signs in through Django) ---
 # Service-account JSON (inline). Absent locally/in tests: token verification uses
 # Application Default Credentials or is mocked.
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
@@ -246,9 +268,7 @@ if os.environ.get("SENTRY_DSN"):
 
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
-        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME")
-        or os.environ.get("VERCEL_ENV")
-        or "local",
+        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
         send_default_pii=False,  # FERPA: no learner PII in error reports
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0")),
     )
