@@ -130,6 +130,7 @@ SPECTACULAR_SETTINGS = {
         "TenantStatusEnum": "apps.tenants.models.Tenant.Status",
         "MemberStatusEnum": "apps.accounts.models.Member.Status",
         "PublishStatusEnum": "apps.learning.models.PublishStatus",
+        "CoachAgentEnum": "apps.coach.profiles.Agent.choices",
     },
 }
 

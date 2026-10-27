@@ -1,20 +1,25 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TutorService } from './tutor.service';
+import {
+  CoachApi,
+  coachError,
+  type CoachAgentId,
+  type CoachCourse,
+  type CoachProfile,
+} from './coach-api';
 
 /**
  * TutorChatComponent — full-page chat UI for the RAG AI tutor.
  *
- * Tenant isolation: `tenantId` is passed to TutorService.ask() and forwarded to
- * the `askTutor` Firebase callable. However, tenant isolation is AUTHORITATIVE
- * server-side — the callable verifies the caller's auth claim tenantId and uses
- * it for all vector retrieval filtering. The client-supplied tenantId is a
- * convenience hint only; the server never trusts it for security decisions.
+ * Django derives identity and tenant from authentication, never the chat body.
+ * Each mounted chat owns transient history, cleared when its context changes.
  */
 @Component({
   selector: 'assurance-tutor-chat',
   standalone: true,
   imports: [FormsModule],
+  providers: [TutorService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -128,6 +133,49 @@ import { TutorService } from './tutor.service';
   ],
   template: `
     <div class="tutor-chat">
+      <label>
+        Agent
+        <select
+          aria-label="Tutor agent"
+          [ngModel]="selectedAgent()"
+          (ngModelChange)="selectedAgent.set($event)"
+        >
+          <option value="general">Course Tutor</option>
+          @for (profile of profiles(); track profile.id) {
+            @if (profile.id !== 'general') {
+              <option [value]="profile.id">{{ profile.title }}</option>
+            }
+          }
+        </select>
+      </label>
+      @if (profileError()) {
+        <p role="alert">{{ profileError() }}</p>
+      }
+      @if (!courseId()) {
+        <label>
+          Course
+          <select
+            aria-label="Tutor course"
+            [ngModel]="selectedCourse()"
+            (ngModelChange)="selectedCourse.set($event)"
+          >
+            <option value="">Select an enrolled course</option>
+            @for (course of courses(); track course.id) {
+              <option [value]="course.id">{{ course.title }}</option>
+            }
+          </select>
+        </label>
+        @if (courseError()) {
+          <p role="alert">{{ courseError() }}</p>
+        }
+      }
+      <p>Answers use approved course sources. No chat history is saved to the server.</p>
+      @if (selectedAgent() !== 'general') {
+        <p>
+          Specialist study support, not an autonomous agent. Only approved sources for this agent
+          and course are used.
+        </p>
+      }
       <div class="tutor-chat__messages">
         @for (msg of tutorService.messages(); track msg.id) {
           <div
@@ -139,7 +187,7 @@ import { TutorService } from './tutor.service';
 
             @if (msg.role === 'assistant' && msg.citations.length > 0) {
               <div class="tutor-chat__citations">
-                @for (citation of msg.citations; track citation.sourceId) {
+                @for (citation of msg.citations; track $index) {
                   <span class="tutor-chat__citation-chip">
                     {{ citation.label ?? citation.sourceId }}
                   </span>
@@ -154,7 +202,7 @@ import { TutorService } from './tutor.service';
         }
 
         @if (tutorService.error()) {
-          <div class="tutor-chat__error">{{ tutorService.error() }}</div>
+          <div class="tutor-chat__error" role="alert">{{ tutorService.error() }}</div>
         }
       </div>
 
@@ -163,14 +211,16 @@ import { TutorService } from './tutor.service';
           class="tutor-chat__input"
           type="text"
           placeholder="Ask a question…"
+          aria-label="Ask the course tutor"
+          maxlength="1000"
           [(ngModel)]="questionText"
           (keydown.enter)="send()"
-          [disabled]="tutorService.pending()"
+          [disabled]="tutorService.pending() || !activeCourse()"
         />
         <button
           class="tutor-chat__send-btn"
           (click)="send()"
-          [disabled]="tutorService.pending() || !questionText().trim()"
+          [disabled]="tutorService.pending() || !questionText().trim() || !activeCourse()"
         >
           Send
         </button>
@@ -181,18 +231,76 @@ import { TutorService } from './tutor.service';
 export class TutorChatComponent {
   readonly tenantId = input.required<string>();
   readonly uid = input.required<string>();
+  readonly courseId = input('');
+  private readonly api = inject(CoachApi);
+  protected readonly courses = signal<CoachCourse[]>([]);
+  protected readonly selectedCourse = signal('');
+  protected readonly courseError = signal<string | null>(null);
+  protected readonly profiles = signal<CoachProfile[]>([]);
+  protected readonly selectedAgent = signal<CoachAgentId>('general');
+  protected readonly profileError = signal<string | null>(null);
 
   protected readonly tutorService = inject(TutorService);
 
   protected readonly questionText = signal('');
 
+  protected activeCourse(): string {
+    return this.courseId() || this.selectedCourse();
+  }
+
+  constructor() {
+    effect((onCleanup) => {
+      this.tenantId();
+      this.uid();
+      const courseId = this.courseId();
+      this.courses.set([]);
+      this.selectedCourse.set('');
+      this.courseError.set(null);
+      this.profiles.set([]);
+      this.selectedAgent.set('general');
+      this.profileError.set(null);
+      let active = true;
+      onCleanup(() => {
+        active = false;
+      });
+      void this.api
+        .profiles()
+        .then((profiles) => {
+          if (active) this.profiles.set(profiles);
+        })
+        .catch((error: unknown) => {
+          if (active) this.profileError.set(coachError(error));
+        });
+      if (!courseId) {
+        void this.api
+          .courses()
+          .then((courses) => {
+            if (active) this.courses.set(courses);
+          })
+          .catch((error: unknown) => {
+            if (active) this.courseError.set(coachError(error));
+          });
+      }
+    });
+    effect(() => {
+      this.tenantId();
+      this.uid();
+      this.activeCourse();
+      this.selectedAgent();
+      this.tutorService.reset();
+      this.questionText.set('');
+    });
+  }
+
   protected send(): void {
     const question = this.questionText().trim();
-    if (!question || this.tutorService.pending()) return;
+    if (!question || !this.activeCourse() || this.tutorService.pending()) return;
     this.questionText.set('');
     void this.tutorService.ask(question, {
       tenantId: this.tenantId(),
       uid: this.uid(),
+      courseId: this.activeCourse(),
+      agent: this.selectedAgent(),
     });
   }
 }

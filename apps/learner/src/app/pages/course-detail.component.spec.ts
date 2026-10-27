@@ -2,7 +2,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService, TenantService } from '@assurance/auth';
-import { TutorService } from '@assurance/ai-tutor';
+import { TutorService, CoachApi } from '@assurance/ai-tutor';
 import { LearningApi, type ApiCourseOutline } from '@assurance/lms-core';
 import { CourseDetailComponent } from './course-detail.component';
 
@@ -89,6 +89,7 @@ describe('CourseDetailComponent', () => {
         { provide: AuthService, useValue: { principal: () => null } },
         { provide: TenantService, useValue: { tenantId: () => null } },
         { provide: TutorService, useValue: {} },
+        { provide: CoachApi, useValue: { courses: async () => [], profiles: async () => [] } },
       ],
     });
   });

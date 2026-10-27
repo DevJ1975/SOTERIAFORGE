@@ -16,6 +16,8 @@ dependencies = [
   "whitenoise~=6.11",
   "sentry-sdk[django]~=2.43",
   "livekit-api~=1.0",
+  "pgvector~=0.4",
+  "pypdf~=6.0",
 ]
 
 [dependency-groups]

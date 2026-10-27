@@ -1,5 +1,11 @@
 # Deployment runbook
 
+For the **local Django + Ollama course tutor**, use the
+[local AI tutor guide](./local-ai-tutor.md). It replaces the tutor/ingestion
+Firebase calls, requires the API and inference on the same host, and is
+disabled by default outside the configured local Mac. The legacy Vertex
+instructions below do not configure this tutor.
+
 Clean split: **Vercel** hosts the Angular apps (incl. storefront SSR/edge);
 **Firebase/GCP** hosts data, auth, business logic, and AI.
 

@@ -125,7 +125,7 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
           <details class="sf-card cd__tutor">
             <summary class="cd__tutor-summary">Ask the AI Tutor</summary>
             <div class="cd__tutor-chat" role="region" aria-label="AI Tutor chat">
-              <assurance-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" />
+              <assurance-tutor-chat [tenantId]="tenantId()!" [uid]="uid()!" [courseId]="c.id" />
             </div>
           </details>
         }

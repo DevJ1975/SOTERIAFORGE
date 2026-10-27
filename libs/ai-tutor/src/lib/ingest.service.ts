@@ -1,12 +1,18 @@
-import { Injectable, InjectionToken, inject } from '@angular/core';
-import { Functions, httpsCallable } from '@angular/fire/functions';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { firstValueFrom, timeout } from 'rxjs';
+import { CoachApi, type CoachAgentId } from './coach-api';
 
 export interface IngestInput {
-  tenantId: string;
   sourceId: string;
-  text: string;
-  label?: string;
-  moduleId?: string;
+  courseId: string;
+  label: string;
+  text?: string;
+  file?: File;
+  approved: boolean;
+  agent?: CoachAgentId;
+  referenceUrl?: string;
+  edition?: string;
 }
 
 export interface IngestResult {
@@ -14,21 +20,25 @@ export interface IngestResult {
   chunks: number;
 }
 
-/**
- * Injection token for the Firebase Functions instance used by IngestService.
- * Kept separate from TUTOR_FUNCTIONS so each service can be tested in isolation.
- */
-export const INGEST_FUNCTIONS = new InjectionToken<Functions>('INGEST_FUNCTIONS', {
-  providedIn: 'root',
-  factory: () => inject(Functions),
-});
-
 @Injectable({ providedIn: 'root' })
 export class IngestService {
-  private readonly functions = inject(INGEST_FUNCTIONS);
+  private readonly http = inject(HttpClient);
+  private readonly api = inject(CoachApi);
 
-  ingest(input: IngestInput): Promise<IngestResult> {
-    const callable = httpsCallable<IngestInput, IngestResult>(this.functions, 'ingestKnowledge');
-    return callable(input).then((result) => result.data);
+  async ingest(input: IngestInput): Promise<IngestResult> {
+    const body = new FormData();
+    body.set('courseId', input.courseId);
+    body.set('label', input.label);
+    body.set('approved', String(input.approved));
+    body.set('agent', input.agent ?? 'general');
+    body.set('referenceUrl', input.referenceUrl ?? '');
+    body.set('edition', input.edition ?? '');
+    if (input.file) body.set('file', input.file);
+    else if (input.text !== undefined) body.set('text', input.text);
+    return firstValueFrom(
+      this.http
+        .put<IngestResult>(this.api.url(`sources/${input.sourceId}`), body)
+        .pipe(timeout(120_000)),
+    );
   }
 }

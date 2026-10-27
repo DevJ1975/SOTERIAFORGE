@@ -5,6 +5,27 @@
 - **Supersedes (on acceptance):** ADR 0001 decisions 5–7 and the "Firebase/GCP hosts
   data and business logic" split in `docs/deployment.md`
 
+### Local AI pilot (2026-10-27)
+
+The [local course tutor](./local-ai-tutor.md) now connects Angular tutor and
+knowledge management to Django, native Ollama (Qwen3 8B), and pgvector
+(Qwen3-Embedding 0.6B). It supports staff-approved text/Markdown/text-PDF
+ingestion, course/enrollment-scoped retrieval, validated source/page citations,
+and abstention. Tenant RLS covers sources and chunks. Chat is transient and
+no grading decisions are delegated to the model.
+
+Separate **AI for the Workplace** and **AI in Cybersecurity** profiles now use
+the same local model with server-owned specialist instructions and
+tenant/course/agent-isolated sources. NIST/CISA framework candidates are
+available as metadata-only links pending instructor review; no public corpus
+has been automatically ingested or used to fine-tune model weights. Existing
+course material remains assigned to the general tutor.
+
+This is a local, course-subject-independent foundation, not completion of the
+Phase 4 streaming/diagram/review-queue scope. Production inference hosting,
+instructor-reviewed evaluation, and an optional versioned OSHA corpus remain
+separate work. Railway cannot access the Mac's localhost.
+
 ## 1. Decision summary
 
 | Layer               | Today                                  | Target                                                                     | Why                                                                                                                 |
