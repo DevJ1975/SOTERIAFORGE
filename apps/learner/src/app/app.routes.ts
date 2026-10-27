@@ -76,15 +76,8 @@ export const appRoutes: Routes = [
   {
     path: 'progress',
     canActivate: [authGuard, tenantGuard],
-    data: {
-      crumbs: crumb('Progress'),
-      title: 'My Progress',
-      description:
-        'XP, levels, badges and your crew standings. Leaderboards show crews only; your individual score stays private to you and your instructor.',
-      phase: 'Arrives in Phase 3',
-      icon: 'progress-star',
-    },
-    loadComponent: placeholder,
+    data: { crumbs: crumb('Progress') },
+    loadComponent: () => import('./pages/progress.component').then((m) => m.ProgressComponent),
   },
   {
     path: 'analytics',
