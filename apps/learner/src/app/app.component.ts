@@ -15,6 +15,7 @@ import { filter, map } from 'rxjs';
 import { AuthService } from '@assurance/auth';
 import { UserMenuComponent } from '@assurance/auth-ui';
 import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
+import { SfxToggleComponent } from '@assurance/sfx';
 import { OfflineXapiQueue } from '@assurance/standards';
 import { AssuranceOfflineBannerComponent, SfAppShellComponent } from '@assurance/ui';
 import type { ForgeRouteData } from './app.routes';
@@ -23,7 +24,13 @@ import { LearnerProfileStore } from './services/learner-profile.store';
 @Component({
   selector: 'assurance-learner-root',
   standalone: true,
-  imports: [RouterOutlet, SfAppShellComponent, AssuranceOfflineBannerComponent, UserMenuComponent],
+  imports: [
+    RouterOutlet,
+    SfAppShellComponent,
+    AssuranceOfflineBannerComponent,
+    SfxToggleComponent,
+    UserMenuComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <sf-app-shell
@@ -34,6 +41,7 @@ import { LearnerProfileStore } from './services/learner-profile.store';
       [streakDays]="profile.streakDays()"
       (search)="onSearch($event)"
     >
+      <assurance-sfx-toggle sfTopbarEnd />
       <assurance-user-menu sfTopbarEnd variant="compact" redirectTo="/login" />
 
       <!-- Offline connectivity banner (non-blocking, polite live region) -->

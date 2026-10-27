@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { SfxService } from '@assurance/sfx';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { AccessibleCardGameComponent } from './accessible-card-game.component';
-import type { CardGameConfig, GameResult } from './card-game.model';
+import type { CardGameConfig, GameResult, ScenarioCardsConfig } from './card-game.model';
 
 expect.extend(toHaveNoViolations);
 
@@ -162,5 +163,54 @@ describe('AccessibleCardGameComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('[role="alert"]')).not.toBeNull();
     expect(el.querySelector('.acg__grid')).toBeNull();
+  });
+});
+
+describe('AccessibleCardGameComponent — sound effects', () => {
+  const spyPlay = () => jest.spyOn(TestBed.inject(SfxService), 'play').mockImplementation();
+
+  it('flips a card with card-flip and finishes with lesson-complete', () => {
+    const play = spyPlay();
+    const { cmp } = render(flipCfg);
+    const reveal = (cmp as unknown as { reveal: (id: string) => void }).reveal.bind(cmp);
+    reveal('c1');
+    expect(play.mock.calls.map(([id]) => id)).toEqual(['card-flip']);
+    reveal('c2');
+    expect(play.mock.calls.map(([id]) => id)).toEqual(['card-flip', 'card-flip', 'lesson-complete']);
+  });
+
+  it('match_pairs: select, incorrect on a miss, match on a pair, lesson-complete on the last', () => {
+    const play = spyPlay();
+    const { cmp } = render(matchCfg);
+    const cells = (
+      cmp as unknown as { matchCells: () => Array<{ id: string; pairId: string }> }
+    ).matchCells();
+    const pick = (cmp as unknown as { pick: (c: unknown) => void }).pick.bind(cmp);
+    const [p1q, p1a] = cells.filter((c) => c.pairId === 'p1');
+    const [p2q, p2a] = cells.filter((c) => c.pairId === 'p2');
+    const sounds = () => play.mock.calls.map(([id]) => id).filter((id) => id !== undefined);
+
+    pick(p1q);
+    expect(sounds().slice(-1)).toEqual(['select']);
+    pick(p2q);
+    expect(sounds().slice(-1)).toEqual(['incorrect']);
+    pick(p1q);
+    pick(p1a);
+    expect(sounds().slice(-1)).toEqual(['match']);
+    pick(p2q);
+    pick(p2a);
+    expect(sounds().slice(-2)).toEqual(['select', 'lesson-complete']);
+  });
+
+  it('scenario_cards: correct or incorrect per choice', () => {
+    const play = spyPlay();
+    const { cmp } = render(scenarioCfg);
+    const setAnswer = (
+      cmp as unknown as { setAnswer: (s: unknown, c: unknown) => void }
+    ).setAnswer.bind(cmp);
+    const [s1] = (scenarioCfg as ScenarioCardsConfig).scenarios;
+    setAnswer(s1, s1.choices[0]);
+    setAnswer(s1, s1.choices[1]);
+    expect(play.mock.calls.map(([id]) => id)).toEqual(['correct', 'incorrect']);
   });
 });

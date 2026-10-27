@@ -33,6 +33,7 @@
       "@assurance/lms-core": ["libs/lms-core/src/index.ts"],
       "@assurance/payments": ["libs/payments/src/index.ts"],
       "@assurance/player": ["libs/player/src/index.ts"],
+      "@assurance/sfx": ["libs/sfx/src/index.ts"],
       "@assurance/shared": ["libs/shared/src/index.ts"],
       "@assurance/standards": ["libs/standards/src/index.ts"],
       "@assurance/tenant": ["libs/tenant/src/index.ts"],

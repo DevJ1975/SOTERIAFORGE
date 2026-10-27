@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
 import { QuizRepository } from '@assurance/data-access';
 import { QuizSubmissionService } from '@assurance/lms-core';
+import { SfxService } from '@assurance/sfx';
 import { QuizPlayerComponent } from './quiz-player.component';
 import { installFakeIndexedDb, uninstallFakeIndexedDb } from './fake-indexed-db.testkit';
 import type { Quiz, QuizGrade } from '@assurance/shared';
@@ -169,6 +170,37 @@ describe('QuizPlayerComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('100%');
     expect(el.textContent).toContain('Passed');
+  });
+
+  it('plays pass or fail once the attempt is graded', async () => {
+    const play = jest.spyOn(TestBed.inject(SfxService), 'play').mockImplementation();
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+
+    await fixture.componentInstance.onSubmit();
+    expect(play).toHaveBeenLastCalledWith('pass');
+
+    // A second learner attempt that does not pass.
+    const failing = TestBed.createComponent(QuizPlayerComponent);
+    for (const [k, v] of Object.entries({
+      quizId: 'quiz-1',
+      courseId: 'course-1',
+      moduleId: 'mod-1',
+      tenantId: 'tenant-1',
+      uid: 'user-1',
+    })) {
+      failing.componentRef.setInput(k, v);
+    }
+    failing.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    mockSubmissionService.submitWithOutbox.mockResolvedValueOnce({
+      graded: true,
+      grade: { ...mockGrade, passed: false, scorePct: 20 },
+      queued: false,
+    });
+    await failing.componentInstance.onSubmit();
+    expect(play).toHaveBeenLastCalledWith('fail');
   });
 });
 

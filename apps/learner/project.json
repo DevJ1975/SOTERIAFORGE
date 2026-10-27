@@ -17,7 +17,8 @@
         "tsConfig": "apps/learner/tsconfig.app.json",
         "assets": [
           { "glob": "**/*", "input": "apps/learner/public" },
-          { "glob": "**/*", "input": "libs/ui/src/assets/forge", "output": "assets/forge" }
+          { "glob": "**/*", "input": "libs/ui/src/assets/forge", "output": "assets/forge" },
+          { "glob": "*.mp3", "input": "libs/sfx/assets", "output": "assets/sfx" }
         ],
         "styles": ["libs/ui/src/styles/forge/index.css", "apps/learner/src/styles.scss"],
         "scripts": []
