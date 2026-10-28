@@ -1,5 +1,5 @@
-import type { ApiMyEnrollment } from '@assurance/lms-core';
-import type { SfBadgeState, SfIconName } from '@assurance/ui';
+import type { ApiBadge, ApiMyEnrollment } from '@assurance/lms-core';
+import { SF_ICON_NAMES, type SfBadgeState, type SfIconName } from '@assurance/ui';
 
 /** Continue card: the learner's current course and next module. */
 export interface ContinueLearning {
@@ -85,6 +85,29 @@ export function resolveBadgeStates(
     const fallback = badge.placeholderState === 'progress' ? 'progress' : 'locked';
     return { badge, state: fallback };
   });
+}
+
+/** The API sends icon names as plain strings; unknown ones fall back to the generic shield. */
+export function iconFor(name: string): SfIconName {
+  return (SF_ICON_NAMES as readonly string[]).includes(name)
+    ? (name as SfIconName)
+    : 'badge-shield';
+}
+
+/** The member's own catalog from the API, ready for the Home badges card. */
+export function badgeStatesFromApi(
+  rows: readonly ApiBadge[],
+): { badge: MissionBadge; state: SfBadgeState }[] {
+  return rows.map((row) => ({
+    badge: {
+      id: row.key,
+      name: row.name,
+      icon: iconFor(row.icon),
+      kind: row.kind,
+      placeholderState: 'locked',
+    },
+    state: row.state,
+  }));
 }
 
 /** "Good morning" / "Good afternoon" / "Good evening" for the learner's local time. */

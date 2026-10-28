@@ -110,6 +110,14 @@ export interface ApiMyEnrollment extends ApiEnrollment {
   } | null;
 }
 
+export interface ApiAwardBadge {
+  id: string;
+  key: string;
+  name: string;
+  icon: string;
+  kind: 'mission' | 'credential';
+}
+
 /** What a first completion earned: the data behind the award overlay. */
 export interface ApiAward {
   /** XP paid by this completion (0 when only the streak moved). */
@@ -119,6 +127,8 @@ export interface ApiAward {
   leveledUp: boolean;
   streakDays: number;
   streakExtended: boolean;
+  /** Badges this completion earned (empty when none). */
+  badges: ApiAwardBadge[];
 }
 
 export interface ApiCompletion {

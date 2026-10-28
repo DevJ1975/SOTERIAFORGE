@@ -51,6 +51,21 @@ export interface ApiCrewBoard {
   crews: ApiCrewRow[];
 }
 
+export type ApiBadgeState = 'earned' | 'credential' | 'progress' | 'locked';
+
+/** One badge as the signed-in member sees it. `progress` is null for instructor sign-off. */
+export interface ApiBadge {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  kind: 'mission' | 'credential';
+  state: ApiBadgeState;
+  progress: { current: number; target: number } | null;
+  earnedAt: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GamificationApi {
   private readonly http = inject(HttpClient);
@@ -63,6 +78,10 @@ export class GamificationApi {
 
   progress(): Promise<ApiScoreCard> {
     return firstValueFrom(this.http.get<ApiScoreCard>(this.url('me/progress')));
+  }
+
+  badges(): Promise<ApiBadge[]> {
+    return firstValueFrom(this.http.get<ApiBadge[]>(this.url('me/badges')));
   }
 
   /** Staff may pass `cohortId` to view another cohort; learners always see their own. */

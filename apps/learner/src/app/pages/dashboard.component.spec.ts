@@ -33,7 +33,7 @@ const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
 const offline = async () => {
   throw new Error('offline');
 };
-const mockGamification = { progress: jest.fn(offline) };
+const mockGamification = { progress: jest.fn(offline), badges: jest.fn(offline) };
 
 describe('DashboardComponent (Forge Home)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -43,6 +43,7 @@ describe('DashboardComponent (Forge Home)', () => {
     jest.clearAllMocks();
     mockApi.myEnrollments.mockResolvedValue([]);
     mockGamification.progress.mockImplementation(offline);
+    mockGamification.badges.mockImplementation(offline);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -234,7 +235,7 @@ describe('DashboardComponent (Forge Home)', () => {
   it('shows the mission badges, each with a state word', async () => {
     await settle();
     const card = el.querySelector('assurance-home-badges-card') as HTMLElement;
-    // No badge data in the Forge API yet: nothing is shown as earned.
+    // The badge request fails here: nothing is shown as earned.
     expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('0 of 8 earned');
     const metas = Array.from(card.querySelectorAll('.sf-badge__meta')).map((m) =>
       m.textContent?.trim(),
@@ -242,6 +243,34 @@ describe('DashboardComponent (Forge Home)', () => {
     expect(metas).not.toContain('Earned');
     expect(metas).toContain('In progress');
     expect(metas).toContain('Locked');
+  });
+
+  it('shows the badges the API says the member has earned', async () => {
+    const row = (key: string, state: string, kind = 'mission') => ({
+      id: key,
+      key,
+      name: key,
+      description: '',
+      icon: 'not-an-icon',
+      kind,
+      state,
+      progress: null,
+      earnedAt: null,
+    });
+    mockGamification.badges.mockResolvedValue([
+      row('recruit', 'earned'),
+      row('ai', 'credential', 'credential'),
+      row('operator', 'progress'),
+      row('red', 'locked'),
+    ]);
+    await settle();
+    const card = el.querySelector('assurance-home-badges-card') as HTMLElement;
+    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('2 of 4 earned');
+    const metas = Array.from(card.querySelectorAll('.sf-badge__meta')).map((m) =>
+      m.textContent?.trim(),
+    );
+    expect(metas).toContain('Earned');
+    expect(metas).toContain('In progress');
   });
 
   it('shows the AI coach sources and lets the learner defer the nudge', async () => {

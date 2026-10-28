@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { LearningApi } from '@assurance/lms-core';
+import { GamificationApi, LearningApi, type ApiBadge } from '@assurance/lms-core';
 import { streakStrip } from '@assurance/gamification';
 import { LearnerProfileStore } from '../services/learner-profile.store';
 import { HomeBadgesCardComponent } from './home/badges-card.component';
@@ -23,6 +23,7 @@ import {
   greetingFor,
   isSameLocalDay,
   pickContinueEnrollment,
+  badgeStatesFromApi,
   resolveBadgeStates,
 } from './home/home.models';
 import {
@@ -136,6 +137,7 @@ const longDate = new Intl.DateTimeFormat('en-US', {
 export class DashboardComponent implements OnInit {
   private readonly profile = inject(LearnerProfileStore);
   private readonly api = inject(LearningApi);
+  private readonly gamification = inject(GamificationApi);
 
   protected readonly now = new Date();
 
@@ -161,8 +163,12 @@ export class DashboardComponent implements OnInit {
   protected readonly strip = computed(
     () => this.profile.scoreCard()?.strip ?? streakStrip(0, undefined, this.now.toISOString(), 14),
   );
-  // Badges aren't in the Forge API yet, so none are shown as earned (not the demo state).
-  protected readonly badges = computed(() => resolveBadgeStates(HOME_PLACEHOLDER_BADGES, []));
+  // The member's badge catalog from the API; until it loads (or if it fails) none show as earned.
+  private readonly apiBadges = signal<ApiBadge[] | null>(null);
+  protected readonly badges = computed(() => {
+    const rows = this.apiBadges();
+    return rows ? badgeStatesFromApi(rows) : resolveBadgeStates(HOME_PLACEHOLDER_BADGES, []);
+  });
 
   protected readonly dateLine = computed(() => {
     const parts = [longDate.format(this.now), HOME_PLACEHOLDER_DAY_THEME];
@@ -175,6 +181,15 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     void this.profile.load();
     void this.loadContinue();
+    void this.loadBadges();
+  }
+
+  private async loadBadges(): Promise<void> {
+    try {
+      this.apiBadges.set(await this.gamification.badges());
+    } catch {
+      // Keep the empty catalog so Home never breaks.
+    }
   }
 
   /** Real Continue card; on no enrollment or any failure the placeholder stays. */

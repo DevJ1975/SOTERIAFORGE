@@ -2,7 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ASSURANCE_ENV } from '@assurance/auth';
-import { type ApiCrewBoard, type ApiScoreCard, GamificationApi } from './gamification-api';
+import {
+  type ApiBadge,
+  type ApiCrewBoard,
+  type ApiScoreCard,
+  GamificationApi,
+} from './gamification-api';
 
 const base = 'https://api.example.com';
 
@@ -44,6 +49,28 @@ describe('GamificationApi', () => {
     expect(request.request.method).toBe('GET');
     request.flush(card);
     expect(await pending).toEqual(card);
+  });
+
+  it("loads the member's own badge catalog", async () => {
+    setup();
+    const rows: ApiBadge[] = [
+      {
+        id: 'b1',
+        key: 'operator',
+        name: 'Operator',
+        description: 'Complete 5 lessons.',
+        icon: 'badge-operator',
+        kind: 'mission',
+        state: 'progress',
+        progress: { current: 2, target: 5 },
+        earnedAt: null,
+      },
+    ];
+    const pending = api.badges();
+    const request = http.expectOne(`${base}/api/me/badges`);
+    expect(request.request.method).toBe('GET');
+    request.flush(rows);
+    expect(await pending).toEqual(rows);
   });
 
   it('asks for the weekly crew board by default', async () => {

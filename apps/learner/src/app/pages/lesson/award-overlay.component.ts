@@ -58,6 +58,11 @@ import { SfIconComponent } from '@assurance/ui';
           @if (award().leveledUp) {
             <li class="ao__chip">Level {{ award().level }}</li>
           }
+          @for (badge of award().badges; track badge.id) {
+            <li class="ao__chip">
+              {{ badge.kind === 'credential' ? 'Credential' : 'Badge' }}: {{ badge.name }}
+            </li>
+          }
         </ul>
         <button #cta type="button" class="sf-btn sf-btn--primary" (click)="closed.emit()">
           Continue

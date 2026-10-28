@@ -9,6 +9,7 @@ const award: ApiAward = {
   leveledUp: false,
   streakDays: 4,
   streakExtended: true,
+  badges: [],
 };
 
 describe('AwardOverlayComponent', () => {
@@ -43,6 +44,18 @@ describe('AwardOverlayComponent', () => {
     await create({ ...award, leveledUp: true, level: 3 });
     expect(el().textContent).toContain('Level up');
     expect(el().textContent).toContain('You reached level 3');
+  });
+
+  it('names the badges and credentials the completion earned', async () => {
+    await create({
+      ...award,
+      badges: [
+        { id: 'b1', key: 'recruit', name: 'Recruit', icon: 'badge-recruit', kind: 'mission' },
+        { id: 'b2', key: 'ai', name: 'AI-Ready', icon: 'badge-shield-check', kind: 'credential' },
+      ],
+    });
+    expect(el().textContent).toContain('Badge: Recruit');
+    expect(el().textContent).toContain('Credential: AI-Ready');
   });
 
   it('shows "Nice work" when only the streak moved', async () => {
