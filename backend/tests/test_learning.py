@@ -230,6 +230,7 @@ def test_completion_is_recorded_once(content):
             "leveledUp": False,
             "streakDays": 1,
             "streakExtended": True,
+            "badges": [],
         },
     }
     assert replay == {

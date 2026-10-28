@@ -139,3 +139,79 @@ class CrewMembership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.member_id} in {self.crew_id}"
+
+
+class BadgeRule(models.TextChoices):
+    LESSONS_COMPLETED = "lessons_completed", "Lessons completed"
+    COURSE_COMPLETED = "course_completed", "Courses completed"
+    QUIZZES_PASSED = "quizzes_passed", "Graded quizzes passed"
+    STREAK_DAYS = "streak_days", "Pulse streak (days)"
+    LEVEL = "level", "Level reached"
+    XP_TOTAL = "xp_total", "Total XP"
+    MANUAL = "manual", "Instructor sign-off"
+
+
+class Badge(models.Model):
+    """A mission badge or credential a tenant offers.
+
+    Mission badges are earned automatically by `rule` reaching `target`. Credentials
+    (`kind=credential`) are always `manual`: an instructor signs them off.
+    """
+
+    class Kind(models.TextChoices):
+        MISSION = "mission"
+        CREDENTIAL = "credential"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    key = models.SlugField(max_length=60)
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=500, blank=True, default="")
+    # A name from the design kit's icon set (e.g. "badge-recruit"); the app falls back
+    # to a generic shield for names it doesn't know.
+    icon = models.CharField(max_length=60, default="badge-shield")
+    kind = models.CharField(max_length=12, choices=Kind, default=Kind.MISSION)
+    rule = models.CharField(max_length=24, choices=BadgeRule, default=BadgeRule.MANUAL)
+    target = models.PositiveIntegerField(default=1)
+    order = models.PositiveIntegerField(default=0)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "name"]
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "key"], name="badge_key_unique"),
+            models.CheckConstraint(
+                condition=~models.Q(kind="credential") | models.Q(rule="manual"),
+                name="credential_badges_are_manual",
+            ),
+            models.CheckConstraint(condition=models.Q(target__gte=1), name="badge_target_positive"),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class BadgeAward(models.Model):
+    """A member earned a badge. One per (member, badge); never edited."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    member = models.ForeignKey(
+        "accounts.Member", on_delete=models.PROTECT, related_name="badge_awards"
+    )
+    badge = models.ForeignKey(Badge, on_delete=models.PROTECT, related_name="awards")
+    awarded_at = models.DateTimeField(default=timezone.now)
+    # Set when staff signed it off; empty for automatic awards.
+    awarded_by = models.ForeignKey(
+        "accounts.Member", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["awarded_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["member", "badge"], name="badge_award_unique")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.member_id} earned {self.badge_id}"

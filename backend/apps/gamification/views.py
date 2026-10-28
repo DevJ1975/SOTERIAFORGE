@@ -10,14 +10,18 @@ from apps.accounts.models import Member, Role
 from apps.accounts.permissions import TENANT_STAFF, HasTenantRole, IsActiveMember
 from apps.audit.models import record
 
+from . import badges
 from .leaderboard import PERIODS, crew_board, score_card
-from .models import Cohort, Crew, CrewMembership, Section
+from .models import Badge, Cohort, Crew, CrewMembership, Section
 from .serializers import (
+    BadgeSignOffSerializer,
+    BadgeWriteSerializer,
     CohortSerializer,
     CohortTreeSerializer,
     CrewBoardSerializer,
     CrewMembersSerializer,
     CrewSerializer,
+    MemberBadgeSerializer,
     ScoreCardSerializer,
     SectionSerializer,
 )
@@ -202,3 +206,95 @@ class CrewMembersView(StaffOnly, APIView):
                 at=timezone.now().isoformat(),
             )
         return Response(CrewSerializer(crew).data)
+
+
+class MyBadgesView(APIView):
+    """The badge catalog with your state and progress on each. Private: self only."""
+
+    @extend_schema(responses=MemberBadgeSerializer(many=True))
+    def get(self, request):
+        tenant = acting_tenant(request)
+        return Response(badges.catalog_for(request.user, tenant))
+
+
+class BadgeListView(StaffOnly, APIView):
+    """Staff: every badge in the tenant (including retired ones), and create new ones."""
+
+    @extend_schema(responses=BadgeWriteSerializer(many=True))
+    def get(self, request):
+        rows = Badge.objects.filter(tenant=acting_tenant(request))
+        return Response(BadgeWriteSerializer(rows, many=True).data)
+
+    @extend_schema(request=BadgeWriteSerializer, responses={201: BadgeWriteSerializer})
+    def post(self, request):
+        tenant = acting_tenant(request)
+        body = BadgeWriteSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        if Badge.objects.filter(tenant=tenant, key=body.validated_data["key"]).exists():
+            raise ValidationError({"key": ["A badge with this key already exists."]})
+        with transaction.atomic():
+            badge = body.save(tenant=tenant)
+            record(
+                action="gamification.badge.created",
+                actor=request.user,
+                tenant=tenant,
+                target=badge,
+            )
+        return Response(BadgeWriteSerializer(badge).data, status=201)
+
+
+class BadgeDetailView(StaffOnly, APIView):
+    def badge(self, request, badge_id) -> Badge:
+        return get_object_or_404(Badge, tenant=acting_tenant(request), pk=badge_id)
+
+    @extend_schema(request=BadgeWriteSerializer, responses=BadgeWriteSerializer)
+    def patch(self, request, badge_id):
+        badge = self.badge(request, badge_id)
+        body = BadgeWriteSerializer(badge, data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        key = body.validated_data.get("key")
+        if key and key != badge.key and Badge.objects.filter(tenant=badge.tenant, key=key).exists():
+            raise ValidationError({"key": ["A badge with this key already exists."]})
+        with transaction.atomic():
+            badge = body.save()
+            record(
+                action="gamification.badge.updated",
+                actor=request.user,
+                tenant=request.tenant,
+                target=badge,
+            )
+        return Response(BadgeWriteSerializer(badge).data)
+
+    @extend_schema(responses={204: None})
+    def delete(self, request, badge_id):
+        badge = self.badge(request, badge_id)
+        if badge.awards.exists():
+            raise ValidationError("Members have earned this badge. Retire it instead.")
+        with transaction.atomic():
+            record(
+                action="gamification.badge.deleted",
+                actor=request.user,
+                tenant=request.tenant,
+                target=badge,
+            )
+            badge.delete()
+        return Response(status=204)
+
+
+class BadgeSignOffView(StaffOnly, APIView):
+    """Staff sign off a badge for a member (the only way to earn a credential)."""
+
+    @extend_schema(request=BadgeSignOffSerializer, responses={201: None, 200: None})
+    def post(self, request, badge_id):
+        tenant = acting_tenant(request)
+        body = BadgeSignOffSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        badge = get_object_or_404(Badge, tenant=tenant, pk=badge_id, active=True)
+        member = get_object_or_404(
+            Member, pk=body.validated_data["memberId"], tenant=tenant, status=Member.Status.ACTIVE
+        )
+        if member.role != Role.LEARNER:
+            raise ValidationError({"memberId": ["Badges are awarded to learners."]})
+        with transaction.atomic():
+            created = badges.grant(badge=badge, member=member, by=request.user)
+        return Response(status=201 if created else 200)

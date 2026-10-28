@@ -34,6 +34,8 @@ class Award:
     leveled_up: bool
     streak_days: int
     streak_extended: bool
+    # Badges this completion earned, as (id, key, name, icon, kind) tuples.
+    badges: tuple = ()
 
     def as_json(self) -> dict:
         return {
@@ -43,6 +45,10 @@ class Award:
             "leveledUp": self.leveled_up,
             "streakDays": self.streak_days,
             "streakExtended": self.streak_extended,
+            "badges": [
+                {"id": i, "key": k, "name": n, "icon": ic, "kind": kd}
+                for i, k, n, ic, kd in self.badges
+            ],
         }
 
 

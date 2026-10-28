@@ -11,6 +11,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.accounts.models import Member, Role
+from apps.gamification.badges import ensure_default_badges
 from apps.tenants import rls
 from apps.tenants.models import Tenant
 
@@ -46,6 +47,7 @@ class Command(BaseCommand):
                 member.status = Member.Status.ACTIVE
                 member.set_password(PASSWORD)
                 member.save()
+        ensure_default_badges(tenant)
         call_command("seed_course", tenant=TENANT_ID, publish=True, stdout=self.stdout)
         self.stdout.write(f"Demo ready: tenant '{TENANT_ID}', password '{PASSWORD}'.")
         for email, _, role, _ in ACCOUNTS:

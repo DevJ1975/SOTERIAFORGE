@@ -20,6 +20,7 @@ from apps.accounts.emails import send_link_email
 from apps.accounts.models import Member, OneTimeToken, Role
 from apps.accounts.permissions import IsActiveMember
 from apps.audit.models import record
+from apps.gamification.badges import ensure_default_badges
 
 from .library import LIBRARY_TENANT_ID
 from .models import Tenant, tenant_slug
@@ -150,6 +151,7 @@ class TenantListView(SuperadminView):
                 branding={"colors": {}},
             )
             record(action="tenant.provisioned", actor=request.user, tenant=tenant, target=tenant)
+            ensure_default_badges(tenant)
             admin, raw = None, None
             if data.get("adminEmail"):
                 try:

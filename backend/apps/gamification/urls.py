@@ -5,6 +5,10 @@ from . import views
 urlpatterns = [
     path("me/progress", views.ScoreCardView.as_view(), name="score-card"),
     path("leaderboard/crews", views.CrewBoardView.as_view(), name="crew-board"),
+    path("me/badges", views.MyBadgesView.as_view(), name="my-badges"),
+    path("badges", views.BadgeListView.as_view(), name="badges"),
+    path("badges/<uuid:badge_id>", views.BadgeDetailView.as_view(), name="badge"),
+    path("badges/<uuid:badge_id>/award", views.BadgeSignOffView.as_view(), name="badge-award"),
     path("cohorts", views.CohortListView.as_view(), name="cohorts"),
     path("cohorts/<uuid:cohort_id>", views.CohortDetailView.as_view(), name="cohort"),
     path("cohorts/<uuid:cohort_id>/sections", views.SectionCreateView.as_view(), name="sections"),

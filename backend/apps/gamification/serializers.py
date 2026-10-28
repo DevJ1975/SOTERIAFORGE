@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Cohort, Crew, Section
+from .models import Badge, BadgeRule, Cohort, Crew, Section
 
 
 class CohortSerializer(serializers.ModelSerializer):
@@ -121,3 +121,57 @@ class CohortTreeSerializer(CohortSerializer):
 
     class Meta(CohortSerializer.Meta):
         fields = [*CohortSerializer.Meta.fields, "sections"]
+
+
+class BadgeWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = [
+            "id",
+            "key",
+            "name",
+            "description",
+            "icon",
+            "kind",
+            "rule",
+            "target",
+            "order",
+            "active",
+        ]
+        read_only_fields = ["id"]
+        # The (tenant, key) uniqueness is checked in the view: tenant isn't a body field.
+        extra_kwargs = {
+            "key": {"validators": []},
+            "target": {"min_value": 1, "max_value": 1_000_000},
+            "order": {"max_value": 10_000},
+        }
+
+    def validate(self, attrs):
+        kind = attrs.get("kind", getattr(self.instance, "kind", Badge.Kind.MISSION))
+        rule = attrs.get("rule", getattr(self.instance, "rule", BadgeRule.MANUAL))
+        if kind == Badge.Kind.CREDENTIAL and rule != BadgeRule.MANUAL:
+            raise serializers.ValidationError(
+                {"rule": ["Credentials are signed off by an instructor (rule: manual)."]}
+            )
+        return attrs
+
+
+class BadgeProgressSerializer(serializers.Serializer):
+    current = serializers.IntegerField()
+    target = serializers.IntegerField()
+
+
+class MemberBadgeSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    key = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    icon = serializers.CharField()
+    kind = serializers.ChoiceField(choices=Badge.Kind.choices)
+    state = serializers.ChoiceField(choices=["earned", "credential", "progress", "locked"])
+    progress = BadgeProgressSerializer(allow_null=True)
+    earnedAt = serializers.DateTimeField(allow_null=True)
+
+
+class BadgeSignOffSerializer(serializers.Serializer):
+    memberId = serializers.UUIDField()

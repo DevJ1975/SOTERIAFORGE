@@ -188,6 +188,7 @@ def test_solving_every_question_completes_with_the_first_try_score(content, lear
             "leveledUp": False,
             "streakDays": 1,
             "streakExtended": True,
+            "badges": [],
         },
     }
     # One of two questions right on the first try.
