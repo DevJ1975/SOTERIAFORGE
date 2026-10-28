@@ -344,6 +344,20 @@ player and live progress updates (progress refreshes on load).
   (`libs/gamification` services, `apps/functions` gamification and leaderboard jobs) at
   cutover.
 
+**Slice 2 done (2026-10-27): badges, the award overlay and the staff screens.**
+
+- **Mission badges** (`gamification.Badge`, `BadgeAward`, under tenant RLS): a per-tenant
+  catalog with rules (lessons, courses, passed quizzes, streak, level, XP) checked on the
+  server inside the completion transaction, so a replay never awards twice. New tenants get
+  a starter catalog of eight; existing tenants were backfilled by migration.
+- **Credentials** are always manual: an instructor signs them off (`POST /api/badges/{id}/award`).
+- Learner Home reads `GET /api/me/badges`; the completion `award` lists the badges it earned
+  and the award overlay shows them. Admin has Cohorts & crews and Badges pages.
+
+**Remaining for Phase 3:** signed Open Badges 3.0 credentials and the public verify page.
+This needs an issuer key pair and a hosted issuer profile, which is a deployment decision
+(see `docs/open-badges.md`). Learner-facing My Progress already shows level, streak and crew.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

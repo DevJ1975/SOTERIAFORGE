@@ -5,9 +5,8 @@ portable, employer-verifiable — not vanity images.
 
 ## Data model
 
-- Badge **definitions**: a per-tenant `Badge` (name, description, image, criteria
-  narrative, issuerId), authored by tenant_admins through the Forge API. Badges are
-  not yet modelled in Django (see `docs/todo.md`).
+- Badge **definitions**: a per-tenant `Badge` (name, description, icon, kind, rule and
+  target), authored by staff through `/api/badges`. Credentials are always manual.
 - Badge **awards** (earned credentials): issued server-side and recorded on the
   learner (e.g. an awards table plus a signed assertion document).
 
@@ -36,7 +35,8 @@ exportable VC is generated once the issuer key is configured.
 
 ## Status
 
-- ⏳ Badge definitions + authoring in Django (schema exists in `@assurance/shared`)
-- ✅ Award recording design (server-authoritative, tied to verified completion)
+- ✅ Badge definitions + authoring in Django (`gamification.Badge`; admin Badges page)
+- ✅ Award recording: automatic rules evaluated inside the lesson-completion
+  transaction, instructor sign-off for credentials (`gamification.BadgeAward`, audited)
 - ⏳ VC signing + hosted issuer profile — deployment-time (issuer key as a Railway
   secret)
