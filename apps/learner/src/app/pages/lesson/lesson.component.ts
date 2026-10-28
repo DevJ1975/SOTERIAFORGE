@@ -21,6 +21,7 @@ import {
   type ApiLessonSummary,
 } from '@assurance/lms-core';
 import { SfIconComponent } from '@assurance/ui';
+import { AwardOverlayComponent } from './award-overlay.component';
 import { KnowledgeCheckComponent } from './knowledge-check.component';
 import { ManagedScormPlayerComponent } from '@assurance/standards';
 
@@ -31,7 +32,13 @@ const HTTP_URL = /^https?:\/\//i;
 @Component({
   selector: 'assurance-lesson',
   standalone: true,
-  imports: [RouterLink, SfIconComponent, KnowledgeCheckComponent, ManagedScormPlayerComponent],
+  imports: [
+    RouterLink,
+    SfIconComponent,
+    KnowledgeCheckComponent,
+    ManagedScormPlayerComponent,
+    AwardOverlayComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="ls" aria-labelledby="ls-title">
@@ -161,6 +168,12 @@ const HTTP_URL = /^https?:\/\//i;
               {{ completing() ? 'Saving…' : 'Mark as complete' }}
             </button>
           </div>
+        }
+
+        @if (completion()?.award; as award) {
+          @if (!awardSeen()) {
+            <assurance-award-overlay [award]="award" (closed)="awardSeen.set(true)" />
+          }
         }
 
         <div class="ls__live" role="status" aria-live="polite">
@@ -306,6 +319,8 @@ export class LessonComponent {
   readonly error = signal<string | null>(null);
   readonly completion = signal<ApiCompletion | null>(null);
   readonly completing = signal(false);
+  /** The award overlay shows once per completion; closing it keeps it closed. */
+  readonly awardSeen = signal(false);
   readonly completeError = signal<string | null>(null);
 
   private loadSeq = 0;
@@ -325,6 +340,7 @@ export class LessonComponent {
     this.error.set(null);
     this.lesson.set(null);
     this.completion.set(null);
+    this.awardSeen.set(false);
     this.completeError.set(null);
     // Fetch lesson and outline together; the outline powers the label, Previous/Next and the
     // enrollment check. A missing outline never blocks the lesson itself.
