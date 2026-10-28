@@ -73,5 +73,15 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent),
   },
+  {
+    path: 'cohorts',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/cohorts.component').then((m) => m.CohortsComponent),
+  },
+  {
+    path: 'badges',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/badges.component').then((m) => m.BadgesComponent),
+  },
   { path: '**', redirectTo: '' },
 ];

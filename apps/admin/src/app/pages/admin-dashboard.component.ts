@@ -84,6 +84,16 @@ export class AdminDashboardComponent {
       description: 'Create and configure no-code card games for courses (Phase 5).',
       link: '/games',
     },
+    {
+      title: 'Cohorts & crews',
+      description: 'Organize learners into cohorts, sections and crews for the crew board.',
+      link: '/cohorts',
+    },
+    {
+      title: 'Badges',
+      description: 'Define mission badges and credentials, and sign off credentials.',
+      link: '/badges',
+    },
     { title: 'Leaderboards', description: 'View XP rankings and engagement metrics (Phase 1+).' },
     {
       title: 'AI Knowledge Base',
