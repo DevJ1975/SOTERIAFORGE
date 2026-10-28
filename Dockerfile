@@ -8,7 +8,8 @@ COPY . .
 RUN npm ci --legacy-peer-deps
 
 ARG APP=learner
-RUN npx nx build "${APP}" --configuration=production
+ARG CONFIGURATION=production
+RUN npx nx build "${APP}" --configuration="${CONFIGURATION}"
 
 FROM nginx:alpine AS static-runtime
 
