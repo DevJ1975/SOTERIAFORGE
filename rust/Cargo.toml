@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["forge-sim", "forge-sim-ffi", "forge-sim-py"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
