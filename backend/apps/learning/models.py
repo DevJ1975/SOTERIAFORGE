@@ -13,6 +13,8 @@ from django.db import models
 
 # Keep aligned with CONTENT_TYPES in libs/shared/src/lib/constants.ts.
 CONTENT_TYPES = ["video", "scorm", "cmi5", "quiz", "game", "unity"]
+# Launched as cmi5 Assignable Units; only their xAPI statements complete them.
+AU_CONTENT_TYPES = {"cmi5", "unity"}
 
 
 class PublishStatus(models.TextChoices):

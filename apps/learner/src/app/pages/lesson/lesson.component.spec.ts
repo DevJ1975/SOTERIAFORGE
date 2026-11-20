@@ -14,7 +14,7 @@ function lesson(over: Partial<ApiLesson> = {}): ApiLesson {
     moduleLabel: 'Secure I',
     title: 'Prompt injection',
     order: 2,
-    contentType: 'cmi5',
+    contentType: 'game',
     assetRef: '',
     externalUrl: 'https://example.com/launch',
     scormVersion: '',
@@ -98,10 +98,21 @@ describe('LessonComponent', () => {
     expect(text).toContain('OWASP LLM01:2025');
     expect(text).toContain('About 8 min');
     expect(text).toContain('Validate input');
-    expect(text).toContain('Open cmi5 content');
+    expect(text).toContain('Open game content');
     expect(text).toContain('Previous: Intro');
     expect(text).toContain('Next: Wrap up');
   });
+
+  it.each(['cmi5', 'unity'] as const)(
+    'launches a %s lesson in its player and offers no manual completion',
+    async (contentType) => {
+      api.lesson.mockResolvedValue(lesson({ contentType }));
+      await create();
+      expect(el().querySelector('assurance-managed-cmi5-player')).not.toBeNull();
+      expect(el().textContent).toContain('Open lesson');
+      expect(el().textContent).not.toContain('Mark as complete');
+    },
+  );
 
   it('marks a quiz-less lesson complete via the API and shows progress', async () => {
     api.lesson.mockResolvedValue(lesson());

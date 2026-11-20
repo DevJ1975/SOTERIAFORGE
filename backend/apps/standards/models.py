@@ -77,3 +77,63 @@ class Statement(models.Model):
 
     def __str__(self):
         return str(self.pk)
+
+
+class AuSession(models.Model):
+    """One cmi5 launch of an Assignable Unit (a `cmi5` or `unity` lesson).
+
+    The fetch secret and the auth token are stored only as SHA-256 hashes. The
+    registration the AU sees is the enrollment id; this row is the cmi5 session.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    enrollment = models.ForeignKey("learning.Enrollment", on_delete=models.PROTECT)
+    lesson = models.ForeignKey("learning.Lesson", on_delete=models.PROTECT, related_name="+")
+    au_url = models.CharField(max_length=2048)
+    fetch_hash = models.CharField(max_length=64)
+    fetch_used_at = models.DateTimeField(null=True)
+    token_hash = models.CharField(max_length=64, blank=True)
+    expires_at = models.DateTimeField()
+    revoked = models.BooleanField(default=False)
+    initialized_at = models.DateTimeField(null=True)
+    completed_at = models.DateTimeField(null=True)
+    # True after `passed`, False after `failed`, None while unjudged.
+    success = models.BooleanField(null=True)
+    terminated_at = models.DateTimeField(null=True)
+    # Latest reported score as a 0-100 percentage.
+    score = models.PositiveSmallIntegerField(null=True)
+    statement_count = models.PositiveIntegerField(default=0)
+    # The learning completion (progress, XP, badges) the host app shows the learner.
+    completion = models.JSONField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["enrollment", "lesson"])]
+
+    def __str__(self):
+        return str(self.pk)
+
+
+class AuStatement(models.Model):
+    """An xAPI statement received from an AU, stored as stamped by the server."""
+
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    session = models.ForeignKey(AuSession, on_delete=models.PROTECT, related_name="statements")
+    statement_id = models.UUIDField()
+    verb = models.CharField(max_length=300)
+    # Hash of the statement as the AU sent it, so a retry is told apart from a conflict.
+    digest = models.CharField(max_length=64)
+    payload = models.JSONField()
+    stored_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "statement_id"], name="standards_au_statement_once"
+            )
+        ]
+
+    def __str__(self):
+        return str(self.statement_id)

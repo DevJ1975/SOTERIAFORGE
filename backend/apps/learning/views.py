@@ -22,7 +22,14 @@ from .access import (
     require_enrollment,
     visible_courses,
 )
-from .models import Enrollment, Lesson, LessonProgress, Module, PublishStatus
+from .models import (
+    AU_CONTENT_TYPES,
+    Enrollment,
+    Lesson,
+    LessonProgress,
+    Module,
+    PublishStatus,
+)
 from .progress import complete_lesson, touch
 from .serializers import (
     AssignResultSerializer,
@@ -382,6 +389,9 @@ class LessonCompleteView(APIView):
         lesson = get_lesson(request, lesson_id)
         if hasattr(lesson, "binding"):
             raise Conflict("Complete this SCORM lesson inside its player.")
+        if lesson.content_type in AU_CONTENT_TYPES:
+            # Only the statements the content sends can complete it (apps/standards/cmi5.py).
+            raise Conflict("Complete this lesson inside its player.")
         if lesson.quiz_id is not None:
             raise Conflict("Finish this lesson's quiz to complete it.")
         enrollment = require_enrollment(request, lesson.module.course)

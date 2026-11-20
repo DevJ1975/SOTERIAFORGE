@@ -23,7 +23,7 @@ import {
 import { SfIconComponent } from '@assurance/ui';
 import { AwardOverlayComponent } from './award-overlay.component';
 import { KnowledgeCheckComponent } from './knowledge-check.component';
-import { ManagedScormPlayerComponent } from '@assurance/standards';
+import { ManagedCmi5PlayerComponent, ManagedScormPlayerComponent } from '@assurance/standards';
 
 const VIDEO_FILE = /\.(mp4|webm|ogg|m4v)(\?|#|$)/i;
 const HTTP_URL = /^https?:\/\//i;
@@ -37,6 +37,7 @@ const HTTP_URL = /^https?:\/\//i;
     SfIconComponent,
     KnowledgeCheckComponent,
     ManagedScormPlayerComponent,
+    ManagedCmi5PlayerComponent,
     AwardOverlayComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -104,6 +105,18 @@ const HTTP_URL = /^https?:\/\//i;
                   <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
                 }
               }
+              @case ('cmi5') {
+                <assurance-managed-cmi5-player
+                  [lessonId]="l.id"
+                  (completed)="onCompleted($event)"
+                />
+              }
+              @case ('unity') {
+                <assurance-managed-cmi5-player
+                  [lessonId]="l.id"
+                  (completed)="onCompleted($event)"
+                />
+              }
               @default {
                 @if (externalLink(); as href) {
                   <a
@@ -153,7 +166,9 @@ const HTTP_URL = /^https?:\/\//i;
               (completed)="onCompleted($event)"
             />
           </section>
-        } @else if (!l.standardsManaged && !completion() && !l.progress?.completedAt) {
+        } @else if (
+          !l.standardsManaged && !launched() && !completion() && !l.progress?.completedAt
+        ) {
           <div class="ls__actions">
             @if (completeError()) {
               <p class="ls__error" role="alert">{{ completeError() }}</p>
@@ -416,6 +431,12 @@ export class LessonComponent {
     return outlineMod && pos > 0
       ? `${mod} · LESSON ${pos} OF ${outlineMod.lessons.length}`
       : mod || 'LESSON';
+  });
+
+  /** cmi5 and Unity lessons complete only through what the content reports. */
+  readonly launched = computed(() => {
+    const t = this.lesson()?.contentType;
+    return t === 'cmi5' || t === 'unity';
   });
 
   readonly typeName = computed(() => {

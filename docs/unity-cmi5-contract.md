@@ -42,7 +42,7 @@ with the fetched token:
   `https://soteriaforge.com/xapi/verbs/...`)
 
 Every statement is tenant-tagged server-side via
-`context.extensions["https://soteriaforge.com/xapi/extensions/tenantId"]`.
+`context.extensions["https://soteriaforge.com/xapi/extensions/tenant"]`.
 
 Assurance reflects `completed` + score into the learner's **enrollment** and triggers
 **gamification** (XP/badges) through server-side validation — the game's reported
@@ -54,29 +54,54 @@ For UI niceties (e.g. "request fullscreen"), the iframe may `postMessage` to the
 host; `forge-unity-embed` forwards these via its `signal` output. **This path is
 never used for completion/score** — only cmi5/xAPI is authoritative.
 
-## 5. Launch flow (target, to be built on the Forge API)
+## 5. Launch flow (built on the Forge API)
 
-The earlier launch used a Firebase callable and a Firestore-backed module player;
-both were removed with Firebase. `forge-cmi5-launcher` (which builds the launch URL
-and renders the sandboxed iframe) remains. The Django `standards` app already
-serves managed SCORM; the cmi5/Unity launch endpoints below are still to be added:
+Implemented in `backend/apps/standards/cmi5.py` and `cmi5_views.py`; the learner app
+uses `assurance-managed-cmi5-player` (`libs/standards`). A hand-testable AU is in
+[examples/cmi5-stub-au.html](./examples/cmi5-stub-au.html).
 
-1. **Launch** — the learner app asks the API for launch parameters for the lesson
-   (`activityId`, `auUrl`). The API validates the caller's membership and tenant,
-   mints a short-lived fetch token, and returns `{ auUrl, endpoint, fetch, actor,
-registration, activityId }`.
-2. **Fetch (fetch URL -> auth token)** — the AU calls the `fetch` URL once to
-   exchange it for a short-lived auth token. The token is scoped to the caller's
-   tenant; the server's authenticated tenant is authoritative and an AU cannot
-   post statements to another tenant's LRS endpoint.
-3. **xAPI (Bearer auth-token -> tenant-stamped statements)** — the AU posts xAPI
-   statements to `endpoint` using `Authorization: Bearer <token>`. The LRS pipeline
-   stamps each statement with the tenant ID from the auth token, regardless of any
-   client-supplied value.
+1. **Launch** — `POST /api/standards/lessons/{lessonId}/cmi5/launch` (signed-in
+   learner). The lesson must be `cmi5` or `unity`, in a published course the caller
+   is enrolled in, with an absolute `externalUrl` (or `assetRef`) on an origin that
+   is neither the API nor a Forge app. Returns
+   `{ id, auUrl, endpoint, fetch, actor, registration, activityId, expiresAt }`.
+   `registration` is the enrollment id; `id` is the cmi5 session. A new launch
+   revokes the previous session for that learner and lesson. Sessions last 4 hours
+   (`CMI5_SESSION_TTL`).
+2. **Fetch** — the AU sends one `POST` to the `fetch` URL and receives
+   `{ "auth-token": "..." }`. A second use returns `{ "error-code": "1" }`, an
+   unknown URL `"2"`, an expired or revoked launch `"3"` (HTTP 403).
+3. **xAPI** — the AU sends `Authorization: Basic <auth-token>` (the cmi5
+   specification) or `Bearer <auth-token>`, plus `X-Experience-API-Version: 1.0.3`:
+   - `POST {endpoint}statements` (one statement or up to 50), or
+     `PUT {endpoint}statements?statementId=<uuid>`.
+   - `GET {endpoint}activities/state?stateId=LMS.LaunchData` for the launch data.
+     AU-written state (saves) is not supported yet.
+4. **Session status** — `GET /api/standards/cmi5/sessions/{id}` (signed-in learner)
+   returns what the AU has reported, including the completion (progress, XP, badges).
+   The learner app polls it; statements never pass through the app.
 
-The `actor` field in the launch result is the server-canonical xAPI Agent for the
-learner, JSON-serialised into `forge-cmi5-launcher`'s `actor` input. The launch call
-must run in the browser only (`afterNextRender`), never during server-side pre-render.
+Rules the server enforces:
+
+- `actor`, `context.registration`, the cmi5 session id and the tenant extension
+  (`https://soteriaforge.com/xapi/extensions/tenant`) are always set from the
+  session. Client-supplied values are overwritten.
+- Order: `initialized` first and once; `completed` once; one of `passed` / `failed`
+  per session; nothing after `terminated`. Violations return 409.
+- `completed`, `passed`, `failed` and `terminated` must be about `activityId`.
+  Other verbs are stored as in-game events and do not affect progress.
+- The lesson completes on `completed` **or** `passed` (cmi5 moveOn
+  `CompletedOrPassed`, the same rule as SCORM 2004 here). `failed` alone does not
+  complete it. `result.score.scaled` becomes a 0–100 score.
+- Re-sending a statement id with identical content is a no-op; with different
+  content it is a 409. A batch is stored completely or not at all.
+- Limits: 64 KB per statement, 5,000 statements per session.
+- `cmi5` and `unity` lessons cannot be completed with "Mark as complete".
+
+Scores are still the client's claim. Server-side replay and verification arrive with
+`forge-sim` (Phase 4 of [unity-games-plan.md](./unity-games-plan.md)).
+
+The launch call must run in the browser only, never during server-side pre-render.
 
 ## 6. Versioning
 
@@ -89,7 +114,8 @@ version's URL; no backend migration is required.
 
 - [ ] WebGL build loads inside a sandboxed iframe (`allow-scripts allow-same-origin`).
 - [ ] Reads cmi5 launch params from the query string.
-- [ ] Performs the `fetch` token exchange before sending statements.
+- [ ] Performs the `fetch` token exchange (one `POST`) before sending statements.
+- [ ] Sends `X-Experience-API-Version: 1.0.3` on every xAPI request.
 - [ ] Emits `initialized` → … → `completed` (+ `passed`/`failed` with score).
 - [ ] Handles pause/resume and reports a final statement on unload.
 - [ ] Verified end-to-end against the Assurance LRS in staging.

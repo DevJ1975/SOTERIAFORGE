@@ -64,3 +64,25 @@ class ConfigurationSerializer(serializers.Serializer):
     contentOriginConfigured = serializers.BooleanField()
     xapiRecordingEnabled = serializers.BooleanField()
     lrsConfigured = serializers.BooleanField()
+
+
+class AuLaunchSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    auUrl = serializers.CharField()
+    endpoint = serializers.URLField()
+    fetch = serializers.URLField()
+    actor = serializers.CharField(help_text="JSON-serialised xAPI Agent.")
+    registration = serializers.UUIDField()
+    activityId = serializers.CharField()
+    expiresAt = serializers.DateTimeField()
+
+
+class AuSessionSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    active = serializers.BooleanField()
+    initialized = serializers.BooleanField()
+    completed = serializers.BooleanField()
+    success = serializers.BooleanField(allow_null=True)
+    terminated = serializers.BooleanField()
+    score = serializers.IntegerField(allow_null=True)
+    completion = serializers.JSONField(allow_null=True)

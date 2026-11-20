@@ -23,6 +23,31 @@ export interface StandardsLaunch {
   expiresAt: string;
 }
 
+/** cmi5 launch parameters for a `cmi5` or `unity` lesson (docs/unity-cmi5-contract.md). */
+export interface AuLaunch {
+  id: string;
+  auUrl: string;
+  endpoint: string;
+  fetch: string;
+  /** JSON-serialised xAPI Agent. */
+  actor: string;
+  registration: string;
+  activityId: string;
+  expiresAt: string;
+}
+
+/** What the launched content has reported so far. */
+export interface AuSession {
+  id: string;
+  active: boolean;
+  initialized: boolean;
+  completed: boolean;
+  success: boolean | null;
+  terminated: boolean;
+  score: number | null;
+  completion: StandardsCompletion | null;
+}
+
 export interface StandardsCommit {
   sequence: number;
   cmi: Record<string, unknown>;
@@ -99,6 +124,20 @@ export class StandardsApi {
           completion: StandardsCompletion | null;
         }>(this.url(`launches/${launchId}/commit`), body)
         .pipe(timeout(30_000)),
+    );
+  }
+
+  cmi5Launch(lessonId: string): Promise<AuLaunch> {
+    return firstValueFrom(
+      this.http
+        .post<AuLaunch>(this.url(`lessons/${lessonId}/cmi5/launch`), {})
+        .pipe(timeout(30_000)),
+    );
+  }
+
+  cmi5Session(sessionId: string): Promise<AuSession> {
+    return firstValueFrom(
+      this.http.get<AuSession>(this.url(`cmi5/sessions/${sessionId}`)).pipe(timeout(15_000)),
     );
   }
 

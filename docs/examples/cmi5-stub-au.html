@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  Minimal cmi5 Assignable Unit for checking a Soteria Forge launch by hand, and a
+  reference for what a Unity build must do (docs/unity-cmi5-contract.md).
+
+  Host this file on an origin that is NOT the learner app or the API, set a `cmi5`
+  or `unity` lesson's external URL to it, publish the course and open the lesson.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stub assignable unit</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 2rem;
+        color: #111;
+        background: #fff;
+      }
+      button {
+        font: inherit;
+        padding: 0.5rem 1rem;
+        margin: 0 0.5rem 0.5rem 0;
+      }
+      pre {
+        background: #f3f3f3;
+        padding: 1rem;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stub assignable unit</h1>
+    <p>
+      <button id="complete" disabled>Completed</button>
+      <button id="pass" disabled>Passed (85%)</button>
+      <button id="fail" disabled>Failed (20%)</button>
+      <button id="event" disabled>Custom event</button>
+      <button id="terminate" disabled>Terminate</button>
+    </p>
+    <pre id="log" role="log" aria-live="polite"></pre>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const endpoint = params.get('endpoint');
+      const activityId = params.get('activityId');
+      const ADL = 'http://adlnet.gov/expapi/verbs/';
+      const log = (line) => (document.getElementById('log').textContent += line + '\n');
+      let token = '';
+
+      async function send(verb, result) {
+        const statement = {
+          id: crypto.randomUUID(),
+          // The server replaces actor, registration, session and tenant with its own.
+          actor: JSON.parse(params.get('actor')),
+          verb: { id: verb },
+          object: { id: activityId },
+          context: { registration: params.get('registration') },
+          timestamp: new Date().toISOString(),
+          ...(result ? { result } : {}),
+        };
+        const response = await fetch(endpoint + 'statements', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Basic ' + token,
+            'Content-Type': 'application/json',
+            'X-Experience-API-Version': '1.0.3',
+          },
+          body: JSON.stringify(statement),
+        });
+        log(`${verb.split('/').pop()} -> ${response.status} ${await response.text()}`);
+      }
+
+      async function start() {
+        if (!endpoint || !params.get('fetch')) return log('Missing cmi5 launch parameters.');
+        // The fetch URL works once: reloading this page needs a new launch.
+        const fetched = await (await fetch(params.get('fetch'), { method: 'POST' })).json();
+        if (!fetched['auth-token']) return log('Fetch failed: ' + JSON.stringify(fetched));
+        token = fetched['auth-token'];
+        const state = await fetch(endpoint + 'activities/state?stateId=LMS.LaunchData', {
+          headers: { Authorization: 'Basic ' + token, 'X-Experience-API-Version': '1.0.3' },
+        });
+        log('LMS.LaunchData -> ' + (await state.text()));
+        await send(ADL + 'initialized');
+        for (const button of document.querySelectorAll('button')) button.disabled = false;
+      }
+
+      const on = (id, run) => document.getElementById(id).addEventListener('click', run);
+      on('complete', () => send(ADL + 'completed', { completion: true }));
+      on('pass', () => send(ADL + 'passed', { success: true, score: { scaled: 0.85 } }));
+      on('fail', () => send(ADL + 'failed', { success: false, score: { scaled: 0.2 } }));
+      on('event', () => send('https://soteriaforge.com/xapi/verbs/pressed-button'));
+      on('terminate', () => send(ADL + 'terminated'));
+      start().catch((error) => log('Error: ' + error.message));
+    </script>
+  </body>
+</html>

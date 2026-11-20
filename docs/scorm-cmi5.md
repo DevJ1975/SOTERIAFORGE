@@ -16,7 +16,8 @@ for audit/retention. There is no automatic object deletion or retention job yet;
 set an organizational retention policy before production use.
 
 This is an import/playback pilot, **not an LMS exporter, certified SCORM LMS,
-complete LRS, or completed cmi5 integration**. Multi-SCO navigation, sequencing,
+complete LRS, or completed cmi5 integration**. (cmi5 / Unity lessons have their own
+launch, fetch and statement intake: see [unity-cmi5-contract.md](./unity-cmi5-contract.md) §5.) Multi-SCO navigation, sequencing,
 resource dependencies, `xml:base`, launch query parameters/fragments, externally
 hosted assets, offline package playback, cmi5 launch/fetch/state/lifecycle and
 arbitrary browser xAPI statement ingestion are not supported. Unsupported
