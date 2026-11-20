@@ -13,7 +13,7 @@ class TenantSummarySerializer(serializers.ModelSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     tenantId = serializers.CharField(source="tenant_id", read_only=True, allow_null=True)
-    # Legacy alias of `id` for clients written against the Firebase uid.
+    # Alias of `id`, kept for clients that still read `uid`.
     uid = serializers.SerializerMethodField()
     displayName = serializers.CharField(source="display_name", read_only=True)
 

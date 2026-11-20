@@ -102,59 +102,62 @@ def _find_member(email: str, tenant_id: str) -> Member | None:
     return Member.objects.filter(tenant__isnull=True, email__iexact=email).first()
 
 
-class LoginView(_Public):
-    @extend_schema(request=LoginSerializer, responses=TokenResponseSerializer)
-    def post(self, request):
-        body = LoginSerializer(data=request.data)
-        body.is_valid(raise_exception=True)
-        email = body.validated_data["email"]
-        tenant_id = (
-            body.validated_data.get("tenant") or request.META.get(TENANT_HEADER, "")
-        ).strip()
+def verify_password(email: str, tenant_id: str, password: str) -> tuple[Member | None, float]:
+    """Check an email and password: `(member, 0)` when right, `(None, seconds)` while
+    locked out, `(None, 0)` when wrong.
 
-        # Errors are raised after the transaction commits, so a failed attempt still
-        # counts toward the lockout.
-        refresh = None
-        locked_for = 0.0
-        with rls.bypass(), transaction.atomic():
-            member = _find_member(email, tenant_id)
-            now = timezone.now()
-            if member is not None and member.locked_until and member.locked_until > now:
-                locked_for = (member.locked_until - now).total_seconds()
-            else:
-                refresh = self._attempt(member, body.validated_data["password"], now)
-        if locked_for:
-            raise exceptions.Throttled(
-                wait=locked_for, detail="Too many failed attempts. Try again later."
-            )
-        if refresh is None:
-            raise exceptions.AuthenticationFailed(BAD_LOGIN)
-        return _tokens_response(member, refresh, body.validated_data["client"])
-
-    def _attempt(self, member: Member | None, password: str, now) -> str | None:
-        """Check the password; on success reset the counters and return a refresh token."""
+    Commits its own transaction, so a failed attempt counts toward the lockout even
+    though the caller then raises. Shared by the API sign-in and the MCP sign-in page.
+    """
+    with rls.bypass(), transaction.atomic():
+        member = _find_member(email, tenant_id)
+        now = timezone.now()
+        if member is not None and member.locked_until and member.locked_until > now:
+            return None, (member.locked_until - now).total_seconds()
         if member is None:
             check_password(password, _dummy_hash())
-            return None
+            return None, 0.0
         if not member.check_password(password) or member.status == Member.Status.DEACTIVATED:
-            self._note_failure(member, now)
-            return None
+            _note_failure(member, now)
+            return None, 0.0
         member.failed_logins = 0
         member.locked_until = None
         if member.status == Member.Status.INVITED:
             member.status = Member.Status.ACTIVE
         member.save(update_fields=["failed_logins", "locked_until", "status", "updated_at"])
         record(action="auth.login", actor=member, tenant=member.tenant, target=member)
-        return tokens.issue_refresh(member)
+        return member, 0.0
 
-    @staticmethod
-    def _note_failure(member: Member, now) -> None:
-        member.failed_logins += 1
-        if member.failed_logins >= settings.AUTH_LOCKOUT_ATTEMPTS:
-            member.locked_until = now + timedelta(seconds=settings.AUTH_LOCKOUT_SECONDS)
-            member.failed_logins = 0
-        member.save(update_fields=["failed_logins", "locked_until", "updated_at"])
-        record(action="auth.login.failed", actor=None, tenant=member.tenant, target=member)
+
+def _note_failure(member: Member, now) -> None:
+    member.failed_logins += 1
+    if member.failed_logins >= settings.AUTH_LOCKOUT_ATTEMPTS:
+        member.locked_until = now + timedelta(seconds=settings.AUTH_LOCKOUT_SECONDS)
+        member.failed_logins = 0
+    member.save(update_fields=["failed_logins", "locked_until", "updated_at"])
+    record(action="auth.login.failed", actor=None, tenant=member.tenant, target=member)
+
+
+class LoginView(_Public):
+    @extend_schema(request=LoginSerializer, responses=TokenResponseSerializer)
+    def post(self, request):
+        body = LoginSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        tenant_id = (
+            body.validated_data.get("tenant") or request.META.get(TENANT_HEADER, "")
+        ).strip()
+        member, locked_for = verify_password(
+            body.validated_data["email"], tenant_id, body.validated_data["password"]
+        )
+        if locked_for:
+            raise exceptions.Throttled(
+                wait=locked_for, detail="Too many failed attempts. Try again later."
+            )
+        if member is None:
+            raise exceptions.AuthenticationFailed(BAD_LOGIN)
+        with rls.bypass():
+            refresh = tokens.issue_refresh(member)
+        return _tokens_response(member, refresh, body.validated_data["client"])
 
 
 class RefreshSerializer(serializers.Serializer):
