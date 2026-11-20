@@ -98,7 +98,43 @@ jobs:
       - name: E2E tests
         run: npx nx e2e learner-e2e
 
+  # The simulator rules (rust/README.md): test them, then build the Python module
+  # the backend job installs, so Django's replay tests run against this commit's rules.
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Format check
+        working-directory: rust
+        run: cargo fmt --check
+      - name: Lint
+        working-directory: rust
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test
+        working-directory: rust
+        run: cargo test --locked
+      # manylinux 2_28 runs on the API image (python:3.13-slim) and on this runner.
+      - name: Build the forge_sim wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: x86_64
+          manylinux: 2_28
+          args: --release --locked -m rust/forge-sim-py/Cargo.toml -i python3.13 --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-sim-wheel
+          path: dist/*.whl
+          if-no-files-found: error
+
   backend:
+    needs: rust
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -121,6 +157,15 @@ jobs:
         with:
           version: '0.12.23'
       - run: uv sync --frozen
+      - uses: actions/download-artifact@v4
+        with:
+          name: forge-sim-wheel
+          path: backend/dist
+      # Not in pyproject.toml yet, so install it beside the locked dependencies.
+      # `uv run` keeps it; the import fails the job if the wheel doesn't load, which
+      # would otherwise only show as skipped tests.
+      - name: Install the forge_sim wheel
+        run: uv pip install dist/*.whl && uv run python -c "import forge_sim; print('rules', forge_sim.RULES_VERSION)"
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Migrations are committed

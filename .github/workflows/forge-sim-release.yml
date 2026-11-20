@@ -1,0 +1,44 @@
+name: forge-sim release
+
+# Publishes the forge_sim wheel for the API image. Push a tag `forge-sim-v<version>`
+# matching the version in rust/Cargo.toml; the wheel and its SHA-256 are attached to
+# a GitHub release with that tag. See rust/README.md.
+on:
+  push:
+    tags: ['forge-sim-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Tag matches the crate version
+        run: |
+          version=$(cargo metadata --manifest-path rust/Cargo.toml --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "forge-sim") | .version')
+          test "forge-sim-v$version" = "$GITHUB_REF_NAME" \
+            || { echo "Tag $GITHUB_REF_NAME does not match crate version $version"; exit 1; }
+      - name: Test
+        working-directory: rust
+        run: cargo test --locked
+      - name: Build the forge_sim wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: x86_64
+          manylinux: 2_28
+          args: --release --locked -m rust/forge-sim-py/Cargo.toml -i python3.13 --out dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum *.whl > SHA256SUMS
+          cat SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" *.whl SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+            --notes "forge_sim wheel for the API image (CPython 3.13, manylinux 2_28 x86-64)."
