@@ -20,4 +20,6 @@ urlpatterns = [
     path("api/", include("apps.assets.urls")),
     path("api/coach/", include("apps.coach.urls")),
     path("api/standards/", include("apps.standards.urls")),
+    # OAuth 2.1 for the MCP endpoint; /mcp itself is routed in forge/asgi.py.
+    path("", include("apps.mcp.urls")),
 ]

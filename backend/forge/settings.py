@@ -59,6 +59,9 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.library",
     "apps.assets",
+    # Before oauth2_provider so its templates (consent page) override the toolkit's.
+    "apps.mcp",
+    "oauth2_provider",
 ]
 
 MIDDLEWARE = [
@@ -160,7 +163,13 @@ CORS_ALLOWED_ORIGIN_REGEXES = [rf"^https://([a-z0-9-]+\.)?{ROOT_DOMAIN.replace('
 CORS_ALLOWED_ORIGINS = env_list("CORS_EXTRA_ORIGINS")
 # Bearer token + the host-resolved tenant (apps/accounts/authentication.py), and the
 # client marker the refresh endpoint requires alongside its cookie.
-CORS_ALLOW_HEADERS = (*default_headers, "x-forge-tenant", "x-forge-client")
+# `x-experience-api-version` is sent by cmi5 Assignable Units (apps/standards/cmi5.py).
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-forge-tenant",
+    "x-forge-client",
+    "x-experience-api-version",
+)
 # The refresh token travels in an HttpOnly cookie on /api/auth/.
 CORS_ALLOW_CREDENTIALS = True
 if DEBUG:
@@ -226,6 +235,8 @@ STANDARDS_ENABLED = env_bool("STANDARDS_ENABLED")
 STANDARDS_CONTENT_ORIGIN = os.environ.get("STANDARDS_CONTENT_ORIGIN", "")
 STANDARDS_APP_ORIGINS = env_list("STANDARDS_APP_ORIGINS")
 STANDARDS_LAUNCH_TTL = 7200
+# cmi5 / Unity lessons: how long one launch may keep reporting statements.
+CMI5_SESSION_TTL = 4 * 3600
 STANDARDS_S3_ENDPOINT = os.environ.get("STANDARDS_S3_ENDPOINT", "")
 STANDARDS_S3_BUCKET = os.environ.get("STANDARDS_S3_BUCKET", "")
 STANDARDS_S3_ACCESS_KEY = os.environ.get("STANDARDS_S3_ACCESS_KEY", "")
@@ -239,6 +250,76 @@ XAPI_RECORDING_ENABLED = env_bool("XAPI_RECORDING_ENABLED")
 XAPI_ACTIVITY_BASE = os.environ.get("XAPI_ACTIVITY_BASE", "https://soteriaforge.com/xapi")
 XAPI_LRS_ENDPOINT = os.environ.get("XAPI_LRS_ENDPOINT", "")
 XAPI_LRS_AUTH = os.environ.get("XAPI_LRS_AUTH", "")
+
+# --- MCP server + OAuth 2.1 (apps/mcp, docs/forge-mcp.md) ---------------------
+# The API's public origin: the OAuth issuer, and the MCP resource is <origin>/mcp.
+PUBLIC_URL = os.environ.get("FORGE_PUBLIC_URL", "").rstrip("/") or (
+    f"https://{os.environ['RAILWAY_PUBLIC_DOMAIN']}"
+    if os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    else "http://localhost:8000"
+)
+MCP_ISSUER_URL = PUBLIC_URL
+MCP_RESOURCE_URL = f"{PUBLIC_URL}/mcp"
+# OAuth clients may only redirect to these hosts (https), or to loopback (http).
+MCP_REDIRECT_HOSTS = env_list(
+    "MCP_REDIRECT_HOSTS", "claude.ai,claude.com,chatgpt.com,chat.openai.com"
+)
+# Browser origins allowed to call /mcp directly (server-to-server calls send none).
+MCP_ALLOWED_ORIGINS = [f"https://{h}" for h in MCP_REDIRECT_HOSTS] + (
+    ["http://localhost:*", "http://127.0.0.1:*"] if DEBUG else []
+)
+# Hosts forge_import_media may fetch generated files from (https only), comma-separated.
+MCP_MEDIA_IMPORT_HOSTS = env_list("MCP_MEDIA_IMPORT_HOSTS")
+
+LOGIN_URL = "/oauth/login/"
+AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+MCP_SCOPE = "forge"
+OAUTH2_PROVIDER = {
+    "SCOPES": {MCP_SCOPE: "Use Soteria Forge as you, with your role in your organization"},
+    "DEFAULT_SCOPES": [MCP_SCOPE],
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 60,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 30 * 24 * 60 * 60,
+    "ROTATE_REFRESH_TOKEN": True,
+    # A replayed refresh token revokes its whole family (RFC 9700 §4.14.2).
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "REQUEST_APPROVAL_PROMPT": "force",
+    "PKCE_REQUIRED": True,
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"],  # http only for loopback (apps/mcp/dcr.py)
+    # RFC 9700 (OAuth security BCP): S256 only, bearer in headers only, iss in the
+    # authorization response, and access/refresh tokens stored only as hashes.
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_REQUIRED": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    "OIDC_ISS_ENDPOINT": PUBLIC_URL,
+    # ChatGPT registers with RFC 7591; Claude can also use a client ID metadata document.
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": ("apps.mcp.dcr.AllowlistedRedirectsDCRPermission",),
+    "CIMD_ENABLED": True,
+    "CIMD_REGISTRATION_PERMISSION_CLASSES": ("oauth2_provider.cimd.HostAllowlistCIMDPermission",),
+    "CIMD_ALLOWED_HOSTS": MCP_REDIRECT_HOSTS,
+}
+
+# W008 flags http redirect URIs; they're needed for loopback clients (RFC 8252), and
+# registration accepts http only for loopback hosts (apps/mcp/dcr.py).
+SILENCED_SYSTEM_CHECKS = ["oauth2_provider.W008"]
+
+# Release and code tools (platform superadmins). Tokens are Railway service variables.
+RAILWAY_API_TOKEN = os.environ.get("RAILWAY_API_TOKEN", "")
+RAILWAY_PROJECT_ID = os.environ.get("RAILWAY_PROJECT_ID", "")  # set by Railway
+RAILWAY_SERVICE_ID = os.environ.get("RAILWAY_SERVICE_ID", "")  # set by Railway
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "DevJ1975/SOTERIAFORGE")
+FORGE_STAGING_BRANCH = os.environ.get("FORGE_STAGING_BRANCH", "feat/angular-22-upgrade")
+FORGE_PRODUCTION_BRANCH = os.environ.get("FORGE_PRODUCTION_BRANCH", "main")
+
+# --- Open Badges 3.0 credentials (apps/gamification/credentials.py) ------------
+# Ed25519 private key, PEM (PKCS8), as a secret service variable. Without it badge
+# awards are still recorded; the signed credential is unavailable (503).
+BADGE_SIGNING_KEY = os.environ.get("BADGE_SIGNING_KEY", "").replace("\\n", "\n")
 
 # --- Security ----------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

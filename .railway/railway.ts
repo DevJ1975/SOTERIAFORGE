@@ -35,6 +35,11 @@ export default defineRailway((ctx) => {
       DB_APP_PASSWORD: preserve(),
       DJANGO_SECRET_KEY: preserve(),
       SENTRY_DSN: preserve(),
+      // MCP server (docs/forge-mcp.md): tokens for the platform-admin release/code tools.
+      RAILWAY_API_TOKEN: preserve(),
+      GITHUB_TOKEN: preserve(),
+      // Open Badges signing key (docs/open-badges.md): `manage.py generate_badge_key`.
+      BADGE_SIGNING_KEY: preserve(),
       // Separate VPS media host. Import deploy/livekit/runtime/railway.env into
       // this API service before applying; never store the key/secret in IaC.
       LIVEKIT_URL: preserve(),

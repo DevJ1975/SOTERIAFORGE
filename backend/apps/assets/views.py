@@ -1,12 +1,7 @@
 """File uploads for lessons: staff upload, any member of the tenant gets a signed read URL."""
 
-import mimetypes
-import re
-import uuid
-
 from django.conf import settings
 from django.core import signing
-from django.db import transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -18,52 +13,24 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import TENANT_STAFF, HasTenantRole, IsActiveMember
-from apps.audit.models import record
 from apps.learning.access import acting_tenant
 from apps.standards import storage
 from apps.tenants import rls
 
 from .models import Asset
+from .service import (
+    MAX_UPLOAD_BYTES,
+    asset_json,
+    check_content_type,
+    check_filename,
+    check_size,
+    guess_type,
+    register,
+    store,
+)
 
-MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 URL_TTL_SECONDS = 900
 LOCAL_URL_SALT = "assets.local-content"
-
-# Active content (HTML, SVG, scripts) is never accepted, whatever the extension.
-ALLOWED_PREFIXES = ("image/", "audio/", "video/")
-ALLOWED_TYPES = {
-    "application/pdf",
-    "application/zip",
-    "application/x-zip-compressed",
-    "application/json",
-    "text/plain",
-    "text/csv",
-    "text/markdown",
-    "text/vtt",
-}
-BLOCKED_TYPES = {"image/svg+xml"}
-CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
-
-
-def check_content_type(content_type: str) -> str:
-    base = content_type.split(";")[0].strip().lower()
-    allowed = base in ALLOWED_TYPES or base.startswith(ALLOWED_PREFIXES)
-    if not allowed or base in BLOCKED_TYPES:
-        raise ValidationError({"file": [f"File type {base or 'unknown'!r} is not allowed."]})
-    return base
-
-
-def check_filename(name: str) -> str:
-    if (
-        not name
-        or len(name) > 255
-        or "/" in name
-        or "\\" in name
-        or name in {".", ".."}
-        or CONTROL_CHARS.search(name)
-    ):
-        raise ValidationError({"file": ["Invalid file name."]})
-    return name
 
 
 class AssetSerializer(serializers.Serializer):
@@ -81,16 +48,6 @@ class UploadSerializer(serializers.Serializer):
 class AssetUrlSerializer(serializers.Serializer):
     url = serializers.URLField()
     expiresIn = serializers.IntegerField()
-
-
-def asset_json(asset: Asset) -> dict:
-    return {
-        "id": asset.pk,
-        "assetRef": asset.ref,
-        "filename": asset.filename,
-        "contentType": asset.content_type,
-        "size": asset.size,
-    }
 
 
 class AssetListView(APIView):
@@ -119,37 +76,20 @@ class AssetListView(APIView):
         body = UploadSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         upload = body.validated_data["file"]
-        if upload.size > MAX_UPLOAD_BYTES:
-            raise ValidationError({"file": ["Files can be at most 100 MB."]})
-        if upload.size == 0:
-            raise ValidationError({"file": ["The file is empty."]})
+        check_size(upload.size, MAX_UPLOAD_BYTES)
         filename = check_filename(upload.name or "")
-        content_type = check_content_type(
-            upload.content_type or mimetypes.guess_type(filename)[0] or ""
+        content_type = check_content_type(upload.content_type or guess_type(filename))
+        asset_id, key = store(tenant.id, upload.file, content_type)
+        asset = register(
+            tenant=tenant,
+            member=request.user,
+            asset_id=asset_id,
+            key=key,
+            filename=filename,
+            content_type=content_type,
+            size=upload.size,
+            action="assets.asset.uploaded",
         )
-
-        asset_id = uuid.uuid4()
-        key = f"assets/{tenant.id}/{asset_id}"
-        storage.put_stream(key, upload.file, content_type)
-        with transaction.atomic():
-            asset = Asset.objects.create(
-                id=asset_id,
-                tenant=tenant,
-                key=key,
-                filename=filename,
-                content_type=content_type,
-                size=upload.size,
-                created_by=request.user,
-            )
-            record(
-                action="assets.asset.uploaded",
-                actor=request.user,
-                tenant=tenant,
-                target=asset,
-                filename=filename,
-                contentType=content_type,
-                size=upload.size,
-            )
         return Response(asset_json(asset), status=201)
 
 

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>{% block title %}Soteria Forge{% endblock %}</title>
+  <style>
+    :root {
+      --sf-charcoal: #1B1E23; --sf-cream: #F6F3EC; --sf-ember: #DC481B; --sf-ember-dark: #AE3A14;
+      --sf-danger: #C0392B; --sf-danger-soft: #FFF5F5; --line: #E3DED3; --muted: #5B6270;
+      --sf-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+           background: var(--sf-cream); color: var(--sf-charcoal); font: 16px/1.5 var(--sf-font); }
+    main { width: 100%; max-width: 420px; background: #fff; border: 1px solid var(--line);
+           border-radius: 12px; padding: 28px 24px; }
+    .brand { font-weight: 700; letter-spacing: .02em; color: var(--sf-ember); margin: 0 0 16px; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    p { margin: 0 0 16px; }
+    .muted { color: var(--muted); font-size: .92rem; }
+    label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
+    input[type=email], input[type=password], input[type=text] {
+      width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+    button { width: 100%; height: 44px; margin-top: 16px; border: 0; border-radius: 8px; font: inherit;
+             font-weight: 600; cursor: pointer; background: var(--sf-ember); color: #fff; }
+    button:hover { background: var(--sf-ember-dark); }
+    button.secondary { background: #fff; color: var(--sf-charcoal); border: 1px solid var(--line); }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, var(--sf-ember) 45%, transparent); outline-offset: 2px; }
+    .error { background: var(--sf-danger-soft); color: var(--sf-danger); border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; }
+    ul.scopes { padding-left: 20px; margin: 0 0 16px; }
+    .row { display: flex; gap: 12px; } .row button { flex: 1; }
+    a { color: var(--sf-ember-dark); }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand">SOTERIA FORGE</p>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
