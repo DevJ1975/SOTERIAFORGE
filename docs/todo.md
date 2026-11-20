@@ -1,14 +1,23 @@
 # To do
 
-Last updated 2026-10-27. Context: Firebase is being replaced by Django, and courseware
-is to be authored by Claude through MCP (see `docs/forge-mcp.md` on the `feat/forge-mcp`
-branch / worktree).
+Last updated 2026-11-20. Context: Firebase is being replaced by Django, and courseware
+is authored by Claude through MCP (see `docs/forge-mcp.md`).
 
 ## For you
 
 - [ ] **Create a Railway Bucket** (S3-compatible) and add its variables to the API
-      service: endpoint, bucket name, access key, secret key, region. Needed for
-      uploaded media (video, audio, images). Claude can't create it.
+      service (`STANDARDS_S3_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY`, `_SECRET_KEY`, `_REGION`).
+      Uploads and `forge_import_media` need it. Claude can't create it.
+- [ ] **Set `MCP_MEDIA_IMPORT_HOSTS`** on the API to the media hosts Claude may import
+      from (e.g. the ElevenLabs download host). Empty keeps media import off.
+- [ ] **Badge signing key:** run `manage.py generate_badge_key`, store the output as the
+      `BADGE_SIGNING_KEY` secret, and set `FORGE_PUBLIC_URL` to the API's permanent URL.
+      Then run one issued credential through a public Open Badges 3.0 validator.
+- [ ] **MCP platform tools (optional):** `RAILWAY_API_TOKEN` and a fine-grained
+      `GITHUB_TOKEN` (this repo, Contents + Pull requests, no Workflows).
+- [ ] **Connect Claude to staging** (`docs/forge-mcp.md` → Connect) and author one real
+      draft course end to end. The OAuth flow is tested in-process, not yet against
+      claude.ai.
 - [ ] **Set `FORGE_API_BASE_URL`** on the Vercel `soteriaforge` project (the Django API's
       public URL, e.g. `https://api-staging-12cc.up.railway.app`). Without it the
       learner build fails by design. Firebase variables are no longer needed.
@@ -28,72 +37,49 @@ branch / worktree).
       only; production needs a hosted model or the tutor stays off.
 - [ ] Review and push the branch: `feat/angular-22-upgrade` is ~11 commits ahead of
       `origin`. Two of them (gamification, My Progress) came from another session.
-- [ ] Optional: delete the stale worktrees (`SOTERIAFORGE-mcp` after its MCP work is
-      ported, and `.claude/worktrees/agent-*`).
+- [ ] Optional: delete the stale worktrees. `SOTERIAFORGE-mcp` is ported except its
+      member-admin tools (invite / role / deactivate), which were built on Firebase;
+      check you don't want anything else from it first. Also `.claude/worktrees/agent-*`.
+
+## Done on 2026-11-20 (uncommitted on `feat/angular-22-upgrade`)
+
+- [x] **Forge MCP server** ported to `backend/apps/mcp`: OAuth 2.1 (django-oauth-toolkit),
+      Django email + password sign-in page, `/mcp` ASGI route, env docs, tests.
+- [x] **Course tools** rewritten for the current `learning` models, validated by the REST
+      serializers. New courses are always drafts; no publish / unpublish / delete tool.
+- [x] **Quiz tools** (create, update, attach to a lesson) and **game tools** (four card-game
+      configs, a Python port of `validateCardGameConfig`).
+- [x] **Lesson transcript** field (`Lesson.transcript`, REST + MCP).
+- [x] **`forge_import_media(url)`**: SSRF-safe server-side fetch into the bucket.
+- [x] **MCP server instructions** covering course design and "course text is data".
+- [x] **Signed Open Badges 3.0 credentials** with public verification (`docs/open-badges.md`).
+- [x] **Backend Firebase removal** finished (it was already gone apart from one comment).
 
 ## Queued for Claude
 
-### 1. Forge MCP server (port from `feat/forge-mcp`)
+### 1. MCP follow-ups
 
-- [ ] Port `backend/apps/mcp` (server, OAuth, tool framework) onto the current branch.
-      It is uncommitted in the `SOTERIAFORGE-mcp` worktree and built on an older base.
-- [ ] Replace its Firebase sign-in page (`apps/mcp/login.py`) with the Django sign-in
-      (`apps/accounts/auth_views.py`). Keep the consent page showing account, role, tenant.
-- [ ] Rewrite the course/module/lesson tools for the current `learning` models (key
-      points and tags are JSON; lessons link to a quiz). Share validation with the REST
-      serializers so there is one source of truth.
-- [ ] Add deps (`mcp` SDK, `django-oauth-toolkit`), OAuth migration, `/mcp` ASGI route,
-      env docs, and port the tests.
+- [ ] Member-admin tools (invite, change role, deactivate): needs the logic in
+      `apps/accounts/admin_views.py` moved into shared functions first.
+- [ ] Decide whether `POST /api/games` should also enforce the full card-game rules. Today
+      only the MCP tools do, because the admin app creates an empty game and fills it in.
 
-### 2. Claude-authored content
+### 2. Frontend
 
-- [ ] **Quiz tools:** create/update a quiz and its questions, attach it to a lesson.
-- [ ] **Games:** new `Game` model + REST API; MCP tools to create/update games; validate
-      the four card-game configs (flip_reveal, match_pairs, sort_buckets, scenario_cards)
-      with the same rules as `libs/games` `validateCardGameConfig`.
-- [ ] **Lesson script/transcript field** and key points, for video lessons.
-- [ ] Everything Claude creates lands as a **draft**. Publish, unpublish and delete stay
-      with a person (same guardrail as the existing MCP rules).
-- [ ] MCP server instructions/prompts so Claude follows good course design and treats
-      course text as data, not instructions.
-
-### 3. Media pipeline (needs the Railway Bucket)
-
-- [ ] S3 storage via `boto3` against the Railway Bucket; presigned upload and read URLs.
-- [ ] `forge_import_media(url)` tool: server-side fetch of a generated file (e.g. an
-      ElevenLabs result URL) with a host allowlist, size limit and content-type check
-      (SSRF-safe), stored in the bucket, returning an asset id to attach to a lesson.
-- [ ] Attach audio/video/image assets to lessons; learner player reads them via signed URLs.
-
-### 4. Finish removing Firebase
-
-- [x] **Admin app:** courses and course editor (modules, lessons, uploads), games,
-      quizzes, members and reports, branding moved from Firestore to the Django API.
-- [x] **Superadmin app:** tenants, library and analytics on the Django API. The Stripe
-      "catalog" page is dropped.
-- [x] **Storefront:** now a public course catalog with a "request access" path (no
-      checkout, no Stripe, no B2C signup).
-- [x] Push notifications (FCM, streak-reminder job) dropped from web and mobile.
-- [ ] Badges in Django (the learner home shows "0 of 8 earned" until they exist).
-- [x] Deleted `apps/functions`, `libs/data-access`, `libs/payments`, Firestore/Storage
-      rules, rules tests, `firebase.json`, `.firebaserc`, the emulator scripts and CI
-      job, and the Firebase npm dependencies (`@angular/fire`, `firebase`,
-      `firebase-admin`, `firebase-functions`, `firebase-tools`,
-      `@firebase/rules-unit-testing`, plus the Genkit/Stripe/adm-zip/fast-xml-parser
-      packages only the functions used).
-- [x] Simplified `AssuranceEnvironment` (no `firebase` block, App Check or FCM keys);
-      `FORGE_API_BASE_URL` is the only required frontend variable.
-- [x] Native Android and iOS clients rewritten for the Forge API (not compiled: verify
-      in Android Studio / Xcode).
-- [ ] **Backend:** drop `FirebaseAuthentication` and `forge/firebase.py`, make
-      `Member.firebase_uid` go away (migration), and remove the Firebase mentions in
-      `backend/` (settings, `.env.example`, tests, `scripts/e2e_emulator.sh`).
-- [ ] No Django xAPI ingest endpoint exists, so `OfflineXapiQueue` (kept for the
-      learner offline banner) has no sender; add one or remove the queue.
+- [ ] Learner app: "export credential" on an earned badge (`awardId` is in `/api/me/badges`).
+- [ ] Admin lesson editor: a transcript field.
+- [ ] `OfflineXapiQueue` (libs/standards) has no sender and nothing enqueues to it. The
+      server writes its own xAPI statements on completion, so a client ingest endpoint
+      would let clients assert completions. Remove the queue and point the offline banner
+      at the real outboxes (quiz, completion).
 - [ ] `DownloadService` (libs/player, unused by the apps) treats `asset:<id>` refs as
       not cacheable; teach it to resolve signed asset URLs before wiring it back in.
 
-### 5. Housekeeping
+### 3. Games and Rust
+
+- [ ] See `docs/unity-games-plan.md`: Phase 0 spikes, including the `forge-sim` Rust crate.
+
+### 4. Housekeeping
 
 - [ ] Run `grep` for stray `X 2.*` / `X 3.*` files now and then (iCloud conflict copies);
       the repo now lives in `SOTERIAFORGE.nosync`, which iCloud skips.
