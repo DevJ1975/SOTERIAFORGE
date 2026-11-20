@@ -223,6 +223,7 @@ def lesson_detail(lesson: Lesson, enrollment: Enrollment | None) -> dict:
         "xpReward": lesson.xp_reward,
         "frameworkTags": lesson.framework_tags,
         "keyPoints": lesson.key_points,
+        "transcript": lesson.transcript,
         "quiz": quiz,
         "progress": {
             "completedAt": progress.completed_at.isoformat() if progress.completed_at else None,
@@ -381,6 +382,9 @@ class LessonCompleteView(APIView):
         lesson = get_lesson(request, lesson_id)
         if hasattr(lesson, "binding"):
             raise Conflict("Complete this SCORM lesson inside its player.")
+        if lesson.content_type in AU_CONTENT_TYPES:
+            # Only the statements the content sends can complete it (apps/standards/cmi5.py).
+            raise Conflict("Complete this lesson inside its player.")
         if lesson.quiz_id is not None:
             raise Conflict("Finish this lesson's quiz to complete it.")
         enrollment = require_enrollment(request, lesson.module.course)

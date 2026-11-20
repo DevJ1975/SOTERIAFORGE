@@ -69,6 +69,9 @@ class LessonWriteSerializer(serializers.ModelSerializer):
         required=False,
     )
     keyPoints = KeyPointSerializer(source="key_points", many=True, required=False)
+    transcript = serializers.CharField(
+        max_length=100_000, allow_blank=True, required=False, trim_whitespace=False
+    )
     # Resolved against the acting tenant's quizzes by the view.
     quizId = serializers.UUIDField(allow_null=True, required=False, write_only=True)
 
@@ -85,6 +88,7 @@ class LessonWriteSerializer(serializers.ModelSerializer):
             "xpReward",
             "frameworkTags",
             "keyPoints",
+            "transcript",
             "quizId",
         ]
 
@@ -237,6 +241,7 @@ class LessonDetailSerializer(serializers.Serializer):
     estimatedMinutes = serializers.IntegerField(allow_null=True)
     frameworkTags = serializers.ListField(child=serializers.CharField())
     keyPoints = KeyPointSerializer(many=True)
+    transcript = serializers.CharField(allow_blank=True)
     quiz = LessonQuizSerializer(allow_null=True)
     progress = LessonProgressSerializer(allow_null=True)
 

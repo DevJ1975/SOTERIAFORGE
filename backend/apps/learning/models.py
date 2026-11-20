@@ -89,6 +89,8 @@ class Lesson(models.Model):
     xp_reward = models.PositiveIntegerField(default=20)
     framework_tags = models.JSONField(default=list, blank=True)
     key_points = models.JSONField(default=list, blank=True)
+    # The narration script or transcript of a video/audio lesson (plain text or Markdown).
+    transcript = models.TextField(max_length=100_000, blank=True, default="")
     quiz = models.ForeignKey(
         "assessments.Quiz", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )
