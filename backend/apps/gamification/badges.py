@@ -201,6 +201,8 @@ def catalog_for(member, tenant) -> list[dict]:
                 "state": state,
                 "progress": None if manual else {"current": current, "target": badge.target},
                 "earnedAt": award.awarded_at.isoformat() if award else None,
+                # For the signed credential (GET /api/credentials/<awardId>).
+                "awardId": str(award.pk) if award else None,
             }
         )
     return rows

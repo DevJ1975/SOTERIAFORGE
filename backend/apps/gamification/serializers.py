@@ -171,6 +171,7 @@ class MemberBadgeSerializer(serializers.Serializer):
     state = serializers.ChoiceField(choices=["earned", "credential", "progress", "locked"])
     progress = BadgeProgressSerializer(allow_null=True)
     earnedAt = serializers.DateTimeField(allow_null=True)
+    awardId = serializers.UUIDField(allow_null=True)
 
 
 class BadgeSignOffSerializer(serializers.Serializer):

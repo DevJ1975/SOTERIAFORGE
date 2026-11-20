@@ -21,22 +21,59 @@ portable, employer-verifiable — not vanity images.
 3. The assertion is **signed** with the issuer's key and stored; the learner can
    export/verify it anywhere that understands OB 3.0.
 
-## The signing step (deployment-time)
+## Signing
 
-Minting a _verifiable_ credential requires an **issuer key pair** (Ed25519 /
-`eddsa-rdfc-2022`) whose public key is published at a stable issuer DID/URL, with
-the private key held in a Railway secret variable. This needs live infrastructure (key,
-hosted issuer profile, optional status list for revocation), so it is designed
-here and wired at deployment rather than stubbed with a throwaway key.
+Each award can be exported as an `OpenBadgeCredential` in the Open Badges 3.0 **JWT
+proof format**: a compact JWS signed with Ed25519 (`EdDSA`). Code:
+`backend/apps/gamification/credentials.py`.
 
-Until the key is provisioned, Assurance records badge **awards** (which badge, to
-whom, for what, when) so no earned-credential data is lost; the signed,
-exportable VC is generated once the issuer key is configured.
+- The credential is built from the award row on request. Ed25519 signatures are
+  deterministic, so nothing extra is stored and the same award always gives the same
+  document.
+- The learner is identified only by a salted SHA-256 hash of their email (FERPA). A
+  verifier who already has the email can confirm it; nobody can read it from the
+  credential.
+- The issuer is the tenant (`/api/credentials/issuers/<tenant>`); the key is the
+  platform's, published as a JWKS.
+
+| Endpoint                                    | Who    | Returns                                            |
+| ------------------------------------------- | ------ | -------------------------------------------------- |
+| `GET /api/me/badges/<badge>/credential`     | holder | `{credential, jwt, verifyUrl}` for their own award |
+| `GET /api/credentials/<award>`              | public | The same, by the award's random id                 |
+| `POST /api/credentials/verify` `{jwt}`      | public | `{valid, reason, credential}`                      |
+| `GET /api/credentials/jwks`                 | public | The public key                                     |
+| `GET /api/credentials/issuers/<tenant>`     | public | Issuer profile                                     |
+| `GET /api/credentials/achievements/<badge>` | public | Achievement definition                             |
+
+`GET /api/me/badges` now includes `awardId` for earned badges.
+
+### Setting it up
+
+1. `manage.py generate_badge_key` prints a new private key (it is not saved).
+2. Store it as the `BADGE_SIGNING_KEY` secret variable on the API service.
+3. Set `FORGE_PUBLIC_URL` to the API's permanent public URL. Credential ids and the
+   key URL are built from it, so changing it later changes every credential.
+
+Until the key is set, awards are still recorded and the credential endpoints answer
+503, so no earned-credential data is lost.
+
+### Limits to know
+
+- **Key rotation isn't supported yet.** Replacing the key makes credentials signed
+  with the old one fail verification. Supporting old keys means publishing more than
+  one key in the JWKS.
+- **No revocation list.** Awards are never edited or deleted today; `verify` reports
+  a credential as invalid if its award is gone or the badge has since been changed.
+- **Not yet checked against an external verifier.** The tests verify the signature
+  with the published key. Run one issued credential through a public Open Badges 3.0
+  validator before telling employers to rely on it.
+- The learner app has no "export credential" button yet.
 
 ## Status
 
 - ✅ Badge definitions + authoring in Django (`gamification.Badge`; admin Badges page)
 - ✅ Award recording: automatic rules evaluated inside the lesson-completion
   transaction, instructor sign-off for credentials (`gamification.BadgeAward`, audited)
-- ⏳ VC signing + hosted issuer profile — deployment-time (issuer key as a Railway
-  secret)
+- ✅ Signed credentials, issuer profile, public key and verify endpoint
+- ⏳ Issuer key provisioned in Railway; external validator check; export button in
+  the learner app
