@@ -17,6 +17,21 @@ namespace SoteriaForge.Core
         Ended,
     }
 
+    /// <summary>One thing the learner did in a simulator run, for the server to replay.</summary>
+    public readonly struct SimAction
+    {
+        /// <summary>Milliseconds since the run started. Never decreases through a log.</summary>
+        public readonly long T;
+        /// <summary>The scenario step performed.</summary>
+        public readonly string Step;
+
+        public SimAction(long t, string step)
+        {
+            T = t;
+            Step = step;
+        }
+    }
+
     /// <summary>
     /// One cmi5 session with Soteria Forge: fetch the token, read the launch data,
     /// send `initialized`, then queue and deliver statements in order.
@@ -26,6 +41,8 @@ namespace SoteriaForge.Core
     {
         public const string XapiVersion = "1.0.3";
         public const string VerbBase = "https://soteriaforge.com/xapi/verbs/";
+        public const string ActionLogExtension =
+            "https://soteriaforge.com/xapi/extensions/action-log";
         private const string Adl = "http://adlnet.gov/expapi/verbs/";
         private const int MaxBackoffSeconds = 30;
 
@@ -40,6 +57,7 @@ namespace SoteriaForge.Core
         private Task _pump = Task.CompletedTask;
         private bool _completed;
         private bool _judged;
+        private string _actionLogKey = ActionLogExtension;
 
         public SessionState State { get; private set; } = SessionState.NotStarted;
 
@@ -48,6 +66,12 @@ namespace SoteriaForge.Core
 
         /// <summary>cmi5 moveOn from the launch data, e.g. "CompletedOrPassed".</summary>
         public string MoveOn { get; private set; } = "";
+
+        /// <summary>
+        /// The lesson's own launch data, as JSON text; empty when it has none. A simulator
+        /// lesson gets <c>scenario</c>, <c>seed</c> (a decimal string) and <c>rulesVersion</c>.
+        /// </summary>
+        public string LaunchParameters { get; private set; } = "";
 
         /// <summary>Why the session ended, in words a learner can be shown.</summary>
         public string EndReason { get; private set; } = "";
@@ -95,7 +119,13 @@ namespace SoteriaForge.Core
 
             var state = await _transport.SendAsync(
                 "GET", _launch.Endpoint + "activities/state?stateId=LMS.LaunchData", null, _headers);
-            if (state.Ok) MoveOn = Field(state.Body, "moveOn") ?? "";
+            if (state.Ok)
+            {
+                MoveOn = Field(state.Body, "moveOn") ?? "";
+                LaunchParameters = Field(state.Body, "launchParameters") ?? "";
+                var key = Field(LaunchParameters, "actionLogExtension");
+                if (!string.IsNullOrEmpty(key)) _actionLogKey = key;
+            }
             else _log($"Launch data unavailable ({state.Status}); continuing.");
 
             Set(SessionState.Active);
@@ -113,11 +143,17 @@ namespace SoteriaForge.Core
             return true;
         }
 
-        /// <summary>The learner met the standard. Score is scaled, -1 to 1.</summary>
-        public bool Passed(float scaled) => Judge("passed", true, scaled);
+        /// <summary>
+        /// The learner met the standard. Score is scaled, -1 to 1. A simulator lesson
+        /// must pass its action log: the server replays it and records its own verdict
+        /// and score, so `scaled` is only this build's estimate.
+        /// </summary>
+        public bool Passed(float scaled, IReadOnlyList<SimAction> actions = null) =>
+            Judge("passed", true, scaled, actions);
 
         /// <summary>The learner did not meet the standard. Does not complete the lesson.</summary>
-        public bool Failed(float scaled) => Judge("failed", false, scaled);
+        public bool Failed(float scaled, IReadOnlyList<SimAction> actions = null) =>
+            Judge("failed", false, scaled, actions);
 
         /// <summary>
         /// An in-game event. It is stored but does not change progress.
@@ -156,18 +192,28 @@ namespace SoteriaForge.Core
         /// <summary>Waits until every queued statement is delivered or dropped.</summary>
         public Task FlushAsync() => _pump;
 
-        private bool Judge(string verb, bool success, float scaled)
+        private bool Judge(
+            string verb, bool success, float scaled, IReadOnlyList<SimAction> actions)
         {
             if (!Accepting() || _judged) return false;
             if (float.IsNaN(scaled)) return false;
             _judged = true;
             var clamped = Math.Round(Math.Max(-1f, Math.Min(1f, scaled)), 4);
-            Enqueue(Adl + verb, verb, null,
-                new JObject
+            var result = new JObject
+            {
+                ["success"] = success,
+                ["score"] = new JObject { ["scaled"] = clamped },
+            };
+            if (actions != null && actions.Count > 0)
+            {
+                var log = new JArray();
+                foreach (var action in actions)
                 {
-                    ["success"] = success,
-                    ["score"] = new JObject { ["scaled"] = clamped },
-                });
+                    log.Add(new JObject { ["t"] = action.T, ["step"] = action.Step });
+                }
+                result["extensions"] = new JObject { [_actionLogKey] = log };
+            }
+            Enqueue(Adl + verb, verb, null, result);
             return true;
         }
 

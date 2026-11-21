@@ -11,6 +11,8 @@ namespace SoteriaForge.Drill
     /// </summary>
     public sealed class LockoutDrill : MonoBehaviour
     {
+        // Shown to the learner at the end. The score that counts is the server's replay
+        // of the action log against lockout-drill.scenario.json, which uses these numbers.
         private const float PassMark = 0.8f;
         private const float PenaltyPerMistake = 0.2f;
 
@@ -23,6 +25,12 @@ namespace SoteriaForge.Drill
             "Apply locks and tags",
             "Release stored energy",
             "Verify isolation: try to start",
+        };
+
+        // Step ids in lockout-drill.scenario.json, in the same order as `Steps`.
+        private static readonly string[] StepIds =
+        {
+            "notify", "shutdown", "isolate", "lock-tag", "release", "verify",
         };
 
         // Shown shuffled, in a fixed order so every learner sees the same drill.
@@ -72,6 +80,7 @@ namespace SoteriaForge.Drill
         private void Choose(int index)
         {
             var lesson = ForgeLesson.Current;
+            lesson?.Perform(StepIds[index]);
             if (index != _next)
             {
                 _mistakes++;

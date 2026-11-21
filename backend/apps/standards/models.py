@@ -106,6 +106,11 @@ class AuSession(models.Model):
     statement_count = models.PositiveIntegerField(default=0)
     # The learning completion (progress, XP, badges) the host app shows the learner.
     completion = models.JSONField(null=True)
+    # Simulator lessons: the lesson's scenario as it was at launch, the seed for this
+    # run, and what the server's replay of the action log found (apps/games/sim.py).
+    scenario = models.JSONField(null=True)
+    seed = models.PositiveBigIntegerField(null=True)
+    outcome = models.JSONField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -137,3 +142,24 @@ class AuStatement(models.Model):
 
     def __str__(self):
         return str(self.statement_id)
+
+
+class Scenario(models.Model):
+    """The simulator scenario a `cmi5` / `unity` lesson is scored against.
+
+    `data` is a forge-sim scenario (rust/README.md). A lesson with one completes only
+    when the server's replay of the learner's action log passes.
+    """
+
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    lesson = models.OneToOneField(
+        "learning.Lesson", on_delete=models.CASCADE, related_name="sim_scenario"
+    )
+    data = models.JSONField()
+    updated_by = models.ForeignKey(
+        "accounts.Member", on_delete=models.PROTECT, null=True, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.lesson_id)

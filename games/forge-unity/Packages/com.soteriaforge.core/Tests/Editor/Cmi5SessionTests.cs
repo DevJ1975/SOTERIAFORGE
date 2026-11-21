@@ -175,6 +175,38 @@ namespace SoteriaForge.Core.Tests
         }
 
         [Test]
+        public void ASimulatorVerdictCarriesTheActionLogUnderTheServersKey()
+        {
+            _transport.State = new XapiResponse(200,
+                "{\"moveOn\": \"Passed\", \"launchParameters\": "
+                + "\"{\\\"seed\\\": \\\"42\\\", "
+                + "\\\"actionLogExtension\\\": \\\"https://x.test/log\\\"}\"}");
+            var session = Started();
+            Assert.AreEqual("42", (string)JObject.Parse(session.LaunchParameters)["seed"]);
+
+            session.Passed(0.8f, new[] { new SimAction(0, "notify"), new SimAction(1500, "shutdown") });
+
+            var log = (JArray)_transport.Sent.Last()["result"]["extensions"]["https://x.test/log"];
+            Assert.AreEqual(
+                "[{\"t\":0,\"step\":\"notify\"},{\"t\":1500,\"step\":\"shutdown\"}]",
+                log.ToString(Newtonsoft.Json.Formatting.None));
+        }
+
+        [Test]
+        public void WithoutLaunchParametersTheLogUsesTheDefaultKeyAndAnEmptyLogIsLeftOut()
+        {
+            var session = Started();
+            Assert.AreEqual("", session.LaunchParameters);
+            session.Failed(0.2f, new[] { new SimAction(0, "verify") });
+            Assert.IsNotNull(
+                _transport.Sent.Last()["result"]["extensions"][Cmi5Session.ActionLogExtension]);
+
+            _transport = new FakeTransport();
+            Started().Passed(1f, new SimAction[0]);
+            Assert.IsNull(_transport.Sent.Last()["result"]["extensions"]);
+        }
+
+        [Test]
         public void NothingIsReportedBeforeStart()
         {
             var session = Session();

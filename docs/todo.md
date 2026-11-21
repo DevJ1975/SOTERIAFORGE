@@ -77,7 +77,11 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
 
 ### 3. Games and Rust
 
-- [ ] See `docs/unity-games-plan.md`: Phase 0 spikes, including the `forge-sim` Rust crate.
+- [ ] See `docs/unity-games-plan.md` for what each phase still lacks. Next: the Phase 0
+      spikes (forge-sim linked into iOS, Android and WebGL players), the forge-sim wheel
+      in the API image, and a WebGL run of the drill against a lesson with a scenario.
+- [ ] Admin lesson editor: attach a simulator scenario
+      (`PUT /api/standards/lessons/{id}/scenario` exists; no UI yet).
 
 ### 4. Housekeeping
 

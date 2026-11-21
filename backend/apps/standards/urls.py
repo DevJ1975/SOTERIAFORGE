@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .cmi5_views import AuLaunchView, AuSessionView, FetchView, StatementsView, StateView
+from .cmi5_views import (
+    AuLaunchView,
+    AuSessionView,
+    FetchView,
+    ScenarioView,
+    StatementsView,
+    StateView,
+)
 from .views import (
     AttachView,
     CommitView,
@@ -21,6 +28,7 @@ urlpatterns = [
     path("deliveries", DeliveryView.as_view()),
     # cmi5 / Unity lessons (docs/unity-cmi5-contract.md).
     path("lessons/<uuid:lesson_id>/cmi5/launch", AuLaunchView.as_view()),
+    path("lessons/<uuid:lesson_id>/scenario", ScenarioView.as_view()),
     path("cmi5/sessions/<uuid:session_id>", AuSessionView.as_view()),
     path("cmi5/fetch/<uuid:session_id>/<str:secret>", FetchView.as_view()),
     path("xapi/statements", StatementsView.as_view()),

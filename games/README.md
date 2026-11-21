@@ -7,7 +7,8 @@ Contract with the platform: [docs/unity-cmi5-contract.md](../docs/unity-cmi5-con
 - `Packages/com.soteriaforge.core` — connects a build to the lesson that launched it.
   See its README.
 - `Assets/Drill` — a plain lockout/tagout ordering drill. It is a pipeline test, not
-  training content.
+  training content. Attach `lockout-drill.scenario.json` to its lesson
+  (`PUT /api/standards/lessons/{id}/scenario`) and the server scores the run itself.
 - `Assets/Editor/ForgeBuild.cs` — batch entry points.
 
 ```sh

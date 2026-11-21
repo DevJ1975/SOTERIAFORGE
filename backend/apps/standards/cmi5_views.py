@@ -9,21 +9,24 @@ import json
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import authentication, exceptions
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
+from apps.audit.models import record as audit
+from apps.games import sim
 from apps.learning.access import Conflict, acting_tenant, get_lesson, require_enrollment
-from apps.learning.models import AU_CONTENT_TYPES, PublishStatus
+from apps.learning.models import AU_CONTENT_TYPES, Lesson, PublishStatus
 from apps.learning.progress import lock_enrollment
 from apps.tenants import rls
 
 from . import cmi5
-from .models import AuSession
+from .models import AuSession, Scenario
 from .serializers import AuLaunchSerializer, AuSessionSerializer
-from .views import PrivateView
+from .views import PrivateView, StaffView
 
 
 # --- learner app -----------------------------------------------------------------
@@ -36,10 +39,13 @@ class AuLaunchView(PrivateView):
         if lesson.module.course.status != PublishStatus.PUBLISHED:
             raise Conflict("Publish this course before launching.")
         au_url = cmi5.au_url_for(lesson, request)
+        scenario = cmi5.scenario_for(lesson)
         enrollment = require_enrollment(request, lesson.module.course)
         with transaction.atomic():
             enrollment = lock_enrollment(enrollment)
-            session, secret = cmi5.start(enrollment=enrollment, lesson=lesson, au_url=au_url)
+            session, secret = cmi5.start(
+                enrollment=enrollment, lesson=lesson, au_url=au_url, scenario=scenario
+            )
         return Response(
             {
                 "id": str(session.pk),
@@ -80,6 +86,60 @@ class AuSessionView(PrivateView):
                 "completion": session.completion,
             }
         )
+
+
+# --- course staff ------------------------------------------------------------------
+class ScenarioView(StaffView):
+    """The simulator scenario a `cmi5` / `unity` lesson is scored against.
+
+    The body is a forge-sim scenario (rust/README.md). Launches already under way keep
+    the scenario they started with.
+    """
+
+    def _lesson(self, request, lesson_id) -> Lesson:
+        return get_object_or_404(Lesson, tenant=acting_tenant(request), pk=lesson_id)
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request, lesson_id):
+        scenario = get_object_or_404(Scenario, lesson=self._lesson(request, lesson_id))
+        return Response(scenario.data)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    def put(self, request, lesson_id):
+        lesson = self._lesson(request, lesson_id)
+        if lesson.content_type not in AU_CONTENT_TYPES or hasattr(lesson, "binding"):
+            raise Conflict("Only cmi5 and Unity lessons take a simulator scenario.")
+        if not isinstance(request.data, dict):
+            raise ValidationError({"scenario": ["Send the scenario as a JSON object."]})
+        data = dict(request.data)
+        sim.validate_scenario(data)
+        with transaction.atomic():
+            Scenario.objects.update_or_create(
+                lesson=lesson,
+                defaults={"tenant": lesson.tenant, "data": data, "updated_by": request.user},
+            )
+            audit(
+                action="standards.scenario.saved",
+                actor=request.user,
+                tenant=lesson.tenant,
+                target=lesson,
+                scenario=str(data.get("id", "")),
+            )
+        return Response(data)
+
+    @extend_schema(responses={204: None})
+    def delete(self, request, lesson_id):
+        lesson = self._lesson(request, lesson_id)
+        with transaction.atomic():
+            deleted, _ = Scenario.objects.filter(lesson=lesson).delete()
+            if deleted:
+                audit(
+                    action="standards.scenario.removed",
+                    actor=request.user,
+                    tenant=lesson.tenant,
+                    target=lesson,
+                )
+        return Response(status=204)
 
 
 # --- assignable unit ---------------------------------------------------------------

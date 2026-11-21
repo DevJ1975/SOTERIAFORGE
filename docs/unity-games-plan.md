@@ -113,6 +113,15 @@ Android phone at the minimum-spec device, including one run started offline.
 
 ### Phase 4 — `forge-sim` and server-verified scoring (about 2–3 weeks)
 
+> **Server side built 2026-11-20.** The `forge-sim` crate with its C and Python
+> bindings, and the replay wired into the cmi5 statements endpoint: a lesson with a
+> scenario attached is scored from the action log, and a tampered score is discarded
+> and audited (`backend/tests/test_cmi5_sim.py`). The Unity package sends the log and
+> the drill uses it; the drill and Django read the same scenario file. Not yet done:
+> forge-sim built into a Unity player (the drill still estimates its own score in C#
+> for display), the wheel in the API image, a WebGL run of the drill against a
+> scenario lesson, and replaying logs recorded under an older rules version.
+
 - `forge-sim` Rust crate: scenario state machine, rule evaluation, scoring. No I/O.
 - C# bindings for Unity (native library on iOS / Android; WebGL per the Phase 0 result).
 - Python wheel (PyO3 + maturin) added to `backend/pyproject.toml`.

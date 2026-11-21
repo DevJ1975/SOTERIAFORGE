@@ -20,6 +20,22 @@ await lesson.EndAsync();                               // sends `terminated`
 parameters, as in the Editor, it runs in preview mode: calls are logged and
 nothing is sent.
 
+## Simulator lessons
+
+A lesson with a scenario attached is scored by the server, not by the build. Report
+every step the learner performs, right or wrong; the log is sent with the verdict and
+the server replays it with the same rules (`rust/forge-sim`):
+
+```csharp
+lesson.Perform("isolate");        // a step id from the scenario
+lesson.Passed(0.8f);              // the score here is only this build's estimate
+```
+
+`lesson.LaunchParameters` is JSON text with the `scenario`, the run's `seed` (a
+decimal string) and the `rulesVersion`; it is empty for a lesson with no scenario.
+For these lessons `Completed` alone completes nothing: only a pass the server
+replayed does. A statement is limited to 64 KB, about 1,500 logged steps.
+
 ## Rules the server enforces (mirrored here so a game cannot trip them)
 
 - `Completed` once per session; one of `Passed` / `Failed` per session.

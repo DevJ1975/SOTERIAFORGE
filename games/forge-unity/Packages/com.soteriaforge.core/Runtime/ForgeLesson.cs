@@ -18,6 +18,8 @@ namespace SoteriaForge.Core
         [SerializeField] private string editorLaunchUrl = "";
 
         private Cmi5Session _session;
+        private readonly List<SimAction> _actions = new List<SimAction>();
+        private double _runStarted = -1;
 
         /// <summary>True when there is no lesson to report to.</summary>
         public bool Preview => _session == null;
@@ -31,6 +33,12 @@ namespace SoteriaForge.Core
         public string Problem => _session?.EndReason ?? "";
 
         public int Pending => _session?.Pending ?? 0;
+
+        /// <summary>
+        /// The lesson's own launch data as JSON text; empty in preview or when it has
+        /// none. A simulator lesson gets its scenario, seed and rules version here.
+        /// </summary>
+        public string LaunchParameters => _session?.LaunchParameters ?? "";
 
         private void Awake()
         {
@@ -62,16 +70,27 @@ namespace SoteriaForge.Core
             else _session.Completed();
         }
 
+        /// <summary>
+        /// A simulator run: the learner performed a scenario step, right or wrong. The
+        /// log goes out with `Passed` / `Failed`, and the server scores the run from it.
+        /// </summary>
+        public void Perform(string step)
+        {
+            var now = Time.realtimeSinceStartupAsDouble;
+            if (_runStarted < 0) _runStarted = now;
+            _actions.Add(new SimAction((long)((now - _runStarted) * 1000), step));
+        }
+
         public void Passed(float scaled)
         {
             if (Preview) Debug.Log($"[Forge] preview: passed {scaled:0.00}");
-            else _session.Passed(scaled);
+            else _session.Passed(scaled, _actions);
         }
 
         public void Failed(float scaled)
         {
             if (Preview) Debug.Log($"[Forge] preview: failed {scaled:0.00}");
-            else _session.Failed(scaled);
+            else _session.Failed(scaled, _actions);
         }
 
         public void Record(

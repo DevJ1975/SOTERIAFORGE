@@ -55,8 +55,9 @@ A replay must give the same answer on a phone, in a browser and on the server.
 
 ## Not done yet
 
-- **Not wired into the API.** No endpoint calls `apps.games.sim` yet; Phase 4 connects it
-  to the final cmi5 statement.
+- **Not played end to end.** The cmi5 statements endpoint replays the action log of a
+  lesson with a scenario attached (docs/unity-cmi5-contract.md, section 5) and the
+  Unity package sends it, but no WebGL build has been run against such a lesson yet.
 - **Not in the API image.** CI builds the Linux wheel on every run and the backend job
   tests against it. Pushing a tag `forge-sim-v<version>` (matching `rust/Cargo.toml`)
   publishes the wheel and its SHA-256 as a GitHub release. Still to do after the first

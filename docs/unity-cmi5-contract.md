@@ -98,8 +98,34 @@ Rules the server enforces:
 - Limits: 64 KB per statement, 5,000 statements per session.
 - `cmi5` and `unity` lessons cannot be completed with "Mark as complete".
 
-Scores are still the client's claim. Server-side replay and verification arrive with
-`forge-sim` (Phase 4 of [unity-games-plan.md](./unity-games-plan.md)).
+### Simulator lessons: the server scores the run
+
+For a lesson with no scenario, the score is the AU's claim. Attach a `forge-sim`
+scenario ([rust/README.md](../rust/README.md)) and the server scores the run itself:
+
+- **Attach** — `PUT /api/standards/lessons/{lessonId}/scenario` (course staff) with
+  the scenario JSON; `GET` reads it, `DELETE` removes it. It is validated against the
+  installed rules. The drill's scenario is
+  `games/forge-unity/Assets/Drill/lockout-drill.scenario.json`.
+- **Launch** — the session keeps a copy of the scenario and a random seed.
+  `LMS.LaunchData` has `moveOn: "Passed"` and a `launchParameters` string holding
+  JSON: `{ scenario, seed, rulesVersion, actionLogExtension }`. `seed` is a decimal
+  string. A launch is refused with 503 if the rules are not installed on the server.
+- **Verdict** — `passed` / `failed` must carry the action log,
+  `result.extensions["https://soteriaforge.com/xapi/extensions/action-log"]`, a list
+  of `{ "t": <ms since the run started>, "step": "<step id>" }` in the order they
+  happened, wrong steps included. Without it, or with a log the rules cannot replay,
+  the statement is a 400 and the session is still unjudged.
+- The server replays the log and records **its** verdict and score. The stored
+  statement is rewritten to match (verb, `result.success`, `result.score.scaled`) and
+  gains `result.extensions[".../extensions/replay"]` with the replay's result and what
+  the AU claimed. A claim that differs is written to the audit log
+  (`standards.cmi5.score_mismatch`).
+- The lesson completes only on a replayed pass. `completed` is stored but completes
+  nothing, and its score is ignored.
+
+The scenario, including the order of its steps, is sent to the AU: replay stops a
+forged score, not a learner reading the rules out of the build.
 
 The launch call must run in the browser only, never during server-side pre-render.
 
@@ -117,5 +143,6 @@ version's URL; no backend migration is required.
 - [ ] Performs the `fetch` token exchange (one `POST`) before sending statements.
 - [ ] Sends `X-Experience-API-Version: 1.0.3` on every xAPI request.
 - [ ] Emits `initialized` → … → `completed` (+ `passed`/`failed` with score).
+- [ ] Simulator lessons: sends the action log with `passed` / `failed`.
 - [ ] Handles pause/resume and reports a final statement on unload.
 - [ ] Verified end-to-end against the Assurance LRS in staging.
