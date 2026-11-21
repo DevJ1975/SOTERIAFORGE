@@ -5,6 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TextareaModule } from 'primeng/textarea';
 import { TenantService } from '@assurance/auth';
+import { AuthoringApi } from '@assurance/lms-core';
 import {
   CoachApi,
   IngestService,
@@ -15,6 +16,12 @@ import {
   type CoachProfile,
   type CoachReference,
 } from '@assurance/ai-tutor';
+
+interface CourseModule {
+  id: string;
+  title: string;
+  label: string;
+}
 
 @Component({
   selector: 'assurance-admin-knowledge',
@@ -40,10 +47,25 @@ import {
             [(ngModel)]="newTitle"
             aria-label="Source title"
           />
-          <select aria-label="Source course" [(ngModel)]="courseId" [disabled]="!!editingId">
+          <select
+            aria-label="Source course"
+            [ngModel]="courseId"
+            (ngModelChange)="chooseCourse($event)"
+            [disabled]="!!editingId"
+          >
             <option value="">Select a published course</option>
             @for (course of courses(); track course.id) {
               <option [value]="course.id">{{ course.title }}</option>
+            }
+          </select>
+          <select
+            aria-label="Source module"
+            [(ngModel)]="moduleId"
+            [disabled]="!courseId || modules().length === 0"
+          >
+            <option value="">Whole course</option>
+            @for (mod of modules(); track mod.id) {
+              <option [value]="mod.id">{{ moduleName(mod) }}</option>
             }
           </select>
           <select aria-label="Source agent" [(ngModel)]="agent" [disabled]="!!editingId">
@@ -75,6 +97,13 @@ import {
             maxlength="200"
           />
         </label>
+        <p>
+          A source limited to a module is used only for questions asked from that module's lessons.
+          Whole-course sources are used everywhere in the course.
+        </p>
+        @if (modulesError()) {
+          <p class="knowledge__error" role="alert">{{ modulesError() }}</p>
+        }
         @if (agent !== 'general') {
           <p>Specialist sources require an HTTPS reference URL and a reviewed edition/date.</p>
         }
@@ -173,6 +202,7 @@ import {
             <tr>
               <th>Title</th>
               <th>Course</th>
+              <th>Module</th>
               <th>Agent</th>
               <th>Chunks</th>
               <th>Actions</th>
@@ -182,6 +212,7 @@ import {
             <tr>
               <td>{{ s.title }}</td>
               <td>{{ courseTitle(s.courseId) }}</td>
+              <td>{{ moduleTitle(s) }}</td>
               <td>{{ agentTitle(s.agent) }}</td>
               <td>{{ s.chunkCount }}</td>
               <td>
@@ -200,7 +231,7 @@ import {
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="5">No knowledge sources yet. Add your first source above.</td>
+              <td colspan="6">No knowledge sources yet. Add your first source above.</td>
             </tr>
           </ng-template>
         </p-table>
@@ -255,10 +286,16 @@ export class KnowledgeComponent {
   private readonly api = inject(CoachApi);
   private readonly tenantService = inject(TenantService);
   private readonly ingestService = inject(IngestService);
+  private readonly authoring = inject(AuthoringApi);
 
   protected readonly sources = signal<CoachSource[]>([]);
   protected readonly courses = signal<CoachCourse[]>([]);
   protected readonly profiles = signal<CoachProfile[]>([]);
+  /** Modules of the course chosen in the form. */
+  protected readonly modules = signal<CourseModule[]>([]);
+  protected readonly modulesError = signal<string | null>(null);
+  /** Module names by id for every course that has a module-limited source. */
+  private readonly moduleNames = signal<Record<string, string>>({});
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
 
@@ -269,6 +306,7 @@ export class KnowledgeComponent {
   protected newTitle = '';
   protected newText = '';
   protected courseId = '';
+  protected moduleId = '';
   protected approved = false;
   protected selectedFile: File | undefined;
   protected editingId = '';
@@ -284,6 +322,7 @@ export class KnowledgeComponent {
       this.sources.set([]);
       this.courses.set([]);
       this.profiles.set([]);
+      this.moduleNames.set({});
       this.submitting.set(false);
       this.clearForm();
       if (tid) void this.loadSources(context);
@@ -304,11 +343,62 @@ export class KnowledgeComponent {
       this.sources.set(sources);
       this.courses.set(courses);
       this.profiles.set(profiles);
+      void this.loadModuleNames(sources, context);
     } catch (err) {
       if (context === this.context) this.loadError.set(coachError(err));
     } finally {
       if (context === this.context) this.loading.set(false);
     }
+  }
+
+  /** Names for the Module column; a failure only leaves ids showing. */
+  private async loadModuleNames(sources: CoachSource[], context: number): Promise<void> {
+    const courseIds = [...new Set(sources.filter((s) => s.moduleId).map((s) => s.courseId))];
+    const names: Record<string, string> = {};
+    await Promise.all(
+      courseIds.map(async (id) => {
+        try {
+          for (const mod of (await this.authoring.course(id)).modules) {
+            names[mod.id] = this.moduleName(mod);
+          }
+        } catch {
+          // The id is shown instead.
+        }
+      }),
+    );
+    if (context === this.context) this.moduleNames.set(names);
+  }
+
+  protected moduleName(mod: CourseModule): string {
+    return mod.label ? `${mod.label}: ${mod.title}` : mod.title;
+  }
+
+  protected moduleTitle(source: CoachSource): string {
+    if (!source.moduleId) return 'Whole course';
+    return this.moduleNames()[source.moduleId] ?? source.moduleId;
+  }
+
+  protected chooseCourse(courseId: string, keepModule = ''): void {
+    this.courseId = courseId;
+    this.moduleId = keepModule;
+    this.modules.set([]);
+    this.modulesError.set(null);
+    if (!courseId) return;
+    const context = this.context;
+    void this.authoring
+      .course(courseId)
+      .then((outline) => {
+        if (context === this.context && this.courseId === courseId) {
+          this.modules.set(outline.modules);
+        }
+      })
+      .catch(() => {
+        if (context === this.context && this.courseId === courseId) {
+          this.modulesError.set(
+            "This course's modules could not be loaded. The source will apply to the whole course.",
+          );
+        }
+      });
   }
 
   protected courseTitle(id: string): string {
@@ -335,6 +425,9 @@ export class KnowledgeComponent {
     this.newTitle = '';
     this.newText = '';
     this.courseId = '';
+    this.moduleId = '';
+    this.modules.set([]);
+    this.modulesError.set(null);
     this.approved = false;
     this.selectedFile = undefined;
     this.editingId = '';
@@ -349,7 +442,7 @@ export class KnowledgeComponent {
     this.clearForm();
     this.editingId = source.id;
     this.newTitle = source.title;
-    this.courseId = source.courseId;
+    this.chooseCourse(source.courseId, source.moduleId ?? '');
     this.agent = source.agent;
     this.referenceUrl = source.referenceUrl;
     this.edition = source.edition;
@@ -396,6 +489,7 @@ export class KnowledgeComponent {
         agent: this.agent,
         referenceUrl: this.referenceUrl.trim(),
         edition: this.edition.trim(),
+        ...(this.moduleId ? { moduleId: this.moduleId } : {}),
       });
 
       if (context !== this.context) return;

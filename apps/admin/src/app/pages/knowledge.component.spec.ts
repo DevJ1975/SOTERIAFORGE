@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { TenantService } from '@assurance/auth';
 import { CoachApi, IngestService } from '@assurance/ai-tutor';
+import { AuthoringApi } from '@assurance/lms-core';
 import { KnowledgeComponent } from './knowledge.component';
 
 describe('Course knowledge management', () => {
@@ -25,6 +26,7 @@ describe('Course knowledge management', () => {
     remove: jest.fn(),
   };
   const ingest = jest.fn();
+  const outline = jest.fn();
 
   beforeEach(async () => {
     tenant.set('acme');
@@ -51,6 +53,10 @@ describe('Course knowledge management', () => {
     api.sources.mockReset().mockResolvedValue([source]);
     api.remove.mockReset().mockResolvedValue(undefined);
     ingest.mockReset().mockResolvedValue({ ok: true, chunks: 2 });
+    outline.mockReset().mockResolvedValue({
+      id: 'c1',
+      modules: [{ id: 'm1', title: 'Pruning', label: 'Week 2', lessons: [] }],
+    });
     await TestBed.configureTestingModule({
       imports: [KnowledgeComponent],
       providers: [
@@ -58,6 +64,7 @@ describe('Course knowledge management', () => {
         { provide: TenantService, useValue: { tenantId: tenant } },
         { provide: CoachApi, useValue: api },
         { provide: IngestService, useValue: { ingest } },
+        { provide: AuthoringApi, useValue: { course: outline } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(KnowledgeComponent);
@@ -114,7 +121,9 @@ describe('Course knowledge management', () => {
   });
 
   it('surfaces inference errors without reporting success', async () => {
-    ingest.mockRejectedValue(new Error('Local inference unavailable'));
+    ingest.mockImplementation(async () => {
+      throw new Error('Local inference unavailable');
+    });
     field('[aria-label="Source title"]', 'Guide');
     field('[aria-label="Source text"]', 'Material');
     field('[aria-label="Source course"]', 'c1');
@@ -195,6 +204,40 @@ describe('Course knowledge management', () => {
         approved: true,
         courseId: 'c1',
       }),
+    );
+  });
+
+  it('limits a source to a module of the chosen course', async () => {
+    field('[aria-label="Source title"]', 'Pruning guide');
+    field('[aria-label="Source text"]', 'Prune in spring.');
+    field('[aria-label="Source course"]', 'c1');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(outline).toHaveBeenCalledWith('c1');
+    const module = fixture.nativeElement.querySelector(
+      '[aria-label="Source module"]',
+    ) as HTMLSelectElement;
+    expect(module.textContent).toContain('Whole course');
+    expect(module.textContent).toContain('Week 2: Pruning');
+    field('[aria-label="Source module"]', 'm1');
+    approve();
+    await submit();
+    expect(ingest).toHaveBeenCalledWith(
+      expect.objectContaining({ courseId: 'c1', moduleId: 'm1' }),
+    );
+  });
+
+  it('names the module a source is limited to, and says when it covers the whole course', async () => {
+    expect(fixture.nativeElement.querySelector('p-table')?.textContent).toContain('Whole course');
+    api.sources.mockResolvedValue([{ ...source, moduleId: 'm1' }]);
+    tenant.set('other');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // Module names load after the sources do.
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('p-table')?.textContent).toContain(
+      'Week 2: Pruning',
     );
   });
 });

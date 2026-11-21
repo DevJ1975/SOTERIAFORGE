@@ -599,6 +599,65 @@
                 }
             }
         },
+        "/api/coach/ask/stream": {
+            "post": {
+                "operationId": "coach_ask_stream_create",
+                "description": "The same answer as `ask`, as server-sent events: the text appears as it is written.\n\nEvents: `status` {stage}, `delta` {text}, then `done` {the full answer} or `error`\n{detail, status}. Streamed text is provisional; `done` carries the validated answer\nand the client replaces what it showed. Refusals before generation (permission,\nthrottle, tutor off or busy) are ordinary JSON errors, not a stream.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "event-stream",
+                                "json"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "coach"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QuestionRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QuestionRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QuestionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/coach/courses": {
             "get": {
                 "operationId": "coach_courses_list",
@@ -627,6 +686,56 @@
                 }
             }
         },
+        "/api/coach/exchanges/{exchange_id}/rating": {
+            "post": {
+                "operationId": "coach_exchanges_rating_create",
+                "description": "Thumbs up or down on an answer you were given. Only the asker can rate it.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "exchange_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "coach"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RatingRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RatingRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RatingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
         "/api/coach/profiles": {
             "get": {
                 "operationId": "coach_profiles_list",
@@ -647,6 +756,88 @@
                                     "items": {
                                         "$ref": "#/components/schemas/AgentProfile"
                                     }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/coach/review": {
+            "get": {
+                "operationId": "coach_review_retrieve",
+                "description": "Staff: what the coach was asked this week and which answers need a look.\n\nThe queue holds thumbs-down answers, abstentions and guardrail refusals. Learners\nappear under a pseudonym only.",
+                "tags": [
+                    "coach"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReviewQueue"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/coach/review/{exchange_id}": {
+            "post": {
+                "operationId": "coach_review_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "exchange_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "coach"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewUpdateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewUpdateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReviewUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReviewItem"
                                 }
                             }
                         },
@@ -3904,6 +4095,11 @@
             "Answer": {
                 "type": "object",
                 "properties": {
+                    "exchangeId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
                     "answer": {
                         "type": "string"
                     },
@@ -3915,12 +4111,26 @@
                         "items": {
                             "$ref": "#/components/schemas/Citation"
                         }
+                    },
+                    "diagram": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                    },
+                    "followUps": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
                     "abstained",
                     "answer",
-                    "citations"
+                    "citations",
+                    "diagram",
+                    "exchangeId",
+                    "followUps"
                 ]
             },
             "Answered": {
@@ -4686,6 +4896,22 @@
                     "title"
                 ]
             },
+            "CoachRatingEnum": {
+                "enum": [
+                    "up",
+                    "down"
+                ],
+                "type": "string",
+                "description": "* `up` - Helpful\n* `down` - Not helpful"
+            },
+            "CoachReviewStatusEnum": {
+                "enum": [
+                    "open",
+                    "reviewed"
+                ],
+                "type": "string",
+                "description": "* `open` - Open\n* `reviewed` - Reviewed"
+            },
             "Cohort": {
                 "type": "object",
                 "properties": {
@@ -5450,6 +5676,11 @@
                     },
                     "approved": {
                         "type": "boolean"
+                    },
+                    "moduleId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
                     },
                     "agent": {
                         "allOf": [
@@ -6360,6 +6591,11 @@
                     "title"
                 ]
             },
+            "NullEnum": {
+                "enum": [
+                    null
+                ]
+            },
             "Package": {
                 "type": "object",
                 "properties": {
@@ -6890,6 +7126,11 @@
                             }
                         ],
                         "default": "general"
+                    },
+                    "moduleId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
                     }
                 },
                 "required": [
@@ -6986,6 +7227,39 @@
                     "title"
                 ]
             },
+            "RatingRequest": {
+                "type": "object",
+                "properties": {
+                    "rating": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CoachRatingEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "note": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 500
+                    }
+                },
+                "required": [
+                    "rating"
+                ]
+            },
+            "ReasonEnum": {
+                "enum": [
+                    "thumbs_down",
+                    "abstained",
+                    "blocked"
+                ],
+                "type": "string",
+                "description": "* `thumbs_down` - thumbs_down\n* `abstained` - abstained\n* `blocked` - blocked"
+            },
             "Reference": {
                 "type": "object",
                 "properties": {
@@ -7077,6 +7351,181 @@
                 },
                 "required": [
                     "questionId"
+                ]
+            },
+            "ReviewCitation": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "label"
+                ]
+            },
+            "ReviewItem": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "courseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "courseTitle": {
+                        "type": "string"
+                    },
+                    "moduleId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "agent": {
+                        "$ref": "#/components/schemas/CoachAgentEnum"
+                    },
+                    "learner": {
+                        "type": "string"
+                    },
+                    "question": {
+                        "type": "string"
+                    },
+                    "answer": {
+                        "type": "string"
+                    },
+                    "abstained": {
+                        "type": "boolean"
+                    },
+                    "blocked": {
+                        "type": "boolean"
+                    },
+                    "rating": {
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CoachRatingEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "ratingNote": {
+                        "type": "string"
+                    },
+                    "citations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReviewCitation"
+                        }
+                    },
+                    "reason": {
+                        "$ref": "#/components/schemas/ReasonEnum"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/CoachReviewStatusEnum"
+                    },
+                    "reviewNote": {
+                        "type": "string"
+                    },
+                    "diagram": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "abstained",
+                    "agent",
+                    "answer",
+                    "blocked",
+                    "citations",
+                    "courseId",
+                    "courseTitle",
+                    "createdAt",
+                    "diagram",
+                    "id",
+                    "learner",
+                    "moduleId",
+                    "question",
+                    "rating",
+                    "ratingNote",
+                    "reason",
+                    "reviewNote",
+                    "status"
+                ]
+            },
+            "ReviewQueue": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "$ref": "#/components/schemas/ReviewSummary"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReviewItem"
+                        }
+                    }
+                },
+                "required": [
+                    "items",
+                    "summary"
+                ]
+            },
+            "ReviewSummary": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer"
+                    },
+                    "asked": {
+                        "type": "integer"
+                    },
+                    "helpful": {
+                        "type": "integer"
+                    },
+                    "unhelpful": {
+                        "type": "integer"
+                    },
+                    "abstained": {
+                        "type": "integer"
+                    },
+                    "helpfulRate": {
+                        "type": "number",
+                        "format": "double",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "abstained",
+                    "asked",
+                    "days",
+                    "helpful",
+                    "helpfulRate",
+                    "unhelpful"
+                ]
+            },
+            "ReviewUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/CoachReviewStatusEnum"
+                    },
+                    "note": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "status"
                 ]
             },
             "RoleEnum": {
@@ -7265,6 +7714,11 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "moduleId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
                     "title": {
                         "type": "string"
                     },
@@ -7300,6 +7754,7 @@
                     "courseId",
                     "edition",
                     "id",
+                    "moduleId",
                     "referenceUrl",
                     "title",
                     "updatedAt"

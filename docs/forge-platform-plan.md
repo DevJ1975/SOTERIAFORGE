@@ -381,6 +381,23 @@ provisioned on AWS. See `docs/open-badges.md`.
 validator and walk My Progress and the award overlay against the walkthrough video. Both
 need the API reachable at its public URL.
 
+### Phase 4 progress (2026-11-21)
+
+**Built on the local pilot:** module-scoped retrieval, streamed answers (SSE), the four
+diagram types drawn as SVG with a text alternative, source chips, follow-up questions,
+thumbs, the staff review queue with a weekly helpful rate, pre-model guardrails and a
+pseudonymized exchange log with retention. Checked against the real local model through
+the ASGI server. See [local AI tutor](./local-ai-tutor.md#ask-forge-phase-4).
+
+**Remaining for Phase 4:**
+
+- **Hosted inference.** The coach still only talks to Ollama on the same machine, so it
+  cannot run on AWS or Railway. This needs the provider decision in §8.
+- **Exit gate:** an instructor-reviewed corpus and an eval set scored at 85% helpful.
+- **Look and feel:** the new chat features and diagrams have unit tests but have not been
+  checked in a browser against the walkthrough video.
+- **Operations:** schedule `purge_coach_log` daily and confirm the retention period.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

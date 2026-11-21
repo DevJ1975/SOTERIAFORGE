@@ -64,6 +64,12 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./pages/knowledge.component').then((m) => m.KnowledgeComponent),
   },
   {
+    path: 'coach-review',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () =>
+      import('./pages/coach-review.component').then((m) => m.CoachReviewComponent),
+  },
+  {
     path: 'standards',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/standards.component').then((m) => m.StandardsComponent),

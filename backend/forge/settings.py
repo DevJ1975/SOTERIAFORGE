@@ -176,6 +176,8 @@ SPECTACULAR_SETTINGS = {
         "RoleEnum": "apps.accounts.models.Role",
         "AssignableRoleEnum": "apps.accounts.models.ASSIGNABLE_ROLES",
         "BadgeKindEnum": "apps.gamification.models.Badge.Kind",
+        "CoachReviewStatusEnum": "apps.coach.models.Exchange.ReviewStatus",
+        "CoachRatingEnum": "apps.coach.models.Exchange.Rating",
     },
 }
 
@@ -248,6 +250,8 @@ LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 
 # Local AI pilot: intentionally loopback-only; Railway cannot reach a Mac's localhost.
 COACH_ENABLED = env_bool("COACH_ENABLED")
+# Questions and answers are kept this long for the thumbs and the staff review queue.
+COACH_LOG_RETENTION_DAYS = int(os.environ.get("COACH_LOG_RETENTION_DAYS", "90"))
 COACH_MODEL = "qwen3:8b"
 COACH_MODEL_DIGEST = "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
 COACH_EMBED_MODEL = "qwen3-embedding:0.6b"

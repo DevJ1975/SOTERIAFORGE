@@ -13,6 +13,8 @@ export interface IngestInput {
   agent?: CoachAgentId;
   referenceUrl?: string;
   edition?: string;
+  /** Limit the source to one module of the course; omit for the whole course. */
+  moduleId?: string;
 }
 
 export interface IngestResult {
@@ -33,6 +35,7 @@ export class IngestService {
     body.set('agent', input.agent ?? 'general');
     body.set('referenceUrl', input.referenceUrl ?? '');
     body.set('edition', input.edition ?? '');
+    if (input.moduleId) body.set('moduleId', input.moduleId);
     if (input.file) body.set('file', input.file);
     else if (input.text !== undefined) body.set('text', input.text);
     return firstValueFrom(

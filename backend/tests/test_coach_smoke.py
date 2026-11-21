@@ -160,3 +160,54 @@ def test_real_local_specialist_grounding(lakewood, settings, agent, text, questi
     assert response.status_code == 200, response.json()
     assert response.json()["abstained"] is True, response.json()
     assert response.json()["citations"] == []
+
+
+def test_real_streamed_answer_with_a_diagram_and_follow_ups(lakewood, settings):
+    """The real model, streamed: text arrives in pieces and matches the validated answer."""
+    from tests.test_coach_phase4 import events
+
+    settings.COACH_ENABLED = True
+    cache.clear()
+    make_member(lakewood, "stream-teacher", Role.INSTRUCTOR)
+    learner = make_member(lakewood, "stream-learner")
+    course = Course.objects.create(tenant=lakewood, title="Synthetic lockout", status="published")
+    Enrollment.objects.create(tenant=lakewood, member=learner, course=course)
+    response = client_for(sign_in("stream-teacher")).put(
+        f"/api/coach/sources/{uuid.uuid4()}",
+        {
+            "courseId": str(course.pk),
+            "label": "Synthetic lockout steps",
+            "text": (
+                "In this synthetic course the lockout procedure has four steps in order. "
+                "First, notify affected workers. Second, shut the machine down at its controls. "
+                "Third, isolate the energy source and apply your own lock and tag. "
+                "Fourth, try to start the machine to verify it has no energy."
+            ),
+            "approved": True,
+        },
+        format="json",
+    )
+    assert response.status_code == 200, response.json()
+    response = client_for(sign_in("stream-learner")).post(
+        "/api/coach/ask/stream",
+        {"courseId": str(course.pk), "question": "What are the lockout steps, in order?"},
+        format="json",
+        HTTP_ACCEPT="text/event-stream",
+    )
+    assert response.status_code == 200
+    got = events(response)
+    assert got[-1][0] == "done", got[-1]
+    done = got[-1][1]
+    deltas = [data["text"] for name, data in got if name == "delta"]
+    assert len(deltas) > 3 and "".join(deltas) == done["answer"]
+    assert done["abstained"] is False and done["citations"]
+    # A sequence should come back as a flow; the diagram is optional, so only its shape
+    # is checked when the model offers one.
+    if done["diagram"]:
+        assert done["diagram"]["alt"] and done["diagram"]["type"] in (
+            "linear_flow",
+            "before_after",
+            "comparison",
+            "two_by_two",
+        )
+    print("\nSMOKE diagram:", done["diagram"], "\nSMOKE followUps:", done["followUps"])

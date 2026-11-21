@@ -33,8 +33,11 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
       retire them once MCP authoring is proven? (Default plan: keep them for now.)
 - [x] **Decided:** B2C storefront is a public catalog with a request-access path; no B2C
       signup or Stripe checkout.
-- [ ] **Decide:** Anthropic/AI tutor hosting. The Django coach runs on a local Ollama model
-      only; production needs a hosted model or the tutor stays off.
+- [ ] **Decide:** AI tutor hosting. Ask Forge (Phase 4) is built but only talks to a local
+      Ollama model, so it is off on AWS and Railway until a hosted model and embedding
+      provider are chosen.
+- [ ] **Decide:** how long coach questions and answers are kept (default 90 days), then
+      schedule `manage.py purge_coach_log` daily.
 - [ ] Review and push the branch: `feat/angular-22-upgrade` is ~11 commits ahead of
       `origin`. Two of them (gamification, My Progress) came from another session.
 - [ ] Optional: delete the stale worktrees. `SOTERIAFORGE-mcp` is ported except its
