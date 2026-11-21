@@ -278,7 +278,7 @@ export class LessonFormComponent implements OnInit {
     this.estimatedMinutes = l.estimatedMinutes;
     this.xpReward = l.xpReward;
     this.frameworkTags = l.frameworkTags.join(', ');
-    this.keyPoints.set(l.keyPoints.map((k) => ({ ...k })));
+    this.keyPoints.set(l.keyPoints.map((k) => ({ title: k.title, body: k.body ?? '' })));
     this.locked = l.standardsManaged === true;
   }
 

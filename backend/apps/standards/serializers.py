@@ -1,5 +1,6 @@
 import json
 
+from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
 from .models import Package, Statement
@@ -12,6 +13,7 @@ class PackageSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+@extend_schema_serializer(component_name="PackageUpload")
 class UploadSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=300)
     file = serializers.FileField()

@@ -7,6 +7,7 @@ export * from './lib/schemas/identity';
 export * from './lib/schemas/tenant';
 export * from './lib/schemas/course';
 export * from './lib/schemas/quiz';
+export * from './lib/schemas/learning';
 export * from './lib/schemas/gamification';
 export * from './lib/schemas/xapi';
 export * from './lib/schemas/ai';

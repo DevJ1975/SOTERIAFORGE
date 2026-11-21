@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core import signing
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
@@ -41,6 +41,7 @@ class AssetSerializer(serializers.Serializer):
     size = serializers.IntegerField()
 
 
+@extend_schema_serializer(component_name="AssetUpload")
 class UploadSerializer(serializers.Serializer):
     file = serializers.FileField()
 

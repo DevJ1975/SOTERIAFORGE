@@ -18,6 +18,10 @@ class Role(models.TextChoices):
     B2C_CUSTOMER = "b2c_customer"
 
 
+# Roles staff may give; superadmin is granted only by `manage.py grant_superadmin`.
+ASSIGNABLE_ROLES = [r for r in Role.values if r != Role.SUPERADMIN]
+
+
 AUTHORING_ROLES = frozenset({Role.SUPERADMIN, Role.TENANT_ADMIN, Role.INSTRUCTOR})
 
 

@@ -9,7 +9,7 @@ import re
 from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_serializer
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -34,6 +34,7 @@ TOKEN_VALUE = re.compile(r"[#(),.%\w -]{1,100}")
 FONT_FAMILY = re.compile(r"[\w ,'\"-]{1,200}")
 
 
+@extend_schema_serializer(component_name="BrandingUpdate")
 class BrandingSerializer(serializers.Serializer):
     logoUrl = serializers.URLField(max_length=2048, required=False, allow_blank=True)
     faviconUrl = serializers.URLField(max_length=2048, required=False, allow_blank=True)

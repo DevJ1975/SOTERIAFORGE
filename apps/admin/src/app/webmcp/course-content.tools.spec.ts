@@ -44,6 +44,8 @@ function lesson(id: string, extra: Partial<ApiLesson> = {}): ApiLesson {
     scormVersion: '',
     estimatedMinutes: null,
     xpReward: 0,
+    standardsManaged: false,
+    transcript: '',
     frameworkTags: [],
     keyPoints: [],
     quiz: null,

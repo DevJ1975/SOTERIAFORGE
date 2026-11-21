@@ -27,6 +27,7 @@ import { ManagedCmi5PlayerComponent, ManagedScormPlayerComponent } from '@assura
 
 const VIDEO_FILE = /\.(mp4|webm|ogg|m4v)(\?|#|$)/i;
 const HTTP_URL = /^https?:\/\//i;
+const ASSET_REF = /^asset:([0-9a-f-]{36})$/i;
 
 /** Lesson screen: label, framework tags, content, key points and the knowledge check. */
 @Component({
@@ -101,6 +102,13 @@ const HTTP_URL = /^https?:\/\//i;
                       Open video
                     </a>
                   }
+                } @else if (assetPending()) {
+                  <p class="sf-sub">Loading video…</p>
+                } @else if (assetError()) {
+                  <p class="ls__error" role="alert">{{ assetError() }}</p>
+                  <button type="button" class="sf-btn sf-btn--secondary" (click)="resolveAsset()">
+                    Retry
+                  </button>
                 } @else {
                   <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
                 }
@@ -337,6 +345,10 @@ export class LessonComponent {
   /** The award overlay shows once per completion; closing it keeps it closed. */
   readonly awardSeen = signal(false);
   readonly completeError = signal<string | null>(null);
+  /** Signed URL for an uploaded (`asset:<id>`) video; it expires, so it is never cached. */
+  readonly assetSrc = signal('');
+  readonly assetPending = signal(false);
+  readonly assetError = signal<string | null>(null);
 
   private loadSeq = 0;
 
@@ -357,6 +369,8 @@ export class LessonComponent {
     this.completion.set(null);
     this.awardSeen.set(false);
     this.completeError.set(null);
+    this.assetSrc.set('');
+    this.assetError.set(null);
     // Fetch lesson and outline together; the outline powers the label, Previous/Next and the
     // enrollment check. A missing outline never blocks the lesson itself.
     const [lessonRes, outlineRes] = await Promise.allSettled([
@@ -391,6 +405,7 @@ export class LessonComponent {
     this.outline.set(outline);
     this.lesson.set(lessonRes.value);
     this.loading.set(false);
+    void this.resolveAsset();
     if (this.hasShownLesson) {
       // Navigating between lessons destroys the clicked link; restore focus to the new title.
       afterNextRender(
@@ -448,14 +463,38 @@ export class LessonComponent {
     const l = this.lesson();
     if (!l) return '';
     if (HTTP_URL.test(l.externalUrl)) return l.externalUrl;
+    if (this.assetSrc()) return this.assetSrc();
     return HTTP_URL.test(l.assetRef) || l.assetRef.startsWith('/') ? l.assetRef : '';
   });
 
   readonly isVideoFile = computed(() => {
     const l = this.lesson();
     const src = this.videoSrc();
-    return !!l && !!src && (src === l.assetRef || VIDEO_FILE.test(src));
+    return !!l && !!src && (src === l.assetRef || src === this.assetSrc() || VIDEO_FILE.test(src));
   });
+
+  /** Video lessons whose file was uploaded to Forge storage get a fresh signed URL. */
+  async resolveAsset(): Promise<void> {
+    const l = this.lesson();
+    const id =
+      l?.contentType === 'video' && !HTTP_URL.test(l.externalUrl)
+        ? ASSET_REF.exec(l.assetRef)?.[1]
+        : undefined;
+    if (!l || !id) return;
+    const seq = this.loadSeq;
+    this.assetPending.set(true);
+    this.assetError.set(null);
+    try {
+      const { url } = await this.api.assetUrl(id);
+      if (seq === this.loadSeq) this.assetSrc.set(url);
+    } catch (e) {
+      if (seq === this.loadSeq) {
+        this.assetError.set(apiErrorMessage(e, 'Could not load the video. Please try again.'));
+      }
+    } finally {
+      if (seq === this.loadSeq) this.assetPending.set(false);
+    }
+  }
 
   readonly externalLink = computed(() => {
     const url = this.lesson()?.externalUrl ?? '';

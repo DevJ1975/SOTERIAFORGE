@@ -172,5 +172,13 @@ jobs:
         run: DJANGO_DEBUG=true uv run python manage.py makemigrations --check --dry-run
       - name: Test
         run: uv run pytest
-      - name: OpenAPI schema is valid
-        run: DJANGO_DEBUG=true uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null
+      # backend/openapi.json is the contract the zod schemas in libs/shared are tested
+      # against (learning-contract.spec.ts), so it must match the code.
+      - name: OpenAPI schema is valid and committed
+        run: |
+          DJANGO_DEBUG=true uv run python manage.py spectacular --validate --fail-on-warn \
+            --format openapi-json --file openapi.json
+          git diff --exit-code -- openapi.json || {
+            echo "::error::backend/openapi.json is stale. Regenerate it (see libs/shared/src/lib/schemas/learning-contract.spec.ts) and commit it."
+            exit 1
+          }

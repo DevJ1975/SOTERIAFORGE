@@ -19,6 +19,9 @@ function lesson(over: Partial<ApiLesson> = {}): ApiLesson {
     externalUrl: 'https://example.com/launch',
     scormVersion: '',
     estimatedMinutes: 8,
+    xpReward: 20,
+    standardsManaged: false,
+    transcript: '',
     frameworkTags: ['OWASP LLM01:2025'],
     keyPoints: [{ title: 'Validate input', body: 'Always.' }],
     quiz: null,
@@ -58,7 +61,13 @@ const outline = {
 } as unknown as ApiCourseOutline;
 
 describe('LessonComponent', () => {
-  let api: { lesson: jest.Mock; course: jest.Mock; complete: jest.Mock; enroll: jest.Mock };
+  let api: {
+    lesson: jest.Mock;
+    course: jest.Mock;
+    complete: jest.Mock;
+    enroll: jest.Mock;
+    assetUrl: jest.Mock;
+  };
   let fixture: ComponentFixture<LessonComponent>;
   const el = (): HTMLElement => fixture.nativeElement;
 
@@ -79,6 +88,7 @@ describe('LessonComponent', () => {
       course: jest.fn().mockResolvedValue(outline),
       complete: jest.fn(),
       enroll: jest.fn().mockResolvedValue({}),
+      assetUrl: jest.fn(),
     };
     TestBed.configureTestingModule({
       imports: [LessonComponent],
@@ -113,6 +123,21 @@ describe('LessonComponent', () => {
       expect(el().textContent).not.toContain('Mark as complete');
     },
   );
+
+  it('plays an uploaded video from a signed URL', async () => {
+    const id = '0b6f2c1e-3d4a-4f5b-8c9d-1e2f3a4b5c6d';
+    api.lesson.mockResolvedValue(
+      lesson({ contentType: 'video', externalUrl: '', assetRef: `asset:${id}` }),
+    );
+    api.assetUrl.mockResolvedValue({ url: 'https://files.example/v.mp4?sig=1', expiresIn: 900 });
+    await create();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.assetUrl).toHaveBeenCalledWith(id);
+    expect(el().querySelector('video')?.getAttribute('src')).toBe(
+      'https://files.example/v.mp4?sig=1',
+    );
+  });
 
   it('marks a quiz-less lesson complete via the API and shows progress', async () => {
     api.lesson.mockResolvedValue(lesson());

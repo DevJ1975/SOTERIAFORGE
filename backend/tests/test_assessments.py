@@ -4,6 +4,7 @@ apps/functions/src/quizzes/submit-quiz.spec.ts."""
 import pytest
 
 from apps.accounts.models import Role
+from apps.assessments.authoring import answerable_errors
 from apps.assessments.models import CheckAnswer, Quiz, QuizAttempt
 from apps.audit.models import AuditEntry
 from apps.learning.models import Enrollment, LessonProgress
@@ -37,9 +38,13 @@ def learner(content):
     return client
 
 
-def submit(client, lesson, responses):
+def submit(client, lesson, responses, key=None):
+    headers = {"Idempotency-Key": key} if key else None
     return client.post(
-        f"/api/lessons/{lesson.pk}/attempts", {"responses": responses}, format="json"
+        f"/api/lessons/{lesson.pk}/attempts",
+        {"responses": responses},
+        format="json",
+        headers=headers,
     )
 
 
@@ -133,6 +138,43 @@ def test_enforces_max_attempts(content, learner):
     assert QuizAttempt.objects.count() == 2
 
 
+def test_a_replayed_attempt_returns_the_original_and_spends_nothing(content, learner):
+    first = submit(learner, content.exam, FAILING, key="outbox-0001").json()
+    replay = submit(learner, content.exam, FAILING, key="outbox-0001")
+    assert replay.status_code == 200
+    assert replay.json() == first
+    assert QuizAttempt.objects.count() == 1
+    assert AuditEntry.objects.filter(action="assessments.quiz.graded").count() == 1
+    # The learner still has their second attempt.
+    assert submit(learner, content.exam, PASSING, key="outbox-0002").json()["passed"] is True
+
+
+def test_a_replayed_pass_does_not_pay_twice(content, learner):
+    first = submit(learner, content.exam, PASSING, key="outbox-pass").json()
+    assert first["completion"]["firstCompletion"] is True
+    replay = submit(learner, content.exam, PASSING, key="outbox-pass").json()
+    assert replay["attemptsUsed"] == 1
+    assert replay["completion"] == {
+        "progressPct": first["completion"]["progressPct"],
+        "completed": first["completion"]["completed"],
+        "firstCompletion": False,
+        "award": None,
+    }
+    assert AuditEntry.objects.filter(action="learning.lesson.completed").count() == 1
+
+
+def test_an_idempotency_key_cannot_be_reused_for_other_answers(content, learner):
+    submit(learner, content.exam, FAILING, key="outbox-0003")
+    reused = submit(learner, content.exam, PASSING, key="outbox-0003")
+    assert reused.status_code == 409
+    assert QuizAttempt.objects.count() == 1
+
+
+def test_a_malformed_idempotency_key_is_rejected(content, learner):
+    assert submit(learner, content.exam, PASSING, key="bad key!").status_code == 400
+    assert QuizAttempt.objects.count() == 0
+
+
 def test_the_client_cannot_send_its_own_score(content, learner):
     response = learner.post(
         f"/api/lessons/{content.exam.pk}/attempts",
@@ -218,3 +260,80 @@ def test_finishing_every_lesson_completes_the_course(content, learner):
     assert result["completion"]["award"]["totalXp"] == 90
     assert Enrollment.objects.get().completed_at is not None
     assert AuditEntry.objects.filter(action="learning.course.completed").count() == 1
+
+
+# --- Ordering and matching ---------------------------------------------------
+
+ORDERING = {
+    "id": "ord",
+    "type": "ordering",
+    "prompt": "Put the lockout steps in order.",
+    "points": 1,
+    "options": [
+        {"id": "s1", "text": "Notify affected staff"},
+        {"id": "s2", "text": "Shut the machine down"},
+        {"id": "s3", "text": "Isolate energy sources"},
+        {"id": "s4", "text": "Apply locks and tags"},
+    ],
+    "answerKey": ["s1", "s2", "s3", "s4"],
+}
+MATCHING = {
+    "id": "mat",
+    "type": "matching",
+    "prompt": "Match each hazard to its energy type.",
+    "points": 1,
+    "options": [],
+    "answerKey": ["Spring:Mechanical", "Battery:Electrical", "Steam line:Thermal"],
+}
+
+
+@pytest.fixture
+def mixed(content, learner):
+    content.graded.questions = [ORDERING, MATCHING]
+    content.graded.save()
+    return content
+
+
+def test_learners_see_shuffled_ordering_items_and_both_matching_columns(mixed, learner):
+    quiz = learner.get(f"/api/lessons/{mixed.exam.pk}").json()["quiz"]
+    ordering, matching = quiz["questions"]
+    shown = [o["id"] for o in ordering["options"]]
+    assert sorted(shown) == ["s1", "s2", "s3", "s4"]
+    assert shown != ORDERING["answerKey"]
+    # Stable across loads, so an arrangement in progress survives a reload.
+    again = learner.get(f"/api/lessons/{mixed.exam.pk}").json()["quiz"]["questions"][0]
+    assert [o["id"] for o in again["options"]] == shown
+    assert matching["matching"]["left"] == ["Spring", "Battery", "Steam line"]
+    assert sorted(matching["matching"]["right"]) == ["Electrical", "Mechanical", "Thermal"]
+    assert "answerKey" not in str(quiz)
+
+
+def test_ordering_and_matching_are_graded(mixed, learner):
+    right = [
+        {"questionId": "ord", "order": ["s1", "s2", "s3", "s4"]},
+        {"questionId": "mat", "selectedOptionIds": MATCHING["answerKey"][::-1]},
+    ]
+    wrong = [
+        {"questionId": "ord", "order": ["s2", "s1", "s3", "s4"]},
+        {
+            "questionId": "mat",
+            "selectedOptionIds": ["Spring:Electrical", "Battery:Mechanical", "Steam line:Thermal"],
+        },
+    ]
+    failed = submit(learner, mixed.exam, wrong).json()
+    assert failed["earnedPoints"] == 0
+    assert submit(learner, mixed.exam, right).json()["passed"] is True
+
+
+@pytest.mark.parametrize(
+    ("key", "message"),
+    [
+        (["Spring:Mechanical"], "2 or more"),
+        (["Spring:Mechanical", "Battery:"], "2 or more"),
+        (["Spring:Mechanical", "Spring:Thermal"], "only one pair"),
+    ],
+)
+def test_matching_questions_must_be_answerable(key, message):
+    (error,) = answerable_errors([{**MATCHING, "answerKey": key}])
+    assert message in error
+    assert answerable_errors([MATCHING]) == []

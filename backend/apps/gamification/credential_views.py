@@ -7,6 +7,7 @@ award's random id, which only the holder can hand out.
 """
 
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
@@ -62,13 +63,13 @@ class _Public(APIView):
 
 
 class JwksView(_Public):
-    @extend_schema(responses={200: serializers.DictField()})
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         return Response(credentials.jwks())
 
 
 class IssuerView(_Public):
-    @extend_schema(responses={200: serializers.DictField()})
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request, tenant_id):
         with rls.bypass():
             tenant = get_object_or_404(Tenant, pk=tenant_id)
@@ -76,7 +77,7 @@ class IssuerView(_Public):
 
 
 class AchievementView(_Public):
-    @extend_schema(responses={200: serializers.DictField()})
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request, badge_id):
         with rls.bypass():
             badge = get_object_or_404(Badge, pk=badge_id)

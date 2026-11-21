@@ -95,15 +95,6 @@ class ScoreCardSerializer(serializers.Serializer):
     crew = MyCrewSerializer(allow_null=True)
 
 
-class AwardSerializer(serializers.Serializer):
-    awarded = serializers.IntegerField()
-    totalXp = serializers.IntegerField()
-    level = serializers.IntegerField()
-    leveledUp = serializers.BooleanField()
-    streakDays = serializers.IntegerField()
-    streakExtended = serializers.BooleanField()
-
-
 class StaffCrewSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     name = serializers.CharField()

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { LearningApi, type ApiLessonQuiz } from '@assurance/lms-core';
+import { LearningApi, type ApiLessonQuiz, type ApiQuestion } from '@assurance/lms-core';
 import { KnowledgeCheckComponent } from './knowledge-check.component';
 
 const q1 = {
@@ -15,7 +15,33 @@ const q1 = {
   ],
 };
 const q2 = { ...q1, id: 'q2', type: 'fill_in' as const, prompt: 'Type it', options: [] };
-const q3 = { ...q1, id: 'q3', type: 'ordering' as const, prompt: 'Order', options: [] };
+/** A type a newer server could send that this app does not know. */
+const q3 = {
+  ...q1,
+  id: 'q3',
+  type: 'hotspot' as unknown as ApiQuestion['type'],
+  prompt: 'Tap it',
+  options: [],
+};
+const ordering = {
+  ...q1,
+  id: 'ord',
+  type: 'ordering' as const,
+  prompt: 'Order the steps',
+  options: [
+    { id: 's2', text: 'Shut down' },
+    { id: 's1', text: 'Notify' },
+    { id: 's3', text: 'Isolate' },
+  ],
+};
+const matching = {
+  ...q1,
+  id: 'mat',
+  type: 'matching' as const,
+  prompt: 'Match',
+  options: [],
+  matching: { left: ['Spring', 'Battery'], right: ['Electrical', 'Mechanical'] },
+};
 
 function quiz(over: Partial<ApiLessonQuiz> = {}): ApiLessonQuiz {
   return {
@@ -204,10 +230,14 @@ describe('KnowledgeCheckComponent', () => {
     });
     click('.kc__actions button');
     await flush();
-    expect(api.submitQuiz).toHaveBeenCalledWith('les-1', [
-      { questionId: 'q1', selectedOptionIds: ['a'] },
-      { questionId: 'q2', text: 'x' },
-    ]);
+    expect(api.submitQuiz).toHaveBeenCalledWith(
+      'les-1',
+      [
+        { questionId: 'q1', selectedOptionIds: ['a'] },
+        { questionId: 'q2', text: 'x' },
+      ],
+      expect.any(String),
+    );
     const text = el().textContent ?? '';
     expect(text).toContain('Not passed');
     expect(text).toContain('50%');
@@ -227,5 +257,110 @@ describe('KnowledgeCheckComponent', () => {
     expect(el().querySelector('[role="alert"]')?.textContent).toContain(
       'No quiz attempts remaining.',
     );
+  });
+
+  const graded = {
+    earnedPoints: 1,
+    totalPoints: 1,
+    scorePct: 100,
+    passed: true,
+    perQuestion: [],
+    attemptsUsed: 1,
+    attemptsRemaining: 1,
+    completion: null,
+  };
+
+  it('ordering: Move up / Move down rearrange the items and submit their order', async () => {
+    create(quiz({ mode: 'graded', questions: [ordering] }));
+    document.body.appendChild(fixture.nativeElement);
+    const items = (): string[] =>
+      Array.from(el().querySelectorAll('.kc__order-text')).map((x) => x.textContent?.trim() ?? '');
+    expect(items()).toEqual(['Shut down', 'Notify', 'Isolate']);
+    const moves = (): HTMLButtonElement[] =>
+      Array.from(el().querySelectorAll<HTMLButtonElement>('.kc__order-moves button'));
+    expect(moves()[0].disabled).toBe(true); // first item cannot move up
+    moves()[2].click(); // "Notify": Move up
+    fixture.detectChanges();
+    await flush();
+    expect(items()).toEqual(['Notify', 'Shut down', 'Isolate']);
+    expect(el().textContent).toContain('Notify moved to position 1 of 3.');
+    // Move up is now disabled at the top, so focus lands on that item's Move down.
+    expect(document.activeElement).toBe(moves()[1]);
+    api.submitQuiz.mockResolvedValue(graded);
+    click('.kc__actions button');
+    await flush();
+    expect(api.submitQuiz).toHaveBeenCalledWith(
+      'les-1',
+      [{ questionId: 'ord', order: ['s1', 's2', 's3'] }],
+      expect.any(String),
+    );
+    fixture.nativeElement.remove();
+  });
+
+  it('matching: every left item needs a choice, answered as "left:right" pairs', async () => {
+    create(quiz({ mode: 'graded', questions: [matching] }));
+    const selects = Array.from(el().querySelectorAll<HTMLSelectElement>('select'));
+    expect(selects.map((x) => x.labels?.[0]?.textContent?.trim())).toEqual(['Spring', 'Battery']);
+    const submit = (): HTMLButtonElement =>
+      el().querySelector('.kc__actions button') as HTMLButtonElement;
+    const choose = (i: number, value: string): void => {
+      selects[i].value = value;
+      selects[i].dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    };
+    choose(0, 'Mechanical');
+    expect(submit().disabled).toBe(true);
+    choose(1, 'Electrical');
+    expect(submit().disabled).toBe(false);
+    api.submitQuiz.mockResolvedValue(graded);
+    submit().click();
+    await flush();
+    expect(api.submitQuiz).toHaveBeenCalledWith(
+      'les-1',
+      [{ questionId: 'mat', selectedOptionIds: ['Spring:Mechanical', 'Battery:Electrical'] }],
+      expect.any(String),
+    );
+  });
+
+  it('check mode: an ordering question can be checked', async () => {
+    create(quiz({ questions: [ordering] }));
+    api.check.mockResolvedValue({
+      questionId: 'ord',
+      correct: false,
+      firstTry: true,
+      solved: false,
+      feedback: null,
+      completion: null,
+    });
+    click('.kc__actions button');
+    await flush();
+    expect(api.check).toHaveBeenCalledWith('les-1', {
+      questionId: 'ord',
+      order: ['s2', 's1', 's3'],
+    });
+    expect(el().querySelectorAll('.kc__order-item.is-wrong').length).toBe(3);
+  });
+
+  async function submitAfterFailure(status: number): Promise<string[]> {
+    create(quiz({ mode: 'graded', questions: [q1] }));
+    click('.sf-option', 0);
+    api.submitQuiz.mockImplementationOnce(() => Promise.reject(new HttpErrorResponse({ status })));
+    click('.kc__actions button');
+    await flush();
+    expect(el().querySelector('[role="alert"]')?.textContent).toContain('Could not submit');
+    api.submitQuiz.mockResolvedValueOnce(graded);
+    click('.kc__actions button');
+    await flush();
+    return api.submitQuiz.mock.calls.map((c) => c[2]);
+  }
+
+  it('a resend after a lost response reuses the Idempotency-Key', async () => {
+    const [first, resend] = await submitAfterFailure(0);
+    expect(resend).toBe(first);
+  });
+
+  it('a resend after a 4xx answer uses a new Idempotency-Key', async () => {
+    const [first, resend] = await submitAfterFailure(400);
+    expect(resend).not.toBe(first);
   });
 });

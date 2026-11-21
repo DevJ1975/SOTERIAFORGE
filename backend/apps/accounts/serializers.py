@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.tenants.models import Tenant
 
-from .models import Member, Role
+from .models import ASSIGNABLE_ROLES, Member
 
 
 class TenantSummarySerializer(serializers.ModelSerializer):
@@ -34,4 +34,4 @@ class MeSerializer(serializers.Serializer):
 
 class RoleChangeSerializer(serializers.Serializer):
     # Superadmin is granted out-of-band (manage.py grant_superadmin), never here.
-    role = serializers.ChoiceField(choices=[r for r in Role.values if r != Role.SUPERADMIN])
+    role = serializers.ChoiceField(choices=ASSIGNABLE_ROLES)

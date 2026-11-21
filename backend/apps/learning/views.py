@@ -348,17 +348,33 @@ class MyEnrollmentsView(APIView):
     @extend_schema(responses=MyEnrollmentSerializer(many=True))
     def get(self, request):
         tenant = acting_tenant(request)
-        enrollments = Enrollment.objects.filter(
-            tenant=tenant, member=request.user, course__status=PublishStatus.PUBLISHED
-        ).select_related("course")
+        enrollments = list(
+            Enrollment.objects.filter(
+                tenant=tenant, member=request.user, course__status=PublishStatus.PUBLISHED
+            ).select_related("course")
+        )
+        # Three queries however many enrollments: enrollments, completed lessons, lessons.
+        done: set = set(
+            LessonProgress.objects.filter(
+                enrollment__in=enrollments, completed_at__isnull=False
+            ).values_list("enrollment_id", "lesson_id")
+        )
+        lessons_by_course: dict = {}
+        for lsn in (
+            Lesson.objects.filter(module__course__in=[e.course_id for e in enrollments])
+            .select_related("module")
+            .order_by("module__order", "module__created_at", "order", "created_at")
+        ):
+            lessons_by_course.setdefault(lsn.module.course_id, []).append(lsn)
         result = []
         for enrollment in enrollments:
-            done = completed_lesson_ids(enrollment)
-            lessons = Lesson.objects.filter(module__course=enrollment.course).order_by(
-                "module__order", "module__created_at", "order", "created_at"
-            )
             next_lesson = next(
-                (lsn for lsn in lessons.select_related("module") if lsn.pk not in done), None
+                (
+                    lsn
+                    for lsn in lessons_by_course.get(enrollment.course_id, [])
+                    if (enrollment.pk, lsn.pk) not in done
+                ),
+                None,
             )
             result.append(
                 {

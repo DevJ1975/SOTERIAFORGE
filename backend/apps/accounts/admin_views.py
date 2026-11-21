@@ -22,7 +22,7 @@ from apps.learning.models import Enrollment, LessonProgress
 
 from . import tokens
 from .emails import _base_url, send_link_email
-from .models import Member, OneTimeToken, Role
+from .models import ASSIGNABLE_ROLES, Member, OneTimeToken, Role
 from .permissions import HasTenantRole, IsActiveMember
 from .serializers import MemberSerializer
 
@@ -36,7 +36,7 @@ class TenantAdminView(APIView):
 
 class InviteSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    role = serializers.ChoiceField(choices=[r for r in Role.values if r != Role.SUPERADMIN])
+    role = serializers.ChoiceField(choices=ASSIGNABLE_ROLES)
     displayName = serializers.CharField(max_length=200, required=False, allow_blank=True)
 
 

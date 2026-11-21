@@ -279,21 +279,39 @@ seed_course --tenant <id> [--publish]` loads a demo course.
 type): offline download, focused one-module-per-screen mode, the in-page module
 player and live progress updates (progress refreshes on load).
 
-**Remaining for Phase 2:**
+### Phase 2 finished (2026-11-21)
 
-- **Question types:** ordering and matching have no learner input yet. The lesson
-  blocks with a message instead of letting a learner spend graded attempts.
-- **SCORM/cmi5/game/Unity lessons** show an "Open" link only; the player needs
-  rebuilding on lessons, and with it offline download and runtime-state saving.
-  A video stored as a bare storage key is not resolved.
-- **SCORM upload** needs the object-storage decision (Railway Bucket vs R2, §8).
-- **Zod schemas** in `libs/shared` still describe the Firestore model; update them
-  to the lesson model and add the OpenAPI contract test.
-- **Offline replay:** completion and first-try answers are safe to replay; add
-  `Idempotency-Key` for graded attempts so a replay can't use up an attempt.
-- **Admin app** still authors courses in Firestore; move authoring to the API.
-- **Performance:** `GET /api/enrollments/me` queries once per enrollment; fold into
-  one query before cohorts grow. Learner initial bundle is 1.26 MB against a 1.00 MB budget.
+- **Ordering and matching questions** are answerable in the learner app: Move up /
+  Move down for ordering (no drag needed, keyboard and screen-reader friendly) and a
+  menu per item for matching. The API shows ordering items in a stable shuffle, never
+  the authored order (which is often the answer), and sends matching questions their
+  two columns (`matching.left`, `matching.right`). The MCP quiz tools now refuse
+  matching questions that couldn't be answered (fewer than 2 pairs, an empty side, a
+  left item used twice).
+- **Lesson players:** SCORM (managed player), cmi5 and Unity lessons play inside the
+  app; uploaded videos (`asset:<id>`) play from a short-lived signed URL.
+- **SCORM upload** runs against Railway Bucket, R2 or Amazon S3; it is switched on by
+  configuring a bucket (docs/todo.md, "For you").
+- **Zod contract:** `libs/shared/src/lib/schemas/learning.ts` describes the lesson
+  model, and `LearningApi` uses its types. `learning-contract.spec.ts` checks it
+  against the committed `backend/openapi.json`; CI fails when that file is stale. It
+  caught two real gaps on the way in: the completion award's `badges` were missing
+  from the schema, and enrollment dates were documented as never null. The schema
+  build also had six existing warnings, now fixed (it uses separate request and
+  response components). The Firestore `course` / `module` / `enrollment` schemas
+  are deprecated.
+- **Offline replay:** graded attempts accept an `Idempotency-Key`. A replay returns
+  the original result without spending an attempt or paying XP twice; the same key
+  with different answers is a 409. The learner app reuses the key when a submission's
+  outcome is unknown (offline, timeout, 5xx).
+- **Admin authoring** uses the API (no Firestore left in the admin app).
+- **Performance:** `GET /api/enrollments/me` uses three queries however many
+  enrollments there are (a test pins it). The learner initial bundle is 772 kB, under
+  the 1 MB budget.
+
+Not done, and moved to docs/todo.md: **offline download** of lessons. The old
+`DownloadService` (libs/player) is still written against the Firestore module and
+is not wired into any app.
 
 ### Phase 3 progress (2026-10-27)
 

@@ -17,6 +17,8 @@ function lesson(extra: Partial<ApiLesson> = {}): ApiLesson {
     scormVersion: '',
     estimatedMinutes: 4,
     xpReward: 10,
+    standardsManaged: false,
+    transcript: '',
     frameworkTags: ['nist'],
     keyPoints: [{ title: 'Why', body: 'Because' }],
     quiz: null,

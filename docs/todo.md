@@ -1,6 +1,6 @@
 # To do
 
-Last updated 2026-11-20. Context: Firebase is being replaced by Django, and courseware
+Last updated 2026-11-21. Context: Firebase is being replaced by Django, and courseware
 is authored by Claude through MCP (see `docs/forge-mcp.md`).
 
 ## For you
@@ -72,8 +72,10 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
       server writes its own xAPI statements on completion, so a client ingest endpoint
       would let clients assert completions. Remove the queue and point the offline banner
       at the real outboxes (quiz, completion).
-- [ ] `DownloadService` (libs/player, unused by the apps) treats `asset:<id>` refs as
-      not cacheable; teach it to resolve signed asset URLs before wiring it back in.
+- [ ] **Offline lesson download** (left over from platform Phase 2): `DownloadService`
+      (libs/player, unused by the apps) still takes the deprecated Firestore `Module` and
+      treats `asset:<id>` refs as not cacheable. Port it to `ApiLesson`, resolve signed
+      asset URLs, then wire it back into the course page.
 
 ### 3. Games and Rust
 

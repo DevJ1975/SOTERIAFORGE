@@ -1,143 +1,41 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { ASSURANCE_ENV, forgeApiUrl } from '@assurance/auth';
+import type {
+  ApiAttemptResult,
+  ApiCheckResult,
+  ApiCompletion,
+  ApiCourse,
+  ApiCourseOutline,
+  ApiEnrollment,
+  ApiLesson,
+  ApiMyEnrollment,
+} from '@assurance/shared';
 import { firstValueFrom } from 'rxjs';
 
 /*
  * Forge API learning endpoints (backend/apps/learning, backend/apps/assessments).
- * The shapes mirror the response serializers there; the OpenAPI schema at
- * /api/schema is the contract.
+ * Response types come from the zod schemas in @assurance/shared, which a contract test
+ * checks against the API's OpenAPI document (backend/openapi.json).
  */
 
-export type ContentType = 'video' | 'scorm' | 'cmi5' | 'quiz' | 'game' | 'unity';
-
-export interface ApiCourse {
-  id: string;
-  title: string;
-  description: string;
-  status: 'draft' | 'published' | 'archived';
-  tags: string[];
-  availableOffline: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ApiEnrollment {
-  id: string;
-  courseId: string;
-  memberId: string;
-  assigned: boolean;
-  dueAt: string | null;
-  progressPct: number;
-  completedAt: string | null;
-  lastActivityAt: string | null;
-  createdAt: string;
-}
-
-export interface ApiLessonSummary {
-  id: string;
-  title: string;
-  order: number;
-  contentType: ContentType;
-  estimatedMinutes: number | null;
-  frameworkTags: string[];
-  hasQuiz: boolean;
-  completed: boolean;
-}
-
-export interface ApiModuleOutline {
-  id: string;
-  courseId: string;
-  title: string;
-  label: string;
-  order: number;
-  lessons: ApiLessonSummary[];
-}
-
-export interface ApiCourseOutline extends ApiCourse {
-  modules: ApiModuleOutline[];
-  enrollment: ApiEnrollment | null;
-}
-
-export interface ApiQuestion {
-  id: string;
-  type: 'mcq' | 'multi_select' | 'true_false' | 'ordering' | 'matching' | 'fill_in';
-  prompt: string;
-  points: number;
-  options: { id: string; text: string }[];
-}
-
-export interface ApiLessonQuiz {
-  id: string;
-  title: string;
-  /** `check`: one question at a time, first try recorded. `graded`: submit all at once. */
-  mode: 'check' | 'graded';
-  passThreshold: number;
-  maxAttempts: number | null;
-  questions: ApiQuestion[];
-  answered: Record<string, { firstCorrect: boolean; solved: boolean }>;
-}
-
-export interface ApiLesson {
-  id: string;
-  courseId: string;
-  moduleId: string;
-  moduleTitle: string;
-  moduleLabel: string;
-  title: string;
-  order: number;
-  contentType: ContentType;
-  assetRef: string;
-  externalUrl: string;
-  scormVersion: string;
-  standardsManaged?: boolean;
-  estimatedMinutes: number | null;
-  xpReward: number;
-  frameworkTags: string[];
-  keyPoints: { title: string; body: string }[];
-  quiz: ApiLessonQuiz | null;
-  progress: { completedAt: string | null; score: number | null; runtime: object } | null;
-}
-
-export interface ApiMyEnrollment extends ApiEnrollment {
-  course: { id: string; title: string };
-  nextLesson: {
-    id: string;
-    title: string;
-    moduleTitle: string;
-    moduleLabel: string;
-    estimatedMinutes: number | null;
-  } | null;
-}
-
-export interface ApiAwardBadge {
-  id: string;
-  key: string;
-  name: string;
-  icon: string;
-  kind: 'mission' | 'credential';
-}
-
-/** What a first completion earned: the data behind the award overlay. */
-export interface ApiAward {
-  /** XP paid by this completion (0 when only the streak moved). */
-  awarded: number;
-  totalXp: number;
-  level: number;
-  leveledUp: boolean;
-  streakDays: number;
-  streakExtended: boolean;
-  /** Badges this completion earned (empty when none). */
-  badges: ApiAwardBadge[];
-}
-
-export interface ApiCompletion {
-  progressPct: number;
-  completed: boolean;
-  firstCompletion: boolean;
-  /** Present only on a first completion; a replay never pays twice. */
-  award: ApiAward | null;
-}
+export type {
+  ApiAttemptResult,
+  ApiAward,
+  ApiAwardBadge,
+  ApiCheckResult,
+  ApiCompletion,
+  ApiCourse,
+  ApiCourseOutline,
+  ApiEnrollment,
+  ApiLesson,
+  ApiLessonQuiz,
+  ApiLessonSummary,
+  ApiModuleOutline,
+  ApiMyEnrollment,
+  ApiQuestion,
+  ContentType,
+} from '@assurance/shared';
 
 /** One answer: options for choice/matching, `text` for fill-in, `order` for ordering. */
 export interface ApiAnswer {
@@ -145,26 +43,6 @@ export interface ApiAnswer {
   selectedOptionIds?: string[];
   text?: string;
   order?: string[];
-}
-
-export interface ApiCheckResult {
-  questionId: string;
-  correct: boolean;
-  firstTry: boolean;
-  solved: boolean;
-  feedback: string | null;
-  completion: ApiCompletion | null;
-}
-
-export interface ApiAttemptResult {
-  earnedPoints: number;
-  totalPoints: number;
-  scorePct: number;
-  passed: boolean;
-  perQuestion: { questionId: string; correct: boolean; awardedPoints: number }[];
-  attemptsUsed: number;
-  attemptsRemaining: number | null;
-  completion: ApiCompletion | null;
 }
 
 /** The API's `{"detail": ...}` message when there is one, else `fallback`. */
@@ -226,9 +104,30 @@ export class LearningApi {
     );
   }
 
-  submitQuiz(lessonId: string, responses: ApiAnswer[]): Promise<ApiAttemptResult> {
+  /** A short-lived signed URL for a tenant asset (a lesson's `asset:<id>` reference). */
+  assetUrl(assetId: string): Promise<{ url: string; expiresIn: number }> {
     return firstValueFrom(
-      this.http.post<ApiAttemptResult>(this.url(`lessons/${lessonId}/attempts`), { responses }),
+      this.http.get<{ url: string; expiresIn: number }>(
+        this.url(`assets/${encodeURIComponent(assetId)}/url`),
+      ),
+    );
+  }
+
+  /**
+   * `idempotencyKey` makes a resend of the same submission safe: the server returns the
+   * original result instead of spending another attempt.
+   */
+  submitQuiz(
+    lessonId: string,
+    responses: ApiAnswer[],
+    idempotencyKey?: string,
+  ): Promise<ApiAttemptResult> {
+    return firstValueFrom(
+      this.http.post<ApiAttemptResult>(
+        this.url(`lessons/${lessonId}/attempts`),
+        { responses },
+        idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {},
+      ),
     );
   }
 }

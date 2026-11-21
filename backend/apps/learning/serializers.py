@@ -2,6 +2,8 @@ import json
 
 from rest_framework import serializers
 
+from apps.gamification.models import Badge
+
 from .models import CONTENT_TYPES, Course, Enrollment, Lesson, Module, PublishStatus
 
 short_labels = serializers.ListField(
@@ -115,10 +117,12 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     courseId = serializers.UUIDField(source="course_id", read_only=True)
     memberId = serializers.UUIDField(source="member_id", read_only=True)
     assigned = serializers.SerializerMethodField()
-    dueAt = serializers.DateTimeField(source="due_at", read_only=True)
+    dueAt = serializers.DateTimeField(source="due_at", read_only=True, allow_null=True)
     progressPct = serializers.IntegerField(source="progress_pct", read_only=True)
-    completedAt = serializers.DateTimeField(source="completed_at", read_only=True)
-    lastActivityAt = serializers.DateTimeField(source="last_activity_at", read_only=True)
+    completedAt = serializers.DateTimeField(source="completed_at", read_only=True, allow_null=True)
+    lastActivityAt = serializers.DateTimeField(
+        source="last_activity_at", read_only=True, allow_null=True
+    )
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
@@ -195,12 +199,20 @@ class PublicOptionSerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class MatchingColumnsSerializer(serializers.Serializer):
+    left = serializers.ListField(child=serializers.CharField())
+    right = serializers.ListField(child=serializers.CharField())
+
+
 class PublicQuestionSerializer(serializers.Serializer):
     id = serializers.CharField()
     type = serializers.CharField()
     prompt = serializers.CharField()
     points = serializers.IntegerField()
     options = PublicOptionSerializer(many=True)
+    matching = MatchingColumnsSerializer(
+        required=False, help_text='Matching only. Answer with "left:right" option ids.'
+    )
 
 
 class AnsweredSerializer(serializers.Serializer):
@@ -272,6 +284,14 @@ class AssignResultSerializer(serializers.Serializer):
     skipped = serializers.IntegerField()
 
 
+class AwardBadgeSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    key = serializers.CharField()
+    name = serializers.CharField()
+    icon = serializers.CharField()
+    kind = serializers.ChoiceField(choices=Badge.Kind.choices)
+
+
 class AwardSerializer(serializers.Serializer):
     """What a first completion earned, for the award overlay."""
 
@@ -281,6 +301,7 @@ class AwardSerializer(serializers.Serializer):
     leveledUp = serializers.BooleanField()
     streakDays = serializers.IntegerField()
     streakExtended = serializers.BooleanField()
+    badges = AwardBadgeSerializer(many=True, help_text="Badges this completion earned.")
 
 
 class CompletionSerializer(serializers.Serializer):

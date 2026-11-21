@@ -141,19 +141,25 @@ REST_FRAMEWORK = {
         "apps.accounts.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["apps.accounts.permissions.IsActiveMember"],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "forge.schema.ForgeAutoSchema",
     "UNAUTHENTICATED_USER": None,
 }
 SPECTACULAR_SETTINGS = {
     "TITLE": "Soteria Forge API",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Separate request and response components, so a response lists every field the
+    # server always sends (the zod contract test in libs/shared relies on it).
+    "COMPONENT_SPLIT_REQUEST": True,
     # Several models have a `status` field; name each choice set explicitly.
     "ENUM_NAME_OVERRIDES": {
         "TenantStatusEnum": "apps.tenants.models.Tenant.Status",
         "MemberStatusEnum": "apps.accounts.models.Member.Status",
         "PublishStatusEnum": "apps.learning.models.PublishStatus",
         "CoachAgentEnum": "apps.coach.profiles.Agent.choices",
+        "RoleEnum": "apps.accounts.models.Role",
+        "AssignableRoleEnum": "apps.accounts.models.ASSIGNABLE_ROLES",
+        "BadgeKindEnum": "apps.gamification.models.Badge.Kind",
     },
 }
 
