@@ -13,6 +13,10 @@ For **Django SCORM imports, Railway Bucket and external xAPI reporting**, use th
 content-only origin/service; never serve executable packages from the API/app
 origin. The pilot is feature-disabled until that infrastructure is configured.
 
+For the **AWS environment** (ECS Fargate, RDS, S3) that runs alongside Railway, use
+the [AWS runbook](../infra/aws/README.md). It is defined in Terraform under
+`infra/aws/` and deployed with `infra/aws/deploy.sh`.
+
 Clean split: **Vercel** hosts the Angular apps (incl. storefront SSR/edge);
 **Railway** hosts the Django API, Postgres (+ pgvector) and Redis. There is no
 other backend.

@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+region      = "us-east-1"
+environment = "production"
+api_domain  = "api.aws.soteriaforge.com"
+
+# Either a Route 53 zone that holds the domain...
+# route53_zone_id = "Z0123456789ABCDEFGHIJ"
+# ...or a certificate you issued and validated in ACM yourself.
+# certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+# Isolated SCORM content origin (docs/scorm-cmi5.md). Leave out until you need it.
+# content_domain = "content.forge-content.com"
+
+# extra_env = {
+#   AUTH_COOKIE_SAMESITE = "Lax"
+#   LIVEKIT_URL          = "wss://media.example.com"
+# }
+# extra_secrets = {
+#   SENTRY_DSN = "arn:aws:secretsmanager:us-east-1:123456789012:secret:forge/sentry-dsn-AbCdEf"
+# }

@@ -411,6 +411,30 @@ def test_missing_storage_and_unsafe_transport_do_not_fall_back(settings):
         storage.client()
 
 
+def test_amazon_s3_uses_role_credentials_and_the_bucket_region(settings, monkeypatch):
+    settings.STANDARDS_LOCAL_ROOT = ""
+    settings.STANDARDS_S3_ENDPOINT = ""
+    settings.STANDARDS_S3_BUCKET = "forge-private"
+    settings.STANDARDS_S3_ACCESS_KEY = ""
+    settings.STANDARDS_S3_SECRET_KEY = ""
+    settings.STANDARDS_S3_REGION = "auto"
+    monkeypatch.delenv("AWS_REGION", raising=False)
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    with pytest.raises(storage.StorageUnavailable, match="STANDARDS_S3_REGION"):
+        storage.client()
+    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    # Stand in for the task role, so the developer's own AWS sign-in is never resolved.
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    s3 = storage.client()
+    assert s3.meta.region_name == "us-west-2"
+    assert s3.meta.endpoint_url == "https://s3.us-west-2.amazonaws.com"
+    assert s3.meta.config.s3["addressing_style"] == "virtual"
+    # One static key without the other is a misconfiguration, not a role fallback.
+    settings.STANDARDS_S3_ACCESS_KEY = "only-half"
+    assert not storage.configured()
+
+
 @pytest.mark.parametrize("status", [301, 400, 409, 429, 500])
 def test_non_success_lrs_responses_remain_pending(setup, settings, monkeypatch, status):
     as_("learner").post(f"/api/lessons/{setup.video.pk}/complete")

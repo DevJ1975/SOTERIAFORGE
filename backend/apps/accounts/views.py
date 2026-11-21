@@ -15,7 +15,7 @@ from .serializers import MemberSerializer, MeSerializer, RoleChangeSerializer
 
 
 def healthz(_request):
-    """Railway health check: the process is up and Postgres answers."""
+    """Platform health check: the process is up and Postgres answers."""
     with connection.cursor() as cur:
         cur.execute("SELECT 1")
     return JsonResponse({"ok": True})

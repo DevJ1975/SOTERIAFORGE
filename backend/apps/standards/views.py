@@ -290,15 +290,7 @@ class ConfigurationView(StaffView):
             {
                 "enabled": settings.STANDARDS_ENABLED,
                 "storageConfigured": bool(
-                    (settings.DEBUG and settings.STANDARDS_LOCAL_ROOT)
-                    or all(
-                        [
-                            settings.STANDARDS_S3_ENDPOINT,
-                            settings.STANDARDS_S3_BUCKET,
-                            settings.STANDARDS_S3_ACCESS_KEY,
-                            settings.STANDARDS_S3_SECRET_KEY,
-                        ]
-                    )
+                    (settings.DEBUG and settings.STANDARDS_LOCAL_ROOT) or storage.configured()
                 ),
                 "contentOriginConfigured": bool(
                     settings.STANDARDS_CONTENT_ORIGIN and settings.STANDARDS_APP_ORIGINS

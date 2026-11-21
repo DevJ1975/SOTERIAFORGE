@@ -1,6 +1,10 @@
-"""Private S3-compatible Railway Bucket; local filesystem is opt-in in DEBUG only."""
+"""Private object storage: Amazon S3 or an S3-compatible bucket (Railway Bucket, R2).
+
+Local filesystem is opt-in in DEBUG only.
+"""
 
 import logging
+import os
 import shutil
 from pathlib import Path
 from urllib.parse import quote, urlsplit
@@ -38,39 +42,57 @@ def key_for(tenant_id: str, package_id, name: str) -> str:
     return f"standards/{tenant_id}/{package_id}/{name}"
 
 
+def configured() -> bool:
+    """Whether a bucket is set up. Amazon S3 (no endpoint) may omit both keys and use
+    the IAM role's credentials; an S3-compatible endpoint always needs static keys."""
+    if not settings.STANDARDS_S3_BUCKET:
+        return False
+    keys = [settings.STANDARDS_S3_ACCESS_KEY, settings.STANDARDS_S3_SECRET_KEY]
+    if settings.STANDARDS_S3_ENDPOINT:
+        return all(keys)
+    return all(keys) or not any(keys)
+
+
 def client():
-    if not all(
-        [
-            settings.STANDARDS_S3_ENDPOINT,
-            settings.STANDARDS_S3_BUCKET,
-            settings.STANDARDS_S3_ACCESS_KEY,
-            settings.STANDARDS_S3_SECRET_KEY,
-        ]
-    ):
+    if not configured():
         raise StorageUnavailable()
-    endpoint = urlsplit(settings.STANDARDS_S3_ENDPOINT)
-    if (
-        endpoint.scheme != "https"
-        or not endpoint.netloc
-        or endpoint.username
-        or endpoint.password
-        or endpoint.query
-        or endpoint.fragment
-    ):
-        raise StorageUnavailable("Configure a credential-free HTTPS S3 endpoint.")
+    options: dict = {}
+    if settings.STANDARDS_S3_ACCESS_KEY:
+        options["aws_access_key_id"] = settings.STANDARDS_S3_ACCESS_KEY
+        options["aws_secret_access_key"] = settings.STANDARDS_S3_SECRET_KEY
+    if settings.STANDARDS_S3_ENDPOINT:
+        endpoint = urlsplit(settings.STANDARDS_S3_ENDPOINT)
+        if (
+            endpoint.scheme != "https"
+            or not endpoint.netloc
+            or endpoint.username
+            or endpoint.password
+            or endpoint.query
+            or endpoint.fragment
+        ):
+            raise StorageUnavailable("Configure a credential-free HTTPS S3 endpoint.")
+        options["endpoint_url"] = settings.STANDARDS_S3_ENDPOINT
+        region = settings.STANDARDS_S3_REGION
+        addressing = "path"
+    else:
+        # Amazon S3: presigned URLs must name the bucket's own region.
+        region = settings.STANDARDS_S3_REGION
+        if region in {"", "auto"}:
+            region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+        if not region:
+            raise StorageUnavailable("Set STANDARDS_S3_REGION to the bucket's AWS region.")
+        addressing = "virtual"
     return boto3.client(
         "s3",
-        endpoint_url=settings.STANDARDS_S3_ENDPOINT,
-        aws_access_key_id=settings.STANDARDS_S3_ACCESS_KEY,
-        aws_secret_access_key=settings.STANDARDS_S3_SECRET_KEY,
-        region_name=settings.STANDARDS_S3_REGION,
+        region_name=region,
         config=Config(
             signature_version="s3v4",
             connect_timeout=5,
             read_timeout=20,
             retries={"max_attempts": 2},
-            s3={"addressing_style": "path"},
+            s3={"addressing_style": addressing},
         ),
+        **options,
     )
 
 

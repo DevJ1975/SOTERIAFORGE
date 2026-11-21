@@ -13,6 +13,12 @@ def test_healthz_needs_no_auth():
     assert client_for().get("/healthz").json() == {"ok": True}
 
 
+def test_healthz_answers_a_load_balancer_probe_by_private_ip():
+    probe = client_for().get("/healthz", headers={"host": "10.0.12.34:8000"})
+    assert probe.status_code == 200
+    assert client_for().get("/api/me", headers={"host": "10.0.12.34:8000"}).status_code == 400
+
+
 def test_api_requires_a_token():
     assert client_for().get("/api/me").status_code in (401, 403)
 

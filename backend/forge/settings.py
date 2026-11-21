@@ -1,5 +1,6 @@
 """Soteria Forge API settings. Everything environment-specific comes from env vars
-(Railway service variables in deployed environments, `.env` locally)."""
+(service variables on Railway, task-definition variables and secrets on AWS, `.env`
+locally)."""
 
 import os
 from pathlib import Path
@@ -65,6 +66,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "forge.health.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -114,6 +116,20 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+# AWS: an RDS-managed secret holds the owner's username/password as separate values,
+# so the connection can be given in parts instead of one DATABASE_URL.
+if not os.environ.get("DATABASE_URL") and os.environ.get("DB_HOST"):
+    DATABASES["default"].update(
+        HOST=os.environ["DB_HOST"],
+        PORT=os.environ.get("DB_PORT", "5432"),
+        NAME=os.environ.get("DB_NAME", "forge"),
+        USER=os.environ.get("DB_USER", "forge"),
+        PASSWORD=os.environ.get("DB_PASSWORD", ""),
+    )
+    DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = os.environ.get(
+        "DB_SSLMODE", "require"
+    )
+
 # The web process connects as the RLS-bound runtime role (apps/tenants/dbroles.py);
 # migrations and `ensure_app_role` run with DB_USE_OWNER=1 as the owner.
 if os.environ.get("DB_APP_PASSWORD") and not env_bool("DB_USE_OWNER"):
@@ -330,7 +346,7 @@ BADGE_SIGNING_KEY = os.environ.get("BADGE_SIGNING_KEY", "").replace("\\n", "\n")
 # --- Security ----------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = not DEBUG
-# Railway's health check probes over plain HTTP inside its network.
+# Health checks probe over plain HTTP inside the platform's network.
 SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 # Start short; raise to 31536000 once every API host is confirmed HTTPS-only.
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0" if DEBUG else "3600"))
@@ -351,7 +367,8 @@ if os.environ.get("SENTRY_DSN"):
 
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
-        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
+        environment=os.environ.get("FORGE_ENVIRONMENT")
+        or os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
         send_default_pii=False,  # FERPA: no learner PII in error reports
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0")),
     )

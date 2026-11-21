@@ -4,6 +4,7 @@ from .settings import *  # noqa: F403
 
 ROOT_URLCONF = "apps.standards.content_urls"
 MIDDLEWARE = [
+    "forge.health.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "apps.tenants.rls.RlsMiddleware",

@@ -25,7 +25,14 @@ def ensure_app_role(role: str = APP_ROLE, password: str | None = None) -> None:
         if password
         else sql.SQL("NOLOGIN")
     )
-    attrs = sql.SQL("NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT {}").format(login)
+    with connection.cursor() as cur:
+        cur.execute("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = %s", [role])
+        row = cur.fetchone()
+    # New roles are NOSUPERUSER NOBYPASSRLS already. Naming those attributes needs a
+    # true superuser, which a managed owner (Amazon RDS's master user) is not, so
+    # only strip them from a role that somehow has them.
+    strip = "NOSUPERUSER NOBYPASSRLS " if row and row[0] else ""
+    attrs = sql.SQL(strip + "NOCREATEDB NOCREATEROLE NOINHERIT {}").format(login)
     statements = [
         sql.SQL(
             "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = {name}) "
