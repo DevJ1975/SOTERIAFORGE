@@ -398,6 +398,18 @@ the ASGI server. See [local AI tutor](./local-ai-tutor.md#ask-forge-phase-4).
   checked in a browser against the walkthrough video.
 - **Operations:** schedule `purge_coach_log` daily and confirm the retention period.
 
+### Phase 5 progress (2026-11-21)
+
+**Built:** cohort access, live sessions with the block bar, Threat Hunt, live polls, the
+crew panel, crew huddle notes, raised hands, host moderation, attendance, the debrief heat
+map and crew-first paging of the video grid. Session state is in Postgres and announced
+over LiveKit data messages rather than Channels on Redis; see
+[video classrooms](./video-classrooms.md#live-sessions-phase-5) for why.
+
+**Remaining for Phase 5:** captions (needs a speech-to-text provider), the 20-learner
+load test with real browsers on a deployed media server, and the keyboard-only
+run-through in a browser.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

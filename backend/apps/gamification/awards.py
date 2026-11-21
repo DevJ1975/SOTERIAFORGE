@@ -62,9 +62,12 @@ def streak_for(member, today) -> int:
     return current_streak(days, today)
 
 
-def award_xp(*, tenant, member, amount: int, source: str, source_id: str, now=None) -> Award:
+def award_xp(
+    *, tenant, member, amount: int, source: str, source_id: str, now=None, active_day: bool = True
+) -> Award:
     """Record `amount` XP for something the member just earned, and count today as an
-    active Pulse day. Returns the post-award state; `awarded` is 0 for a replay."""
+    active Pulse day (unless `active_day` is off: the streak is for lesson completions).
+    Returns the post-award state; `awarded` is 0 for a replay."""
     now = now or timezone.now()
     today = now.astimezone(UTC).date()
     amount = max(0, int(amount))  # XP only ever moves forward
@@ -97,7 +100,8 @@ def award_xp(*, tenant, member, amount: int, source: str, source_id: str, now=No
                 source_id=str(source_id),
             )
 
-    ActivityDay.objects.get_or_create(member=member, day=today, defaults={"tenant": tenant})
+    if active_day:
+        ActivityDay.objects.get_or_create(member=member, day=today, defaults={"tenant": tenant})
     after = before + awarded
     streak_after = streak_for(member, today)
     return Award(

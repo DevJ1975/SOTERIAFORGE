@@ -1675,6 +1675,99 @@
                 }
             }
         },
+        "/api/engage/activities/{activity_id}/close": {
+            "post": {
+                "operationId": "engage_activities_close_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "activity_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/activities/{activity_id}/respond": {
+            "post": {
+                "operationId": "engage_activities_respond_create",
+                "description": "Answer the open poll or Threat Hunt. The server's receipt time is the answer time.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "activity_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RespondRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RespondRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RespondRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/engage/classrooms": {
             "get": {
                 "operationId": "engage_classrooms_list",
@@ -1774,6 +1867,518 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Join"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/classrooms/{classroom_id}/sessions": {
+            "post": {
+                "operationId": "engage_classrooms_sessions_create",
+                "description": "Start a live session in a classroom. One at a time per classroom.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "classroom_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SessionStartRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SessionStartRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SessionStartRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/activities": {
+            "post": {
+                "operationId": "engage_sessions_activities_create",
+                "description": "Launch a poll or a Threat Hunt. It opens now and closes after `seconds`.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActivityCreateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActivityCreateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActivityCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/advance": {
+            "post": {
+                "operationId": "engage_sessions_advance_create",
+                "description": "Move to the next stage (and on to the next block), or jump to a given one.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdvanceRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdvanceRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdvanceRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/attendance": {
+            "get": {
+                "operationId": "engage_sessions_attendance_list",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AttendanceRow"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/end": {
+            "post": {
+                "operationId": "engage_sessions_end_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/hand": {
+            "post": {
+                "operationId": "engage_sessions_hand_create",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HandRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HandRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HandRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/heartbeat": {
+            "post": {
+                "operationId": "engage_sessions_heartbeat_create",
+                "description": "Attendance: the connected client calls this every 30 seconds.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/heatmap": {
+            "get": {
+                "operationId": "engage_sessions_heatmap_retrieve",
+                "description": "The debrief heat map. Staff any time; learners in the debrief stage or afterwards.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Heatmap"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/huddle": {
+            "put": {
+                "operationId": "engage_sessions_huddle_update",
+                "description": "Your crew's shared notes for the current block.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HuddleRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HuddleRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HuddleRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/participants/{member_id}/moderate": {
+            "post": {
+                "operationId": "engage_sessions_participants_moderate_create",
+                "description": "Host controls: mute a microphone, lower a hand, or remove someone for the session.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "member_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ModerateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ModerateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ModerateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/engage/sessions/{session_id}/state": {
+            "get": {
+                "operationId": "engage_sessions_state_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "engage"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionState"
                                 }
                             }
                         },
@@ -4034,6 +4639,75 @@
     },
     "components": {
         "schemas": {
+            "ActionEnum": {
+                "enum": [
+                    "mute",
+                    "remove",
+                    "lower_hand"
+                ],
+                "type": "string",
+                "description": "* `mute` - mute\n* `remove` - remove\n* `lower_hand` - lower_hand"
+            },
+            "ActivityCreateKindEnum": {
+                "enum": [
+                    "poll",
+                    "hunt"
+                ],
+                "type": "string",
+                "description": "* `poll` - Live poll\n* `hunt` - Threat Hunt"
+            },
+            "ActivityCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "$ref": "#/components/schemas/ActivityCreateKindEnum"
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OptionRequest"
+                        }
+                    },
+                    "correctIndex": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "seconds": {
+                        "type": "integer",
+                        "maximum": 600,
+                        "minimum": 10
+                    },
+                    "xp": {
+                        "type": "integer",
+                        "maximum": 200,
+                        "minimum": 0,
+                        "default": 40
+                    }
+                },
+                "required": [
+                    "kind",
+                    "options",
+                    "prompt"
+                ]
+            },
+            "AdvanceRequest": {
+                "type": "object",
+                "properties": {
+                    "block": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "stage": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                }
+            },
             "AgentProfile": {
                 "type": "object",
                 "properties": {
@@ -4341,6 +5015,45 @@
                     "perQuestion",
                     "scorePct",
                     "totalPoints"
+                ]
+            },
+            "AttendanceRow": {
+                "type": "object",
+                "properties": {
+                    "memberId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "crew": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "firstJoinedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "lastSeenAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "minutes": {
+                        "type": "integer"
+                    },
+                    "removed": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "crew",
+                    "firstJoinedAt",
+                    "lastSeenAt",
+                    "memberId",
+                    "minutes",
+                    "name",
+                    "removed"
                 ]
             },
             "AuLaunch": {
@@ -4840,12 +5553,30 @@
                         "type": "integer",
                         "readOnly": true,
                         "default": 21
+                    },
+                    "cohortId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
+                    },
+                    "cohortName": {
+                        "type": "string",
+                        "nullable": true,
+                        "readOnly": true
+                    },
+                    "liveSessionId": {
+                        "type": "string",
+                        "nullable": true,
+                        "readOnly": true
                     }
                 },
                 "required": [
+                    "cohortId",
+                    "cohortName",
                     "createdAt",
                     "createdBy",
                     "id",
+                    "liveSessionId",
                     "maxParticipants",
                     "title"
                 ]
@@ -4857,6 +5588,11 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 120
+                    },
+                    "cohortId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
                     }
                 },
                 "required": [
@@ -5653,6 +6389,52 @@
                     "title"
                 ]
             },
+            "HandRequest": {
+                "type": "object",
+                "properties": {
+                    "raised": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "raised"
+                ]
+            },
+            "Heatmap": {
+                "type": "object",
+                "properties": {
+                    "activities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    },
+                    "crews": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    }
+                },
+                "required": [
+                    "activities",
+                    "crews"
+                ]
+            },
+            "HuddleRequest": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "maxLength": 2000
+                    }
+                },
+                "required": [
+                    "text"
+                ]
+            },
             "IngestRequest": {
                 "type": "object",
                 "properties": {
@@ -5779,11 +6561,17 @@
                     },
                     "canScreenShare": {
                         "type": "boolean"
+                    },
+                    "sessionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "nullable": true
                     }
                 },
                 "required": [
                     "canScreenShare",
                     "serverUrl",
+                    "sessionId",
                     "token"
                 ]
             },
@@ -6355,6 +7143,17 @@
                 "type": "string",
                 "description": "* `graded` - graded\n* `check` - check"
             },
+            "ModerateRequest": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "$ref": "#/components/schemas/ActionEnum"
+                    }
+                },
+                "required": [
+                    "action"
+                ]
+            },
             "Module": {
                 "type": "object",
                 "properties": {
@@ -6594,6 +7393,24 @@
             "NullEnum": {
                 "enum": [
                     null
+                ]
+            },
+            "OptionRequest": {
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                    },
+                    "detail": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 160
+                    }
+                },
+                "required": [
+                    "label"
                 ]
             },
             "Package": {
@@ -7317,6 +8134,19 @@
                     }
                 }
             },
+            "RespondRequest": {
+                "type": "object",
+                "properties": {
+                    "optionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8
+                    }
+                },
+                "required": [
+                    "optionId"
+                ]
+            },
             "ResponseRequest": {
                 "type": "object",
                 "description": "A learner's answer to one question (`QuizResponse`).",
@@ -7651,6 +8481,114 @@
                     "name"
                 ]
             },
+            "SessionStartRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "blocks": {
+                        "type": "integer",
+                        "maximum": 8,
+                        "minimum": 1,
+                        "default": 4
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StageRequest"
+                        }
+                    }
+                }
+            },
+            "SessionState": {
+                "type": "object",
+                "description": "The session document (apps/engage/sessions.py `state`). Nested shapes are\ndocumented in docs/video-classrooms.md.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "classroomId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/SessionStateStatusEnum"
+                    },
+                    "version": {
+                        "type": "integer"
+                    },
+                    "serverTime": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "block": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "activity": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                    },
+                    "crew": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                    },
+                    "huddle": {
+                        "type": "object",
+                        "additionalProperties": {},
+                        "nullable": true
+                    },
+                    "me": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    },
+                    "hands": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    },
+                    "crewMemberIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "activity",
+                    "block",
+                    "classroomId",
+                    "crew",
+                    "crewMemberIds",
+                    "hands",
+                    "huddle",
+                    "id",
+                    "me",
+                    "serverTime",
+                    "status",
+                    "title",
+                    "version"
+                ]
+            },
+            "SessionStateStatusEnum": {
+                "enum": [
+                    "live",
+                    "ended"
+                ],
+                "type": "string",
+                "description": "* `live` - live\n* `ended` - ended"
+            },
             "ShareRequest": {
                 "type": "object",
                 "properties": {
@@ -7805,6 +8743,32 @@
                     "crews",
                     "id",
                     "name"
+                ]
+            },
+            "StageRequest": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20,
+                        "pattern": "^[-a-zA-Z0-9_]+$"
+                    },
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 20
+                    },
+                    "minutes": {
+                        "type": "integer",
+                        "maximum": 60,
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "key",
+                    "label",
+                    "minutes"
                 ]
             },
             "StateEnum": {
