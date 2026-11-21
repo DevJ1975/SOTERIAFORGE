@@ -55,7 +55,8 @@ def test_holder_gets_a_signed_open_badge(key, award):
     assert doc["type"] == ["VerifiableCredential", "OpenBadgeCredential"]
     assert doc["issuer"]["name"] == "Lakewood University"
     assert doc["credentialSubject"]["achievement"]["name"] == "AI-Ready Professional"
-    assert body["verifyUrl"] == f"https://api.soteriaforge.com/api/credentials/{award.pk}"
+    assert body["verifyUrl"] == f"https://api.soteriaforge.com/credentials/{award.pk}"
+    assert doc["id"] == f"https://api.soteriaforge.com/api/credentials/{award.pk}"
 
     # Anyone can check it with the published key alone.
     jwk = client_for().get("/api/credentials/jwks").json()["keys"][0]
@@ -130,3 +131,26 @@ def test_generate_badge_key_prints_a_usable_key(capsys, settings):
     call_command("generate_badge_key")
     settings.BADGE_SIGNING_KEY = capsys.readouterr().out
     assert client_for().get("/api/credentials/jwks").json()["keys"][0]["crv"] == "Ed25519"
+
+
+def test_the_verify_page_confirms_the_award_without_naming_the_holder(key, award):
+    page = client_for().get(f"/credentials/{award.pk}")
+    assert page.status_code == 200 and page["Content-Type"].startswith("text/html")
+    html = page.content.decode()
+    assert "AI-Ready Professional" in html and "Lakewood University" in html
+    assert "Valid." in html and "lee@example.com" not in html
+    assert client_for().get("/credentials/00000000-0000-4000-8000-000000000000").status_code == 404
+
+
+def test_the_verify_page_checks_an_email_against_the_hash(key, award):
+    check = lambda email: (  # noqa: E731
+        client_for().post(f"/credentials/{award.pk}", {"email": email}).content.decode()
+    )
+    assert "Match." in check(" Lee@Example.com ")
+    wrong = check("mo@example.com")
+    assert "No match." in wrong and "Match.</strong> This credential was issued" not in wrong
+
+
+def test_the_verify_page_says_so_when_signing_is_off(award, settings):
+    settings.BADGE_SIGNING_KEY = ""
+    assert client_for().get(f"/credentials/{award.pk}").status_code == 503

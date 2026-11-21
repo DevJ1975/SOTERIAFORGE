@@ -6,8 +6,10 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   GamificationApi,
+  type ApiBadge,
   type ApiCrewBoard,
   type ApiScoreCard,
   type CrewBoardPeriod,
@@ -21,11 +23,12 @@ const PERIODS: readonly { id: CrewBoardPeriod; label: string }[] = [
 ];
 
 const nf = new Intl.NumberFormat('en-US');
+const df = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' });
 
 /**
  * My Progress (forge_award.jpg, behind the overlay): level and XP bar, Pulse streak,
- * your private score, and the crew leaderboard. Crews only: individual learners are
- * never ranked (SFG-SPC-FRG-011).
+ * your private score, the crew leaderboard, and the badges you have earned with their
+ * signed credentials. Crews only: individual learners are never ranked (SFG-SPC-FRG-011).
  */
 @Component({
   selector: 'assurance-progress-page',
@@ -126,6 +129,61 @@ const nf = new Intl.NumberFormat('en-US');
         <p class="sf-sub" role="status">Loading standings…</p>
       }
     </section>
+
+    <section class="sf-card pg__board" aria-labelledby="pg-earned">
+      <h2 class="sf-h3" id="pg-earned">Earned badges and credentials</h2>
+      <p class="sf-sub pg__note">
+        Each one is a signed credential you can keep. Share its verification link with an employer,
+        or download the file to add it to a badge wallet.
+      </p>
+
+      @if (badgesError()) {
+        <p role="alert">{{ badgesError() }}</p>
+      } @else if (earned(); as list) {
+        @if (list.length === 0) {
+          <p class="sf-sub">
+            You have not earned a badge yet. Complete lessons to earn your first one.
+          </p>
+        } @else {
+          <ul class="pg__list">
+            @for (b of list; track b.id) {
+              <li class="pg__badge">
+                <span class="pg__crew">
+                  {{ b.name }}
+                  @if (b.kind === 'credential') {
+                    <span class="sf-pill pg__you">Credential</span>
+                  }
+                </span>
+                <span class="sf-sub">{{ earnedOn(b) }}</span>
+                <span class="pg__actions">
+                  <button
+                    type="button"
+                    class="sf-btn sf-btn--secondary sf-btn--sm"
+                    [disabled]="busy() === b.id"
+                    [attr.aria-label]="'Copy verification link for ' + b.name"
+                    (click)="copyLink(b)"
+                  >
+                    Copy link
+                  </button>
+                  <button
+                    type="button"
+                    class="sf-btn sf-btn--secondary sf-btn--sm"
+                    [disabled]="busy() === b.id"
+                    [attr.aria-label]="'Download credential for ' + b.name"
+                    (click)="download(b)"
+                  >
+                    Download
+                  </button>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+        <p class="sf-sub pg__note" role="status">{{ notice() }}</p>
+      } @else {
+        <p class="sf-sub" role="status">Loading your badges…</p>
+      }
+    </section>
   `,
   styles: [
     `
@@ -195,6 +253,25 @@ const nf = new Intl.NumberFormat('en-US');
         margin-left: 8px;
         font-size: var(--sf-text-xs);
       }
+      .pg__badge {
+        display: flex;
+        align-items: center;
+        gap: var(--sf-space-3) var(--sf-space-4);
+        flex-wrap: wrap;
+        padding: 10px 0;
+        border-top: 1px solid var(--sf-line);
+      }
+      .pg__badge:first-child {
+        border-top: 0;
+      }
+      .pg__actions {
+        display: flex;
+        gap: var(--sf-space-2);
+        margin-left: auto;
+      }
+      .pg__actions .sf-btn {
+        min-height: 44px;
+      }
       .pg__error {
         color: var(--sf-danger);
         margin-top: var(--sf-space-4);
@@ -216,6 +293,13 @@ export class ProgressComponent implements OnInit {
   protected readonly period = signal<CrewBoardPeriod>('weekly');
   protected readonly board = signal<ApiCrewBoard | null>(null);
   protected readonly boardError = signal('');
+  /** Earned badges only; null while loading. */
+  protected readonly earned = signal<ApiBadge[] | null>(null);
+  protected readonly badgesError = signal('');
+  /** The badge whose credential is being fetched. */
+  protected readonly busy = signal('');
+  /** Outcome of the last copy or download, announced to screen readers. */
+  protected readonly notice = signal('');
 
   protected readonly levelPct = computed(() => {
     const c = this.card();
@@ -235,6 +319,61 @@ export class ProgressComponent implements OnInit {
   ngOnInit(): void {
     void this.loadCard();
     void this.loadBoard();
+    void this.loadBadges();
+  }
+
+  protected earnedOn(badge: ApiBadge): string {
+    return badge.earnedAt ? `Earned ${df.format(new Date(badge.earnedAt))}` : 'Earned';
+  }
+
+  protected async copyLink(badge: ApiBadge): Promise<void> {
+    const signed = await this.signed(badge);
+    if (!signed) return;
+    try {
+      await navigator.clipboard.writeText(signed.verifyUrl);
+      this.notice.set(`Verification link for ${badge.name} copied.`);
+    } catch {
+      // Clipboard access can be refused; show the link so it can be copied by hand.
+      this.notice.set(`Verification link for ${badge.name}: ${signed.verifyUrl}`);
+    }
+  }
+
+  protected async download(badge: ApiBadge): Promise<void> {
+    const signed = await this.signed(badge);
+    if (!signed) return;
+    const url = URL.createObjectURL(new Blob([signed.jwt], { type: 'application/jwt' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${badge.key}-credential.jwt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    this.notice.set(`Credential for ${badge.name} downloaded.`);
+  }
+
+  private async signed(badge: ApiBadge) {
+    this.busy.set(badge.id);
+    this.notice.set('');
+    try {
+      return await this.api.credential(badge.id);
+    } catch (err) {
+      this.notice.set(
+        err instanceof HttpErrorResponse && err.status === 503
+          ? 'Signed credentials are not set up yet. Your badge is still recorded.'
+          : `The credential for ${badge.name} could not be loaded. Try again.`,
+      );
+      return null;
+    } finally {
+      this.busy.set('');
+    }
+  }
+
+  private async loadBadges(): Promise<void> {
+    try {
+      const all = await this.api.badges();
+      this.earned.set(all.filter((b) => b.awardId !== null && b.awardId !== undefined));
+    } catch {
+      this.badgesError.set('Your badges could not be loaded.');
+    }
   }
 
   protected choose(period: CrewBoardPeriod): void {

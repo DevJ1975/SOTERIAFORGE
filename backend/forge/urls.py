@@ -3,10 +3,13 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView
 
 from apps.accounts.views import healthz
+from apps.gamification.verify_page import credential_page
 
 urlpatterns = [
     path("healthz", healthz),
     path("admin/", admin.site.urls),
+    # Public, human-readable check for a badge credential (docs/open-badges.md).
+    path("credentials/<uuid:award_id>", credential_page, name="credential-page"),
     path("api/schema", SpectacularAPIView.as_view(), name="schema"),
     path("api/", include("apps.accounts.urls")),
     path("api/", include("apps.tenants.urls")),

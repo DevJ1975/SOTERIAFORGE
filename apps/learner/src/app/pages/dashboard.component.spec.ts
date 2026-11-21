@@ -256,6 +256,7 @@ describe('DashboardComponent (Forge Home)', () => {
       state,
       progress: null,
       earnedAt: null,
+      awardId: null,
     });
     mockGamification.badges.mockResolvedValue([
       row('recruit', 'earned'),

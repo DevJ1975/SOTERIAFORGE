@@ -1,5 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { GamificationApi, type ApiCrewBoard, type ApiScoreCard } from '@assurance/lms-core';
+import { HttpErrorResponse } from '@angular/common/http';
+import {
+  GamificationApi,
+  type ApiBadge,
+  type ApiCrewBoard,
+  type ApiScoreCard,
+} from '@assurance/lms-core';
 import { ProgressComponent } from './progress.component';
 
 const card: ApiScoreCard = {
@@ -23,11 +29,36 @@ const board = (
   crews,
 });
 
+const badge = (over: Partial<ApiBadge>): ApiBadge => ({
+  id: 'b1',
+  key: 'ai-ready',
+  name: 'AI-Ready Professional',
+  description: '',
+  icon: 'badge-shield',
+  kind: 'credential',
+  state: 'credential',
+  progress: null,
+  earnedAt: '2026-11-03T15:00:00Z',
+  awardId: 'award-1',
+  ...over,
+});
+
 describe('ProgressComponent', () => {
   let fixture: ComponentFixture<ProgressComponent>;
   const progress = jest.fn();
   const crewBoard = jest.fn();
+  const badges = jest.fn();
+  const credential = jest.fn();
   const el = () => fixture.nativeElement as HTMLElement;
+  const button = (label: string) =>
+    Array.from(el().querySelectorAll('button')).find((b) =>
+      b.getAttribute('aria-label')?.startsWith(label),
+    );
+  async function settle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
 
   async function create(): Promise<void> {
     fixture = TestBed.createComponent(ProgressComponent);
@@ -39,9 +70,13 @@ describe('ProgressComponent', () => {
   beforeEach(() => {
     progress.mockReset().mockResolvedValue(card);
     crewBoard.mockReset().mockImplementation(async (p) => board(p));
+    badges.mockReset().mockResolvedValue([]);
+    credential.mockReset();
     TestBed.configureTestingModule({
       imports: [ProgressComponent],
-      providers: [{ provide: GamificationApi, useValue: { progress, crewBoard } }],
+      providers: [
+        { provide: GamificationApi, useValue: { progress, crewBoard, badges, credential } },
+      ],
     });
   });
 
@@ -104,7 +139,55 @@ describe('ProgressComponent', () => {
     };
     progress.mockImplementation(offline);
     crewBoard.mockImplementation(offline);
+    badges.mockImplementation(offline);
     await create();
-    expect(el().querySelectorAll('[role="alert"]')).toHaveLength(2);
+    expect(el().querySelectorAll('[role="alert"]')).toHaveLength(3);
+  });
+
+  it('lists only earned badges, with the date and credential actions', async () => {
+    badges.mockResolvedValue([
+      badge({}),
+      badge({ id: 'b2', name: 'Operator', kind: 'mission', state: 'progress', awardId: null }),
+    ]);
+    await create();
+    const rows = el().querySelectorAll('.pg__badge');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('AI-Ready Professional');
+    expect(rows[0].textContent).toContain('Earned November 3, 2026');
+    expect(button('Copy verification link')).toBeTruthy();
+    expect(button('Download credential')).toBeTruthy();
+  });
+
+  it('says so when no badge has been earned yet', async () => {
+    await create();
+    expect(el().textContent).toContain('not earned a badge yet');
+  });
+
+  it('copies the public verification link', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    badges.mockResolvedValue([badge({})]);
+    credential.mockResolvedValue({
+      credential: {},
+      jwt: 'a.b.c',
+      verifyUrl: 'https://x/credentials/award-1',
+    });
+    await create();
+    button('Copy verification link')?.click();
+    await settle();
+    expect(credential).toHaveBeenCalledWith('b1');
+    expect(writeText).toHaveBeenCalledWith('https://x/credentials/award-1');
+    expect(el().textContent).toContain('Verification link for AI-Ready Professional copied.');
+  });
+
+  it('explains that the badge still stands when signing is not set up', async () => {
+    badges.mockResolvedValue([badge({})]);
+    credential.mockImplementation(async () => {
+      throw new HttpErrorResponse({ status: 503 });
+    });
+    await create();
+    button('Download credential')?.click();
+    await settle();
+    expect(el().textContent).toContain('Your badge is still recorded');
   });
 });

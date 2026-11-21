@@ -10,9 +10,9 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
       Uploads and `forge_import_media` need it. Claude can't create it.
 - [ ] **Set `MCP_MEDIA_IMPORT_HOSTS`** on the API to the media hosts Claude may import
       from (e.g. the ElevenLabs download host). Empty keeps media import off.
-- [ ] **Badge signing key:** run `manage.py generate_badge_key`, store the output as the
-      `BADGE_SIGNING_KEY` secret, and set `FORGE_PUBLIC_URL` to the API's permanent URL.
-      Then run one issued credential through a public Open Badges 3.0 validator.
+- [ ] **Badge credentials:** the signing key is set on AWS. Once the API is reachable,
+      run one issued credential through a public Open Badges 3.0 validator. Railway
+      still has no key (credential endpoints answer 503 there).
 - [ ] **MCP platform tools (optional):** `RAILWAY_API_TOKEN` and a fine-grained
       `GITHUB_TOKEN` (this repo, Contents + Pull requests, no Workflows).
 - [ ] **Connect Claude to staging** (`docs/forge-mcp.md` → Connect) and author one real
@@ -66,7 +66,6 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
 
 ### 2. Frontend
 
-- [ ] Learner app: "export credential" on an earned badge (`awardId` is in `/api/me/badges`).
 - [ ] Admin lesson editor: a transcript field.
 - [ ] `OfflineXapiQueue` (libs/standards) has no sender and nothing enqueues to it. The
       server writes its own xAPI statements on completion, so a client ingest endpoint

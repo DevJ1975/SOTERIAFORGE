@@ -372,9 +372,14 @@ is not wired into any app.
 - Learner Home reads `GET /api/me/badges`; the completion `award` lists the badges it earned
   and the award overlay shows them. Admin has Cohorts & crews and Badges pages.
 
-**Remaining for Phase 3:** signed Open Badges 3.0 credentials and the public verify page.
-This needs an issuer key pair and a hosted issuer profile, which is a deployment decision
-(see `docs/open-badges.md`). Learner-facing My Progress already shows level, streak and crew.
+**Slice 3 done (2026-11-21): signed credentials end to end.** Open Badges 3.0 signing and
+the public endpoints, a public verification page (`/credentials/<award>`), and My Progress
+lists earned badges with a verification link and a credential download. The issuer key is
+provisioned on AWS. See `docs/open-badges.md`.
+
+**Remaining for Phase 3:** run one issued credential through a public Open Badges 3.0
+validator and walk My Progress and the award overlay against the walkthrough video. Both
+need the API reachable at its public URL.
 
 ## 5. Phases
 

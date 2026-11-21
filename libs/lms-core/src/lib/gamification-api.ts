@@ -64,6 +64,18 @@ export interface ApiBadge {
   state: ApiBadgeState;
   progress: { current: number; target: number } | null;
   earnedAt: string | null;
+  /** Set once earned; the award behind the signed credential. */
+  awardId: string | null;
+}
+
+/** `GET /api/me/badges/{id}/credential`: an Open Badges 3.0 credential for an earned badge. */
+export interface ApiSignedCredential {
+  /** The credential as JSON-LD, for display. */
+  credential: Record<string, unknown>;
+  /** The same credential signed (compact JWS): the file a verifier or wallet imports. */
+  jwt: string;
+  /** Public page where anyone can check the credential. */
+  verifyUrl: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -82,6 +94,15 @@ export class GamificationApi {
 
   badges(): Promise<ApiBadge[]> {
     return firstValueFrom(this.http.get<ApiBadge[]>(this.url('me/badges')));
+  }
+
+  /** The signed credential for a badge the member has earned. 503 until signing is set up. */
+  credential(badgeId: string): Promise<ApiSignedCredential> {
+    return firstValueFrom(
+      this.http.get<ApiSignedCredential>(
+        this.url(`me/badges/${encodeURIComponent(badgeId)}/credential`),
+      ),
+    );
   }
 
   /** Staff may pass `cohortId` to view another cohort; learners always see their own. */
