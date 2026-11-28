@@ -13,9 +13,6 @@ services:
       test: ['CMD-SHELL', 'pg_isready -U forge']
       interval: 2s
       retries: 30
-  redis:
-    image: redis:7-alpine
-    ports: ['6380:6379']
   livekit:
     image: livekit/livekit-server:v1.13.11
     profiles: ['media']

@@ -221,7 +221,7 @@ web process connecting as `forge_app` (no superuser, no BYPASSRLS; superusers
 skip RLS even when forced, and Railway's default user is one); migrations run
 as the owner and `ensure_app_role` refreshes grants on each deploy. The learner
 and admin apps call the API (`forgeApiInterceptor`, `ForgeSession` →
-`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` signs
+`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` (since removed with Firebase) signed
 in real Firebase Auth emulator users against Django running as `forge_app` and
 checks auth, tenant isolation, the role change, claim mirroring, audit and
 revocation (10/10).
