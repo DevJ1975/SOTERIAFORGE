@@ -1,15 +1,7 @@
-import type { AssuranceEnvironment } from '@assurance/auth';
+import type { StorefrontEnvironment } from './storefront-environment';
 
-export const environment: AssuranceEnvironment = {
+export const environment: StorefrontEnvironment = {
   production: true,
   rootDomain: 'soteriaforge.com',
-  firebase: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
-  },
-  appCheckSiteKey: '',
+  contactEmail: 'hello@soteriaforge.com',
 };

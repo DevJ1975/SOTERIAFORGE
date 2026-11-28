@@ -14,7 +14,6 @@ import { type ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from
 import { filter, map } from 'rxjs';
 import { AuthService } from '@assurance/auth';
 import { UserMenuComponent } from '@assurance/auth-ui';
-import { ModuleCompletionService, QuizSubmissionService } from '@assurance/lms-core';
 import { SfxToggleComponent } from '@assurance/sfx';
 import { OfflineXapiQueue } from '@assurance/standards';
 import { AssuranceOfflineBannerComponent, SfAppShellComponent } from '@assurance/ui';
@@ -94,23 +93,16 @@ export class AppComponent {
   protected readonly shellMode = computed(() => this.routeData().sfShell ?? 'light');
 
   /**
-   * Total pending offline work surfaced in the offline banner: the sum of the
-   * xAPI statement queue, the quiz-submission outbox, and the module-completion
-   * outbox. Previously only the xAPI count was shown, so queued quiz attempts
-   * and completions were invisible to the learner (FIX-6).
+   * Pending offline work surfaced in the offline banner: the xAPI statement queue.
    */
   protected readonly pendingCount: Signal<number>;
 
   constructor() {
-    // Eagerly inject the three offline services (browser only) so their window
-    // `online` listeners are registered for the lifetime of the app (automatic
-    // flush on reconnect) and aggregate their pending counts for the banner. On
-    // the server there is no offline work → constant 0.
+    // Eagerly inject the offline queue (browser only) so its window `online` listener is
+    // registered for the lifetime of the app (automatic flush on reconnect). On the server
+    // there is no offline work -> constant 0.
     if (isPlatformBrowser(inject(PLATFORM_ID))) {
-      const xapi = inject(OfflineXapiQueue).pendingCount;
-      const quiz = inject(QuizSubmissionService).pendingCount;
-      const completion = inject(ModuleCompletionService).pendingCount;
-      this.pendingCount = computed(() => xapi() + quiz() + completion());
+      this.pendingCount = inject(OfflineXapiQueue).pendingCount;
     } else {
       this.pendingCount = signal(0).asReadonly();
     }

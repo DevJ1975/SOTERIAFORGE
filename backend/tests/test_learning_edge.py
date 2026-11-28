@@ -26,7 +26,7 @@ def content(lakewood, people):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def enroll(uid, course):
@@ -264,7 +264,7 @@ def test_duplicate_member_ids_in_one_assignment_enroll_once(content, people):
 def test_a_superadmin_without_a_tenant_gets_a_clear_403(content):
     from apps.accounts.models import Member
 
-    Member.objects.create(tenant=None, firebase_uid="root", email="r@x.io", role=Role.SUPERADMIN)
+    Member.objects.create(tenant=None, email="root@example.com", role=Role.SUPERADMIN)
     client = client_for(sign_in("root"))
     assert client.get("/api/courses").status_code == 403
     acting = client_for(sign_in("root"), tenant="lakewood")

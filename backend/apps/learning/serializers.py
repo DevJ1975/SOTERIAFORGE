@@ -2,6 +2,8 @@ import json
 
 from rest_framework import serializers
 
+from apps.gamification.models import Badge
+
 from .models import CONTENT_TYPES, Course, Enrollment, Lesson, Module, PublishStatus
 
 short_labels = serializers.ListField(
@@ -59,6 +61,9 @@ class LessonWriteSerializer(serializers.ModelSerializer):
     estimatedMinutes = serializers.IntegerField(
         source="estimated_minutes", min_value=0, allow_null=True, required=False
     )
+    xpReward = serializers.IntegerField(
+        source="xp_reward", min_value=0, max_value=1000, required=False
+    )
     frameworkTags = serializers.ListField(
         source="framework_tags",
         child=serializers.CharField(max_length=100),
@@ -66,6 +71,9 @@ class LessonWriteSerializer(serializers.ModelSerializer):
         required=False,
     )
     keyPoints = KeyPointSerializer(source="key_points", many=True, required=False)
+    transcript = serializers.CharField(
+        max_length=100_000, allow_blank=True, required=False, trim_whitespace=False
+    )
     # Resolved against the acting tenant's quizzes by the view.
     quizId = serializers.UUIDField(allow_null=True, required=False, write_only=True)
 
@@ -79,8 +87,10 @@ class LessonWriteSerializer(serializers.ModelSerializer):
             "externalUrl",
             "scormVersion",
             "estimatedMinutes",
+            "xpReward",
             "frameworkTags",
             "keyPoints",
+            "transcript",
             "quizId",
         ]
 
@@ -107,10 +117,12 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     courseId = serializers.UUIDField(source="course_id", read_only=True)
     memberId = serializers.UUIDField(source="member_id", read_only=True)
     assigned = serializers.SerializerMethodField()
-    dueAt = serializers.DateTimeField(source="due_at", read_only=True)
+    dueAt = serializers.DateTimeField(source="due_at", read_only=True, allow_null=True)
     progressPct = serializers.IntegerField(source="progress_pct", read_only=True)
-    completedAt = serializers.DateTimeField(source="completed_at", read_only=True)
-    lastActivityAt = serializers.DateTimeField(source="last_activity_at", read_only=True)
+    completedAt = serializers.DateTimeField(source="completed_at", read_only=True, allow_null=True)
+    lastActivityAt = serializers.DateTimeField(
+        source="last_activity_at", read_only=True, allow_null=True
+    )
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
@@ -187,12 +199,20 @@ class PublicOptionSerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class MatchingColumnsSerializer(serializers.Serializer):
+    left = serializers.ListField(child=serializers.CharField())
+    right = serializers.ListField(child=serializers.CharField())
+
+
 class PublicQuestionSerializer(serializers.Serializer):
     id = serializers.CharField()
     type = serializers.CharField()
     prompt = serializers.CharField()
     points = serializers.IntegerField()
     options = PublicOptionSerializer(many=True)
+    matching = MatchingColumnsSerializer(
+        required=False, help_text='Matching only. Answer with "left:right" option ids.'
+    )
 
 
 class AnsweredSerializer(serializers.Serializer):
@@ -217,6 +237,8 @@ class LessonProgressSerializer(serializers.Serializer):
 
 
 class LessonDetailSerializer(serializers.Serializer):
+    standardsManaged = serializers.BooleanField()
+    xpReward = serializers.IntegerField()
     id = serializers.UUIDField()
     courseId = serializers.UUIDField()
     moduleId = serializers.UUIDField()
@@ -231,6 +253,7 @@ class LessonDetailSerializer(serializers.Serializer):
     estimatedMinutes = serializers.IntegerField(allow_null=True)
     frameworkTags = serializers.ListField(child=serializers.CharField())
     keyPoints = KeyPointSerializer(many=True)
+    transcript = serializers.CharField(allow_blank=True)
     quiz = LessonQuizSerializer(allow_null=True)
     progress = LessonProgressSerializer(allow_null=True)
 
@@ -261,7 +284,28 @@ class AssignResultSerializer(serializers.Serializer):
     skipped = serializers.IntegerField()
 
 
+class AwardBadgeSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    key = serializers.CharField()
+    name = serializers.CharField()
+    icon = serializers.CharField()
+    kind = serializers.ChoiceField(choices=Badge.Kind.choices)
+
+
+class AwardSerializer(serializers.Serializer):
+    """What a first completion earned, for the award overlay."""
+
+    awarded = serializers.IntegerField()
+    totalXp = serializers.IntegerField()
+    level = serializers.IntegerField()
+    leveledUp = serializers.BooleanField()
+    streakDays = serializers.IntegerField()
+    streakExtended = serializers.BooleanField()
+    badges = AwardBadgeSerializer(many=True, help_text="Badges this completion earned.")
+
+
 class CompletionSerializer(serializers.Serializer):
     progressPct = serializers.IntegerField()
     completed = serializers.BooleanField()
     firstCompletion = serializers.BooleanField()
+    award = AwardSerializer(allow_null=True)

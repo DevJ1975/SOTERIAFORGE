@@ -2,15 +2,19 @@
 
 The enrollment row is locked for the whole decision, so two concurrent calls
 (a quiz submission racing a completion, or an offline replay) agree on exactly
-one first completion. XP, badges and streaks join this path in Phase 3.
+one first completion. That first completion is also where XP and the Pulse streak
+are awarded (gamification.awards); badges join this path next.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.models import record
+from apps.gamification import badges
+from apps.gamification.awards import Award, award_lesson
+from apps.standards import events
 
 from .models import Enrollment, Lesson, LessonProgress
 
@@ -20,12 +24,14 @@ class Completion:
     progress_pct: int
     completed: bool
     first_completion: bool
+    award: Award | None = None  # set only on a first completion
 
     def as_json(self) -> dict:
         return {
             "progressPct": self.progress_pct,
             "completed": self.completed,
             "firstCompletion": self.first_completion,
+            "award": self.award.as_json() if self.award else None,
         }
 
 
@@ -34,7 +40,11 @@ def lock_enrollment(enrollment: Enrollment) -> Enrollment:
     return Enrollment.objects.select_for_update().get(pk=enrollment.pk)
 
 
-def complete_lesson(enrollment: Enrollment, lesson: Lesson, *, score: int | None = None):
+def complete_lesson(
+    enrollment: Enrollment, lesson: Lesson, *, score: int | None = None, extra_xp: int = 0
+):
+    """`extra_xp` is quiz points converted to XP by the caller; it is paid only on the
+    first completion, together with the lesson's own reward."""
     with transaction.atomic():
         enrollment = lock_enrollment(enrollment)
         now = timezone.now()
@@ -59,7 +69,15 @@ def complete_lesson(enrollment: Enrollment, lesson: Lesson, *, score: int | None
         enrollment.last_activity_at = now
         enrollment.save()
 
+        award = None
         if first:
+            events.completed_event(enrollment, lesson, score)
+            award = award_lesson(enrollment=enrollment, lesson=lesson, extra_xp=extra_xp, now=now)
+            earned = badges.evaluate(tenant=enrollment.tenant, member=enrollment.member, now=now)
+            award = replace(
+                award,
+                badges=tuple((str(b.pk), b.key, b.name, b.icon, b.kind) for b in earned),
+            )
             record(
                 action="learning.lesson.completed",
                 actor=enrollment.member,
@@ -69,6 +87,7 @@ def complete_lesson(enrollment: Enrollment, lesson: Lesson, *, score: int | None
                 score=score,
             )
         if course_finished:
+            events.course_completed_event(enrollment)
             record(
                 action="learning.course.completed",
                 actor=enrollment.member,
@@ -76,7 +95,7 @@ def complete_lesson(enrollment: Enrollment, lesson: Lesson, *, score: int | None
                 target=enrollment.course,
                 enrollment=str(enrollment.pk),
             )
-    return Completion(enrollment.progress_pct, enrollment.completed_at is not None, first)
+    return Completion(enrollment.progress_pct, enrollment.completed_at is not None, first, award)
 
 
 def touch(enrollment: Enrollment) -> None:

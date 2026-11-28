@@ -1,0 +1,14 @@
+{
+  "id": "lockout-drill",
+  "format": 1,
+  "passScore": 80,
+  "penaltyPoints": 20,
+  "steps": [
+    { "id": "notify", "points": 10, "required": true },
+    { "id": "shutdown", "points": 10, "required": true, "after": ["notify"] },
+    { "id": "isolate", "points": 20, "required": true, "after": ["shutdown"] },
+    { "id": "lock-tag", "points": 20, "required": true, "after": ["isolate"] },
+    { "id": "release", "points": 20, "required": true, "after": ["lock-tag"] },
+    { "id": "verify", "points": 20, "required": true, "after": ["release"] }
+  ]
+}

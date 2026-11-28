@@ -13,6 +13,8 @@ from django.db import models
 
 # Keep aligned with CONTENT_TYPES in libs/shared/src/lib/constants.ts.
 CONTENT_TYPES = ["video", "scorm", "cmi5", "quiz", "game", "unity"]
+# Launched as cmi5 Assignable Units; only their xAPI statements complete them.
+AU_CONTENT_TYPES = {"cmi5", "unity"}
 
 
 class PublishStatus(models.TextChoices):
@@ -85,8 +87,12 @@ class Lesson(models.Model):
         max_length=4, choices=[("1.2", "1.2"), ("2004", "2004")], blank=True, default=""
     )
     estimated_minutes = models.PositiveIntegerField(null=True, blank=True)
+    # XP for the first completion (quiz points are added on top); see gamification.awards.
+    xp_reward = models.PositiveIntegerField(default=20)
     framework_tags = models.JSONField(default=list, blank=True)
     key_points = models.JSONField(default=list, blank=True)
+    # The narration script or transcript of a video/audio lesson (plain text or Markdown).
+    transcript = models.TextField(max_length=100_000, blank=True, default="")
     quiz = models.ForeignKey(
         "assessments.Quiz", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )

@@ -11,6 +11,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import {
   LearningApi,
@@ -23,7 +24,14 @@ import {
   type ApiQuestion,
 } from '@assurance/lms-core';
 
-const SUPPORTED: readonly ApiQuestion['type'][] = ['mcq', 'true_false', 'multi_select', 'fill_in'];
+const SUPPORTED: readonly ApiQuestion['type'][] = [
+  'mcq',
+  'true_false',
+  'multi_select',
+  'fill_in',
+  'ordering',
+  'matching',
+];
 
 /**
  * Knowledge check for a lesson quiz. `check` mode takes one question at a time with
@@ -186,6 +194,72 @@ const SUPPORTED: readonly ApiQuestion['type'][] = ['mcq', 'true_false', 'multi_s
             [value]="texts()[q.id] ?? ''"
             (input)="setText(q.id, $any($event.target).value)"
           />
+        } @else if (q.type === 'ordering') {
+          <p class="sf-sub kc__hint" [id]="'kc-hint-' + q.id">
+            Use Move up and Move down to put the items in the right order.
+          </p>
+          <ol class="kc__order" [attr.aria-describedby]="'kc-hint-' + q.id">
+            @for (id of orderOf(q); track id; let k = $index, last = $last) {
+              <li
+                class="kc__order-item"
+                [class.is-correct]="markCorrect(q.id)"
+                [class.is-wrong]="markWrong(q.id)"
+              >
+                <span class="sf-option__key" aria-hidden="true">{{ k + 1 }}</span>
+                <span class="kc__order-text" [id]="'kc-item-' + q.id + '-' + id">{{
+                  optionText(q, id)
+                }}</span>
+                <span class="kc__order-moves">
+                  <button
+                    type="button"
+                    class="sf-btn sf-btn--ghost sf-btn--sm"
+                    [disabled]="k === 0"
+                    [attr.aria-describedby]="'kc-item-' + q.id + '-' + id"
+                    (click)="move(q, k, -1)"
+                  >
+                    Move up
+                  </button>
+                  <button
+                    type="button"
+                    class="sf-btn sf-btn--ghost sf-btn--sm"
+                    [disabled]="last"
+                    [attr.aria-describedby]="'kc-item-' + q.id + '-' + id"
+                    (click)="move(q, k, 1)"
+                  >
+                    Move down
+                  </button>
+                </span>
+              </li>
+            }
+          </ol>
+          <p class="kc__sr" aria-live="polite">{{ moved()[q.id] ?? '' }}</p>
+        } @else if (q.type === 'matching') {
+          <div class="kc__match">
+            @for (left of q.matching?.left ?? []; track left; let k = $index) {
+              <div
+                class="kc__match-row"
+                [class.is-correct]="markCorrect(q.id)"
+                [class.is-wrong]="markWrong(q.id)"
+              >
+                <label class="kc__match-left" [for]="'kc-match-' + q.id + '-' + k">{{
+                  left
+                }}</label>
+                <select
+                  class="kc__input kc__select"
+                  [id]="'kc-match-' + q.id + '-' + k"
+                  [value]="matches()[q.id]?.[left] ?? ''"
+                  (change)="setMatch(q.id, left, $any($event.target).value)"
+                >
+                  <option value="" [selected]="!matches()[q.id]?.[left]">Choose a match…</option>
+                  @for (right of q.matching?.right ?? []; track right) {
+                    <option [value]="right" [selected]="matches()[q.id]?.[left] === right">
+                      {{ right }}
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
         } @else {
           <div class="kc__options" [attr.role]="q.type === 'multi_select' ? 'group' : 'radiogroup'">
             @for (o of q.options; track o.id; let k = $index) {
@@ -307,6 +381,58 @@ const SUPPORTED: readonly ApiQuestion['type'][] = ['mcq', 'true_false', 'multi_s
         clip-path: inset(50%);
         white-space: nowrap;
       }
+      .kc__hint {
+        margin: 0 0 var(--sf-space-2);
+      }
+      .kc__order {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--sf-space-2);
+      }
+      .kc__order-item,
+      .kc__match-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sf-space-2) var(--sf-space-3);
+        min-height: 44px;
+        padding: var(--sf-space-2) var(--sf-space-3);
+        border: 1.5px solid var(--sf-line);
+        border-radius: var(--sf-radius-md);
+        background: var(--sf-surface);
+      }
+      .kc__order-item.is-correct,
+      .kc__match-row.is-correct {
+        border-color: var(--sf-success);
+      }
+      .kc__order-item.is-wrong,
+      .kc__match-row.is-wrong {
+        border-color: var(--sf-danger);
+      }
+      .kc__order-text,
+      .kc__match-left {
+        flex: 1 1 12rem;
+        min-width: 0;
+      }
+      .kc__order-moves {
+        display: flex;
+        gap: var(--sf-space-1);
+      }
+      .kc__order-moves .sf-btn {
+        min-height: 44px;
+      }
+      .kc__match {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sf-space-2);
+      }
+      .kc__select {
+        flex: 1 1 12rem;
+        width: auto;
+      }
       .kc__result {
         padding: var(--sf-space-4);
         background: var(--sf-muted-bg);
@@ -331,6 +457,14 @@ export class KnowledgeCheckComponent {
   /** Selected option ids per question. */
   readonly selections = signal<Record<string, string[]>>({});
   readonly texts = signal<Record<string, string>>({});
+  /** Ordering: the learner's current arrangement of option ids per question. */
+  readonly orders = signal<Record<string, string[]>>({});
+  /** Matching: chosen right-hand item per left-hand item, per question. */
+  readonly matches = signal<Record<string, Record<string, string>>>({});
+  /** Screen-reader announcement of the last move, per ordering question. */
+  readonly moved = signal<Record<string, string>>({});
+  /** Graded mode: the key for the submission being sent, reused when it is resent. */
+  private pending: { key: string; body: string } | null = null;
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   /** Check mode: latest server answer for the shown question. */
@@ -448,7 +582,61 @@ export class KnowledgeCheckComponent {
 
   hasAnswer(q: ApiQuestion): boolean {
     if (q.type === 'fill_in') return (this.texts()[q.id] ?? '').trim().length > 0;
+    // An arrangement always exists; leaving the shown order is a valid answer.
+    if (q.type === 'ordering') return q.options.length > 0;
+    if (q.type === 'matching') {
+      const chosen = this.matches()[q.id] ?? {};
+      const left = q.matching?.left ?? [];
+      return left.length > 0 && left.every((l) => !!chosen[l]);
+    }
     return (this.selections()[q.id] ?? []).length > 0;
+  }
+
+  orderOf(q: ApiQuestion): string[] {
+    return this.orders()[q.id] ?? q.options.map((o) => o.id);
+  }
+
+  optionText(q: ApiQuestion, id: string): string {
+    return q.options.find((o) => o.id === id)?.text ?? '';
+  }
+
+  move(q: ApiQuestion, index: number, by: -1 | 1): void {
+    const order = [...this.orderOf(q)];
+    const to = index + by;
+    if (to < 0 || to >= order.length) return;
+    [order[index], order[to]] = [order[to], order[index]];
+    this.orders.update((o) => ({ ...o, [q.id]: order }));
+    this.moved.update((m) => ({
+      ...m,
+      [q.id]: `${this.optionText(q, order[to])} moved to position ${to + 1} of ${order.length}.`,
+    }));
+    this.result.set(null);
+    // Keep focus on the moved item: the same-direction button, or the other one when the
+    // item reached an end and that button became disabled.
+    const itemId = `kc-item-${q.id}-${order[to]}`;
+    afterNextRender(
+      () => {
+        const text = Array.from(
+          this.host.nativeElement.querySelectorAll<HTMLElement>('.kc__order-text'),
+        ).find((el) => el.id === itemId);
+        const [up, down] = Array.from(
+          text?.parentElement?.querySelectorAll<HTMLButtonElement>('.kc__order-moves button') ?? [],
+        );
+        const preferred = by < 0 ? up : down;
+        (preferred && !preferred.disabled ? preferred : by < 0 ? down : up)?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  setMatch(qid: string, left: string, right: string): void {
+    this.matches.update((m) => {
+      const cur = { ...(m[qid] ?? {}) };
+      if (right) cur[left] = right;
+      else delete cur[left];
+      return { ...m, [qid]: cur };
+    });
+    this.result.set(null);
   }
 
   canCheck(q: ApiQuestion): boolean {
@@ -480,9 +668,16 @@ export class KnowledgeCheckComponent {
   }
 
   private answerFor(q: ApiQuestion): ApiAnswer {
-    return q.type === 'fill_in'
-      ? { questionId: q.id, text: (this.texts()[q.id] ?? '').trim() }
-      : { questionId: q.id, selectedOptionIds: this.selections()[q.id] ?? [] };
+    if (q.type === 'fill_in') return { questionId: q.id, text: (this.texts()[q.id] ?? '').trim() };
+    if (q.type === 'ordering') return { questionId: q.id, order: this.orderOf(q) };
+    if (q.type === 'matching') {
+      const chosen = this.matches()[q.id] ?? {};
+      return {
+        questionId: q.id,
+        selectedOptionIds: (q.matching?.left ?? []).map((l) => `${l}:${chosen[l] ?? ''}`),
+      };
+    }
+    return { questionId: q.id, selectedOptionIds: this.selections()[q.id] ?? [] };
   }
 
   async check(q: ApiQuestion): Promise<void> {
@@ -515,6 +710,9 @@ export class KnowledgeCheckComponent {
     this.attempt.set(null);
     this.selections.set({});
     this.texts.set({});
+    this.orders.set({});
+    this.matches.set({});
+    this.moved.set({});
     this.error.set(null);
     this.focusSoon('legend.kc__qprompt');
   }
@@ -527,11 +725,19 @@ export class KnowledgeCheckComponent {
       const responses = this.quiz()
         .questions.filter((q) => this.isSupported(q))
         .map((q) => this.answerFor(q));
-      const res = await this.api.submitQuiz(this.lessonId(), responses);
+      // Resending the same answers after a lost response reuses the key, so the server
+      // returns the attempt it already graded instead of spending another one.
+      const body = JSON.stringify(responses);
+      if (this.pending?.body !== body) this.pending = { key: crypto.randomUUID(), body };
+      const res = await this.api.submitQuiz(this.lessonId(), responses, this.pending.key);
+      this.pending = null;
       this.attempt.set(res);
       if (res.passed || res.attemptsRemaining === 0) this.focusSoon('.kc__after'); // button removed
       if (res.completion) this.completed.emit(res.completion);
     } catch (e) {
+      // A definite answer from the server (4xx) ends this submission; keep the key only
+      // when the outcome is unknown (offline, timeout, 5xx).
+      if (e instanceof HttpErrorResponse && e.status >= 400 && e.status < 500) this.pending = null;
       this.error.set(apiErrorMessage(e, 'Could not submit the quiz. Please try again.'));
     } finally {
       this.busy.set(false);

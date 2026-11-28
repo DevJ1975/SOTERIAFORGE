@@ -4,11 +4,11 @@ Course, module, and enrollment domain logic for Soteria Assurance.
 
 ## What's inside
 
-| File                    | Purpose                                                                             |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| `progress.ts`           | Pure functions: `computeCourseProgress`, `isModuleComplete`, `nextIncompleteModule` |
-| `course.store.ts`       | NgRx SignalStore `CourseStore` — state, computed signals, async load methods        |
-| `enrollment.service.ts` | `EnrollmentService` — `enroll()` and `saveCmi()` (completion is server-side)        |
+| File              | Purpose                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `progress.ts`     | Pure functions: `computeCourseProgress`, `isModuleComplete`, `nextIncompleteModule` |
+| `course.store.ts` | NgRx SignalStore `CourseStore` — state, computed signals, async load methods        |
+| `learning-api.ts` | `LearningApi` — courses, enrollments, completions against the Forge API             |
 
 ## Usage
 
@@ -40,15 +40,14 @@ export class CourseViewComponent {
 
 Computed signals: `store.progressPct()`, `store.nextModule()`, `store.isComplete()`.
 
-### EnrollmentService
+### LearningApi
 
 ```ts
-const svc = inject(EnrollmentService);
+const api = inject(LearningApi);
 
-await svc.enroll(tenantId, courseId, uid);
-// Module completion / score is server-authoritative: emitted by the players and
-// recorded via the `completeModule` / `submitQuiz` Cloud Functions, not the client.
-await svc.saveCmi(tenantId, courseId, uid, moduleId, cmi); // SCORM runtime state only
+await api.enroll(courseId);
+// Lesson completion / score is server-authoritative: the Forge API records it and
+// returns the awards; the client never decides rewards.
 ```
 
 ## Tests

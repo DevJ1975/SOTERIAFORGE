@@ -1,0 +1,6 @@
+{
+  "name": "SoteriaForge.Core",
+  "rootNamespace": "SoteriaForge.Core",
+  "references": [],
+  "autoReferenced": true
+}

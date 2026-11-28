@@ -1,0 +1,17 @@
+[package]
+name = "forge-sim-ffi"
+description = "C ABI over forge-sim, for Unity (P/Invoke)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "forge_sim_ffi"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+forge-sim = { path = "../forge-sim" }

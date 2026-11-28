@@ -1,31 +1,37 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
-import { TenantRepository } from '@assurance/data-access';
-import { TenantAdminService } from '@assurance/tenant';
+import { type TenantRow, TenantsService } from '../services/tenants.service';
 import { TenantsComponent } from './tenants.component';
 
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'https://api.example.com',
 };
 
-const tenantRepoStub = {
-  list: jest.fn(async () => []),
+const acme: TenantRow = {
+  id: 'acme',
+  name: 'Acme Corp',
+  status: 'active',
+  plan: 'pro',
+  customDomain: '',
+  createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-const tenantAdminStub = {
-  provisionTenant: jest.fn(),
-  setTenantStatus: jest.fn(),
+const apiStub = {
+  list: jest.fn(async (): Promise<TenantRow[]> => []),
+  provision: jest.fn(async (): Promise<TenantRow> => acme),
+  setStatus: jest.fn(async (): Promise<TenantRow> => acme),
 };
+
+interface Internals {
+  newTenantId: string;
+  newTenantName: string;
+  newAdminEmail: string;
+  provision(): Promise<void>;
+  updateStatus(id: string, status: 'active' | 'suspended' | 'archived'): Promise<void>;
+}
 
 describe('TenantsComponent', () => {
   beforeEach(async () => {
@@ -35,22 +41,59 @@ describe('TenantsComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: TenantRepository, useValue: tenantRepoStub },
-        { provide: TenantAdminService, useValue: tenantAdminStub },
+        { provide: TenantsService, useValue: apiStub },
       ],
     }).compileComponents();
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(TenantsComponent);
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  it('calls TenantRepository.list on init', async () => {
+  async function create() {
     const fixture = TestBed.createComponent(TenantsComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(tenantRepoStub.list).toHaveBeenCalledTimes(1);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('lists tenants on init', async () => {
+    apiStub.list.mockResolvedValueOnce([acme]);
+    const fixture = await create();
+    expect(apiStub.list).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.textContent).toContain('Acme Corp');
+  });
+
+  it('provisions a tenant with the optional first-admin email, then reloads', async () => {
+    const fixture = await create();
+    const comp = fixture.componentInstance as unknown as Internals;
+    comp.newTenantId = 'globex';
+    comp.newTenantName = 'Globex';
+    comp.newAdminEmail = 'boss@globex.test';
+    await comp.provision();
+    expect(apiStub.provision).toHaveBeenCalledWith({
+      id: 'globex',
+      name: 'Globex',
+      plan: undefined,
+      adminEmail: 'boss@globex.test',
+    });
+    expect(apiStub.list).toHaveBeenCalledTimes(2);
+    expect(comp.newTenantId).toBe('');
+  });
+
+  it('suspends, activates and archives through the status call', async () => {
+    const fixture = await create();
+    const comp = fixture.componentInstance as unknown as Internals;
+    await comp.updateStatus('acme', 'suspended');
+    await comp.updateStatus('acme', 'active');
+    await comp.updateStatus('acme', 'archived');
+    expect(apiStub.setStatus.mock.calls).toEqual([
+      ['acme', 'suspended'],
+      ['acme', 'active'],
+      ['acme', 'archived'],
+    ]);
+  });
+
+  it('shows a fallback message when loading fails', async () => {
+    apiStub.list.mockRejectedValueOnce(new Error('boom'));
+    const fixture = await create();
+    expect(fixture.nativeElement.textContent).toContain('Failed to load tenants');
   });
 });

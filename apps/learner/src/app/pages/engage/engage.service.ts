@@ -13,6 +13,7 @@ import {
   VideoPresets,
 } from 'livekit-client';
 import { firstValueFrom } from 'rxjs';
+import { ENGAGE_TOPIC, type SessionPing, parsePing } from './engage-session.model';
 
 export interface Classroom {
   id: string;
@@ -20,13 +21,22 @@ export interface Classroom {
   createdBy: string;
   createdAt: string;
   maxParticipants: number;
+  /** Set when only that cohort's learners (and staff) may join. */
+  cohortId?: string | null;
+  cohortName?: string | null;
+  /** The session running in this classroom right now, if any. */
+  liveSessionId?: string | null;
 }
 
 interface JoinCredentials {
   serverUrl: string;
   token: string;
   canScreenShare: boolean;
+  sessionId?: string | null;
 }
+
+/** `TrackSource.SCREEN_SHARE` in a participant's published-source grants. */
+const SCREEN_SHARE_SOURCE = 3;
 
 export const CLASSROOM_ROOM_FACTORY = new InjectionToken<() => Room>('CLASSROOM_ROOM_FACTORY', {
   providedIn: 'root',
@@ -57,8 +67,13 @@ export const CLASSROOM_ROOM_FACTORY = new InjectionToken<() => Room>('CLASSROOM_
 
 export interface ClassroomTile {
   id: string;
+  /** The participant's identity (their member id); a screen share keeps its sharer's. */
+  participantId: string;
   name: string;
   local: boolean;
+  /** May share a screen, which only instructors and admins are granted. */
+  staff: boolean;
+  screen: boolean;
   video?: Track;
   audio?: Track;
 }
@@ -118,6 +133,12 @@ export class EngageService implements OnDestroy {
   readonly screenShareEnabled = signal(false);
   readonly canScreenShare = signal(false);
   readonly needsAudioStart = signal(false);
+  /** The live session in the joined classroom when the learner joined, if any. */
+  readonly sessionId = signal<string | null>(null);
+  /** The server's latest "session state changed" message (engage-session.store.ts). */
+  readonly sessionPing = signal<SessionPing | null>(null);
+  /** Identities of the participants speaking now. Never used to order tiles. */
+  readonly speakingIds = signal<ReadonlySet<string>>(new Set());
   readonly supportsScreenShare =
     typeof navigator !== 'undefined' &&
     typeof navigator.mediaDevices?.getDisplayMedia === 'function';
@@ -140,13 +161,16 @@ export class EngageService implements OnDestroy {
     }
   }
 
-  async create(title: string): Promise<void> {
+  async create(title: string, cohortId?: string | null): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {
       const classroom = await firstValueFrom(
-        this.http.post<Classroom>(this.url(), { title: title.trim() }),
+        this.http.post<Classroom>(this.url(), {
+          title: title.trim(),
+          ...(cohortId ? { cohortId } : {}),
+        }),
       );
       if (!this.destroyed) this.classrooms.update((rooms) => [classroom, ...rooms]);
     } catch (error) {
@@ -175,6 +199,7 @@ export class EngageService implements OnDestroy {
       this.room = room;
       this.activeClassroom.set(classroom);
       this.canScreenShare.set(credentials.canScreenShare);
+      this.sessionId.set(credentials.sessionId ?? null);
       this.listen(room);
       await room.connect(credentials.serverUrl, credentials.token);
       if (generation !== this.generation) {
@@ -287,6 +312,14 @@ export class EngageService implements OnDestroy {
       .on(RoomEvent.LocalTrackUnpublished, refresh)
       .on(RoomEvent.AudioPlaybackStatusChanged, refresh)
       .on(RoomEvent.ConnectionStateChanged, refresh)
+      .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        if (this.room === room) this.speakingIds.set(new Set(speakers.map((s) => s.identity)));
+      })
+      .on(RoomEvent.DataReceived, (payload, _participant, _kind, topic) => {
+        if (this.room !== room || topic !== ENGAGE_TOPIC) return;
+        const ping = parsePing(payload);
+        if (ping) this.sessionPing.set(ping);
+      })
       .on(RoomEvent.Disconnected, (reason) => {
         if (this.room !== room) return;
         this.reset();
@@ -305,8 +338,17 @@ export class EngageService implements OnDestroy {
     for (const participant of participants) {
       const local = participant === room.localParticipant;
       const camera = participant.getTrackPublication(Track.Source.Camera);
+      // Only instructors and admins are granted screen sharing, and grants are visible
+      // to the room, so this marks staff without the server sending a roster.
+      const sources = participant.permissions?.canPublishSources ?? [];
+      const staff = local
+        ? this.canScreenShare()
+        : sources.some((source) => Number(source) === SCREEN_SHARE_SOURCE);
       tiles.push({
         id: participant.identity,
+        participantId: participant.identity,
+        staff,
+        screen: false,
         name: `${participant.name || 'Class participant'}${local ? ' (you)' : ''}`,
         local,
         video: camera?.isMuted ? undefined : camera?.track,
@@ -316,6 +358,9 @@ export class EngageService implements OnDestroy {
       if (screen?.track && !screen.isMuted) {
         tiles.push({
           id: `${participant.identity}-screen`,
+          participantId: participant.identity,
+          staff,
+          screen: true,
           name: `${participant.name || 'Instructor'} - screen`,
           local,
           video: screen.track,
@@ -343,5 +388,8 @@ export class EngageService implements OnDestroy {
     this.screenShareEnabled.set(false);
     this.canScreenShare.set(false);
     this.needsAudioStart.set(false);
+    this.sessionId.set(null);
+    this.sessionPing.set(null);
+    this.speakingIds.set(new Set());
   }
 }

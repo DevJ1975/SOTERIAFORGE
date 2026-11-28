@@ -6,10 +6,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
-import { QuizRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
+import { type ApiQuiz, AuthoringApi, authoringErrorMessage } from '@assurance/lms-core';
 import { QUESTION_TYPES, type QuestionType } from '@assurance/shared';
-import type { Quiz, QuizQuestion } from '@assurance/shared';
+import type { QuizQuestion } from '@assurance/shared';
 
 /** Question types that use option-based answers (radio/checkbox style). */
 const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_false'];
@@ -53,9 +52,13 @@ const CHOICE_TYPES: readonly QuestionType[] = ['mcq', 'multi_select', 'true_fals
                 aria-label="Pass threshold percent"
               />
             </label>
-            <label class="quiz-editor__checkbox-label">
-              <p-checkbox [(ngModel)]="editRandomize" [binary]="true" inputId="randomize" />
-              Randomize question order
+            <label>
+              Max attempts (blank for unlimited)
+              <p-inputNumber
+                [(ngModel)]="editMaxAttempts"
+                [min]="1"
+                aria-label="Maximum attempts"
+              />
             </label>
           </div>
           <p-button
@@ -328,10 +331,9 @@ export class QuizEditorComponent {
   /** Route param injected via withComponentInputBinding. */
   readonly id = input.required<string>();
 
-  private readonly quizRepo = inject(QuizRepository);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
 
-  protected readonly quiz = signal<Quiz | null>(null);
+  protected readonly quiz = signal<ApiQuiz | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly saving = signal(false);
@@ -347,7 +349,7 @@ export class QuizEditorComponent {
   protected newQuestionPoints = 1;
 
   protected editPassThreshold = 70;
-  protected editRandomize = false;
+  protected editMaxAttempts: number | null = null;
 
   constructor() {
     effect(() => {
@@ -359,19 +361,15 @@ export class QuizEditorComponent {
   }
 
   private async loadQuiz(quizId: string): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const q = await this.quizRepo.getById(tid, quizId);
+      const q = await this.api.quiz(quizId);
       this.quiz.set(q);
-      if (q) {
-        this.editPassThreshold = q.passThreshold;
-        this.editRandomize = q.randomize;
-      }
+      this.editPassThreshold = q.passThreshold;
+      this.editMaxAttempts = q.maxAttempts;
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load quiz');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load quiz'));
     } finally {
       this.loading.set(false);
     }
@@ -462,38 +460,44 @@ export class QuizEditorComponent {
   }
 
   protected async saveSettings(): Promise<void> {
-    const tid = this.tenantService.tenantId();
     const current = this.quiz();
-    if (!tid || !current) return;
+    if (!current) return;
     this.savingSettings.set(true);
     this.saveSettingsError.set(null);
     try {
-      const updated: Quiz = {
-        ...current,
+      const saved = await this.api.updateQuiz(current.id, {
         passThreshold: this.editPassThreshold,
-        randomize: this.editRandomize,
-      };
-      await this.quizRepo.set(tid, updated);
-      this.quiz.set(updated);
+        maxAttempts: this.editMaxAttempts,
+      });
+      this.quiz.set({
+        ...current,
+        passThreshold: saved.passThreshold,
+        maxAttempts: saved.maxAttempts,
+      });
     } catch (err) {
-      this.saveSettingsError.set((err as Error).message ?? 'Failed to save settings');
+      this.saveSettingsError.set(authoringErrorMessage(err, 'Failed to save settings'));
     } finally {
       this.savingSettings.set(false);
     }
   }
 
   protected async saveQuiz(): Promise<void> {
-    const tid = this.tenantService.tenantId();
     const current = this.quiz();
-    if (!tid || !current) return;
+    if (!current) return;
     this.saving.set(true);
     this.saveError.set(null);
     this.saveSuccess.set(false);
     try {
-      await this.quizRepo.set(tid, current);
+      const saved = await this.api.updateQuiz(current.id, {
+        title: current.title,
+        questions: current.questions,
+        passThreshold: this.editPassThreshold,
+        maxAttempts: this.editMaxAttempts,
+      });
+      this.quiz.set(saved);
       this.saveSuccess.set(true);
     } catch (err) {
-      this.saveError.set((err as Error).message ?? 'Failed to save quiz');
+      this.saveError.set(authoringErrorMessage(err, 'Failed to save quiz'));
     } finally {
       this.saving.set(false);
     }

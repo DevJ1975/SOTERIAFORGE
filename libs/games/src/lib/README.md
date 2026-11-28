@@ -108,4 +108,4 @@ Cross-reference: **`docs/unity-cmi5-contract.md`** — defines the full cmi5 lau
 | `sort_buckets`   | Drag-and-drop cards into labelled buckets        |
 | `scenario_cards` | Read a situation, pick the best response         |
 
-Use `validateCardGameConfig(config)` to get an array of validation error strings before persisting to Firestore. An empty array means the config is valid.
+Use `validateCardGameConfig(config)` to get an array of validation error strings before saving the game. An empty array means the config is valid.

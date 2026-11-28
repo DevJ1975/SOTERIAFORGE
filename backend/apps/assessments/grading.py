@@ -4,6 +4,7 @@ Pure and deterministic. The client may grade for preview, but only this result
 is stored (anti-cheat).
 """
 
+import hashlib
 from dataclasses import asdict, dataclass
 
 from rest_framework import serializers
@@ -134,12 +135,45 @@ def grade(questions: list[dict], responses: list[dict], pass_threshold: int) -> 
     return Grade(earned, total, score, score >= pass_threshold, results)
 
 
+def _stable_shuffle(question_id: str, items: list[str]) -> list[str]:
+    """The same order on every load (so a learner's arrangement survives a reload), but
+    not the authored one, which for ordering questions is often the answer itself."""
+    shuffled = sorted(
+        items, key=lambda x: hashlib.sha256(f"{question_id}\x00{x}".encode()).hexdigest()
+    )
+    if len(shuffled) > 1 and shuffled == items:
+        shuffled = shuffled[1:] + shuffled[:1]
+    return shuffled
+
+
+def split_pair(pair: str) -> tuple[str, str]:
+    """A matching answer-key entry "left:right", split at the first colon."""
+    left, _, right = pair.partition(":")
+    return left, right
+
+
 def public_question(question: dict) -> dict:
-    """A question as learners see it: no correct flags, answer key or feedback."""
-    return {
+    """A question as learners see it: no correct flags, answer key or feedback.
+
+    Ordering items come in a stable shuffle. Matching questions carry their two
+    columns: `left` in authored order and `right` shuffled; a learner answers with
+    "left:right" strings in `selectedOptionIds`.
+    """
+    options = [{"id": o["id"], "text": o["text"]} for o in question["options"]]
+    public = {
         "id": question["id"],
         "type": question["type"],
         "prompt": question["prompt"],
         "points": question["points"],
-        "options": [{"id": o["id"], "text": o["text"]} for o in question["options"]],
+        "options": options,
     }
+    if question["type"] == "ordering":
+        by_id = {o["id"]: o for o in options}
+        order = _stable_shuffle(question["id"], [o["id"] for o in options])
+        public["options"] = [by_id[i] for i in order]
+    elif question["type"] == "matching":
+        pairs = [split_pair(p) for p in question["answerKey"]]
+        left = list(dict.fromkeys(a for a, _ in pairs))
+        right = list(dict.fromkeys(b for _, b in pairs))
+        public["matching"] = {"left": left, "right": _stable_shuffle(question["id"], right)}
+    return public

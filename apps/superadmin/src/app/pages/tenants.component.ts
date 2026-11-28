@@ -4,9 +4,8 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { TenantRepository } from '@assurance/data-access';
-import { TenantAdminService } from '@assurance/tenant';
-import type { Tenant } from '@assurance/shared';
+import { apiErrorMessage } from '../services/api-error';
+import { type TenantRow, type TenantStatus, TenantsService } from '../services/tenants.service';
 
 @Component({
   selector: 'assurance-superadmin-tenants',
@@ -27,6 +26,12 @@ import type { Tenant } from '@assurance/shared';
             [(ngModel)]="newTenantId"
           />
           <input pInputText type="text" placeholder="Display Name" [(ngModel)]="newTenantName" />
+          <input
+            pInputText
+            type="email"
+            placeholder="First admin email (optional)"
+            [(ngModel)]="newAdminEmail"
+          />
           <input
             pInputText
             type="text"
@@ -70,7 +75,7 @@ import type { Tenant } from '@assurance/shared';
               <td>{{ t.status }}</td>
               <td>{{ t.plan }}</td>
               <td>
-                @if (t.status !== 'suspended') {
+                @if (t.status === 'active') {
                   <p-button
                     label="Suspend"
                     severity="warn"
@@ -79,13 +84,22 @@ import type { Tenant } from '@assurance/shared';
                     (onClick)="updateStatus(t.id, 'suspended')"
                   />
                 }
-                @if (t.status === 'suspended') {
+                @if (t.status === 'suspended' || t.status === 'archived') {
                   <p-button
-                    label="Resume"
+                    label="Activate"
                     severity="success"
                     size="small"
                     [loading]="loading()"
                     (onClick)="updateStatus(t.id, 'active')"
+                  />
+                }
+                @if (t.status !== 'archived') {
+                  <p-button
+                    label="Archive"
+                    severity="secondary"
+                    size="small"
+                    [loading]="loading()"
+                    (onClick)="updateStatus(t.id, 'archived')"
                   />
                 }
               </td>
@@ -124,16 +138,16 @@ import type { Tenant } from '@assurance/shared';
   ],
 })
 export class TenantsComponent implements OnInit {
-  private readonly tenantRepo = inject(TenantRepository);
-  private readonly adminSvc = inject(TenantAdminService);
+  private readonly api = inject(TenantsService);
 
-  protected readonly tenants = signal<Tenant[]>([]);
+  protected readonly tenants = signal<TenantRow[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
   protected newTenantId = '';
   protected newTenantName = '';
   protected newTenantPlan = '';
+  protected newAdminEmail = '';
 
   async ngOnInit(): Promise<void> {
     await this.loadTenants();
@@ -143,10 +157,9 @@ export class TenantsComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const result = await this.tenantRepo.list();
-      this.tenants.set(result);
+      this.tenants.set(await this.api.list());
     } catch (err) {
-      this.error.set((err as Error).message ?? 'Failed to load tenants');
+      this.error.set(apiErrorMessage(err, 'Failed to load tenants'));
     } finally {
       this.loading.set(false);
     }
@@ -156,29 +169,34 @@ export class TenantsComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.adminSvc.provisionTenant({
-        tenantId: this.newTenantId,
+      await this.api.provision({
+        id: this.newTenantId,
         name: this.newTenantName,
         plan: this.newTenantPlan || undefined,
+        adminEmail: this.newAdminEmail || undefined,
       });
       this.newTenantId = '';
       this.newTenantName = '';
       this.newTenantPlan = '';
+      this.newAdminEmail = '';
       await this.loadTenants();
     } catch (err) {
-      this.error.set((err as Error).message ?? 'Failed to provision tenant');
+      this.error.set(apiErrorMessage(err, 'Failed to provision tenant'));
       this.loading.set(false);
     }
   }
 
-  protected async updateStatus(tenantId: string, status: 'active' | 'suspended'): Promise<void> {
+  protected async updateStatus(
+    tenantId: string,
+    status: Exclude<TenantStatus, 'provisioning'>,
+  ): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.adminSvc.setTenantStatus(tenantId, status);
+      await this.api.setStatus(tenantId, status);
       await this.loadTenants();
     } catch (err) {
-      this.error.set((err as Error).message ?? 'Failed to update tenant status');
+      this.error.set(apiErrorMessage(err, 'Failed to update tenant status'));
       this.loading.set(false);
     }
   }

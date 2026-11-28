@@ -12,7 +12,7 @@ export class ValidationError extends Error {
 
 /**
  * Parse data against a schema, throwing a typed ValidationError on failure.
- * Use at every trust boundary (Firestore reads, function inputs, webhook bodies).
+ * Use at every trust boundary (API responses, request inputs, webhook bodies).
  *
  * Generic is keyed off the schema so the zod *output* type (post defaults /
  * transforms) is preserved.

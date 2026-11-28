@@ -1,13 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  PLATFORM_ID,
+  inject,
+  signal,
+} from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
-import { MemberAdminService } from '@assurance/tenant';
-import { MemberRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
-import { type Member, type Role, ROLES } from '@assurance/shared';
+import { type ApiMember, MemberAdminService, adminErrorMessage } from '@assurance/tenant';
+import { type Role, ROLES } from '@assurance/shared';
 
 const INVITE_ROLES: readonly Role[] = ROLES.filter(
   (r) => r !== 'superadmin' && r !== 'b2c_customer',
@@ -64,6 +70,10 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
         }
       </div>
 
+      @if (actionError()) {
+        <p class="members__error" role="alert">{{ actionError() }}</p>
+      }
+
       <!-- Members Table -->
       @if (loading()) {
         <p>Loading members…</p>
@@ -87,7 +97,7 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
           </ng-template>
           <ng-template pTemplate="body" let-m>
             <tr>
-              <td>{{ m.displayName ?? '—' }}</td>
+              <td>{{ m.displayName || '—' }}</td>
               <td>{{ m.email }}</td>
               <td>
                 <p-select
@@ -99,19 +109,36 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
               </td>
               <td>{{ m.status }}</td>
               <td>
-                <p-button
-                  label="Deactivate"
-                  severity="danger"
-                  size="small"
-                  [disabled]="m.status === 'deactivated'"
-                  (onClick)="deactivate(m)"
-                />
+                <div class="members__row-actions">
+                  @if (m.status === 'deactivated') {
+                    <p-button
+                      label="Reactivate"
+                      severity="secondary"
+                      size="small"
+                      (onClick)="reactivate(m)"
+                    />
+                  } @else {
+                    <p-button
+                      label="Deactivate"
+                      severity="danger"
+                      size="small"
+                      [disabled]="m.status === 'invited'"
+                      (onClick)="deactivate(m)"
+                    />
+                  }
+                  <p-button
+                    label="Export data"
+                    severity="secondary"
+                    size="small"
+                    (onClick)="exportData(m)"
+                  />
+                </div>
               </td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="5">No active members found.</td>
+              <td colspan="5">No members found.</td>
             </tr>
           </ng-template>
         </p-table>
@@ -143,6 +170,10 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
         color: #b00020;
         margin-top: 0.5rem;
       }
+      .members__row-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
       .members__invite-link {
         margin-top: 0.75rem;
         padding: 0.5rem;
@@ -154,15 +185,15 @@ const INVITE_ROLES: readonly Role[] = ROLES.filter(
   ],
 })
 export class MembersComponent implements OnInit {
-  private readonly memberRepo = inject(MemberRepository);
   private readonly memberAdmin = inject(MemberAdminService);
-  private readonly tenantService = inject(TenantService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   protected readonly roleOptions = INVITE_ROLES.map((r) => ({ label: r, value: r }));
 
-  protected readonly members = signal<Member[]>([]);
+  protected readonly members = signal<ApiMember[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  protected readonly actionError = signal<string | null>(null);
 
   protected inviteEmail = '';
   protected inviteDisplayName = '';
@@ -176,29 +207,24 @@ export class MembersComponent implements OnInit {
   }
 
   private async loadMembers(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const list = await this.memberRepo.listActive(tid);
-      this.members.set(list);
+      this.members.set(await this.memberAdmin.listMembers());
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load members');
+      this.loadError.set(adminErrorMessage(err, 'Failed to load members'));
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async invite(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid || !this.inviteEmail || !this.inviteRole) return;
+    if (!this.inviteEmail || !this.inviteRole) return;
     this.inviting.set(true);
     this.inviteError.set(null);
     this.inviteLink.set(null);
     try {
       const result = await this.memberAdmin.inviteMember({
-        tenantId: tid,
         email: this.inviteEmail,
         role: this.inviteRole,
         displayName: this.inviteDisplayName || undefined,
@@ -209,31 +235,50 @@ export class MembersComponent implements OnInit {
       this.inviteRole = null;
       await this.loadMembers();
     } catch (err) {
-      this.inviteError.set((err as Error).message ?? 'Invite failed');
+      this.inviteError.set(adminErrorMessage(err, 'Invite failed'));
     } finally {
       this.inviting.set(false);
     }
   }
 
-  protected async changeRole(member: Member, role: Role): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
+  protected async changeRole(member: ApiMember, role: Role): Promise<void> {
+    await this.run(() => this.memberAdmin.setMemberRole(member.id, role), 'Role change failed');
+  }
+
+  protected async deactivate(member: ApiMember): Promise<void> {
+    await this.run(() => this.memberAdmin.deactivateMember(member.id), 'Deactivation failed');
+  }
+
+  protected async reactivate(member: ApiMember): Promise<void> {
+    await this.run(() => this.memberAdmin.reactivateMember(member.id), 'Reactivation failed');
+  }
+
+  /** Downloads everything Forge holds about the member as a JSON file. */
+  protected async exportData(member: ApiMember): Promise<void> {
+    this.actionError.set(null);
     try {
-      await this.memberAdmin.setMemberRole(tid, member.uid, role);
-      await this.loadMembers();
+      const data = await this.memberAdmin.exportMember(member.id);
+      if (!isPlatformBrowser(this.platformId)) return;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `member-${member.id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Role change failed');
+      this.actionError.set(adminErrorMessage(err, 'Export failed'));
     }
   }
 
-  protected async deactivate(member: Member): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
+  private async run(action: () => Promise<unknown>, fallback: string): Promise<void> {
+    this.actionError.set(null);
     try {
-      await this.memberAdmin.deactivateMember(tid, member.uid);
-      await this.loadMembers();
+      await action();
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Deactivation failed');
+      this.actionError.set(adminErrorMessage(err, fallback));
     }
+    // Reload either way so the table shows the server's truth (e.g. a rejected role change).
+    await this.loadMembers();
   }
 }

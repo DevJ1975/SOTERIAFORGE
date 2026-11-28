@@ -58,7 +58,7 @@ def pilot(lakewood, monkeypatch, settings):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def ingest(course, source_id=None, **extra):
@@ -95,7 +95,7 @@ def test_approved_ingestion_is_idempotent_and_audited(pilot):
     assert Source.objects.get().embedding_digest == settings.COACH_EMBED_DIGEST
 
 
-def test_ask_returns_only_database_citations_and_does_not_store_chat(pilot):
+def test_ask_returns_only_database_citations_and_keeps_chat_out_of_the_audit_log(pilot):
     course, _, _, calls = pilot
     ingest(course)
     response = ask(course)
@@ -249,10 +249,14 @@ def test_model_abstention_uses_fixed_safe_text(pilot, monkeypatch):
             "abstained": True,
         },
     )
-    assert ask(course).json() == {
+    body = ask(course).json()
+    assert body.pop("exchangeId")
+    assert body == {
         "answer": "The approved course sources do not contain enough information to answer.",
         "citations": [],
         "abstained": True,
+        "diagram": None,
+        "followUps": [],
     }
 
 

@@ -1,0 +1,28 @@
+# Sized for an AWS Free plan account ($100-200 of credits, closes when they run out).
+# Copy to terraform.tfvars (gitignored). About $50 a month in us-east-2:
+# load balancer ~$24 with its two public addresses, db.t4g.micro ~$14, one
+# 0.25 vCPU ARM task ~$12 with its public address, secrets and logs ~$2.
+region      = "us-east-2"
+environment = "production"
+api_domain  = "api.aws.soteriaforge.com"
+
+# DNS is outside Route 53: request the certificate in ACM, add its validation CNAME
+# where the domain's DNS lives, and paste the ARN once it is issued.
+certificate_arn = "arn:aws:acm:us-east-2:123456789012:certificate/..."
+
+cpu_architecture  = "ARM64" # cheaper than X86_64, and native to build on Apple silicon
+api_cpu           = 256
+api_memory        = 1024
+api_desired_count = 1
+
+db_instance_class        = "db.t4g.micro"
+db_backup_retention_days = 1
+db_max_allocated_storage = 0
+
+nat_gateway        = false
+container_insights = false
+log_retention_days = 14
+
+# Emails at 50% and 90% of this, and when the month is forecast to pass it.
+budget_email       = "you@example.com"
+budget_monthly_usd = 60

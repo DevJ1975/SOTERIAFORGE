@@ -1,5 +1,6 @@
 import pytest
-from django.db import transaction
+from django.db import connection, transaction
+from django.test.utils import CaptureQueriesContext
 
 from apps.accounts.models import Role
 from apps.audit.models import AuditEntry
@@ -26,7 +27,7 @@ def content(lakewood, people):
 
 
 def as_(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 def enroll(uid, course):
@@ -208,6 +209,21 @@ def test_my_enrollments_show_the_next_lesson(content):
     assert mine["nextLesson"]["moduleLabel"] == "Week 5"
 
 
+def test_my_enrollments_query_count_does_not_grow_with_enrollments(lakewood, people, content):
+    enroll("learner", content.course)
+    client = as_("learner")
+    client.get("/api/enrollments/me")  # warm auth/session caches
+    with CaptureQueriesContext(connection) as one:
+        client.get("/api/enrollments/me")
+    for _ in range(3):
+        enroll("learner", build_course(lakewood, people["teacher"]).course)
+    with CaptureQueriesContext(connection) as four:
+        mine = client.get("/api/enrollments/me").json()
+    assert len(four.captured_queries) == len(one.captured_queries)
+    assert len(mine) == 4
+    assert all(m["nextLesson"] for m in mine)
+
+
 # --- Completion --------------------------------------------------------------
 
 
@@ -219,8 +235,26 @@ def test_completion_is_recorded_once(content):
     enroll("learner", content.course)
     first = as_("learner").post(f"/api/lessons/{content.video.pk}/complete").json()
     replay = as_("learner").post(f"/api/lessons/{content.video.pk}/complete").json()
-    assert first == {"progressPct": 33, "completed": False, "firstCompletion": True}
-    assert replay == {"progressPct": 33, "completed": False, "firstCompletion": False}
+    assert first == {
+        "progressPct": 33,
+        "completed": False,
+        "firstCompletion": True,
+        "award": {
+            "awarded": 20,
+            "totalXp": 20,
+            "level": 1,
+            "leveledUp": False,
+            "streakDays": 1,
+            "streakExtended": True,
+            "badges": [],
+        },
+    }
+    assert replay == {
+        "progressPct": 33,
+        "completed": False,
+        "firstCompletion": False,
+        "award": None,  # a replay never pays twice
+    }
     assert AuditEntry.objects.filter(action="learning.lesson.completed").count() == 1
 
 

@@ -1,38 +1,19 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { ASSURANCE_ENV, type AssuranceEnvironment, AuthService } from '@assurance/auth';
+import { STOREFRONT_ENV, type StorefrontEnvironment } from '../environments/storefront-environment';
 import { AppComponent } from './app.component';
 
-const testEnv: AssuranceEnvironment = {
+const testEnv: StorefrontEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  contactEmail: 'hello@example.test',
 };
 
 describe('Storefront AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: AuthService,
-          useValue: {
-            isAuthenticated: signal(false),
-            principal: () => null,
-            signOutUser: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-      ],
+      providers: [provideRouter([]), { provide: STOREFRONT_ENV, useValue: testEnv }],
     }).compileComponents();
   });
 
@@ -44,10 +25,11 @@ describe('Storefront AppComponent', () => {
     expect(text).toContain('Catalog');
   });
 
-  it('shows Sign in link when not authenticated', () => {
+  it('links Request access to the configured contact address and has no sign-in', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Sign in');
+    const request = fixture.nativeElement.querySelector('a[href^="mailto:"]');
+    expect(request.getAttribute('href')).toContain('mailto:hello@example.test');
+    expect(fixture.nativeElement.textContent).not.toContain('Sign in');
   });
 });

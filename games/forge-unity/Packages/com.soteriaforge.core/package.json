@@ -1,0 +1,12 @@
+{
+  "name": "com.soteriaforge.core",
+  "version": "0.1.0",
+  "displayName": "Soteria Forge Core",
+  "description": "Connects a Unity simulator or game to a Soteria Forge lesson: reads the cmi5 launch, exchanges the fetch token and reports xAPI statements.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1",
+    "com.unity.modules.unitywebrequest": "1.0.0"
+  },
+  "author": { "name": "Soteria Forge" }
+}

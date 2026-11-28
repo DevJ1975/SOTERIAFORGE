@@ -1,10 +1,21 @@
 import { Routes } from '@angular/router';
 import { authGuard, tenantGuard, roleGuard } from '@assurance/auth';
-import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
+import {
+  ForbiddenComponent,
+  ForgotPasswordComponent,
+  LoginComponent,
+  SetPasswordComponent,
+} from '@assurance/auth-ui';
 
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: SetPasswordComponent },
+  {
+    path: 'accept-invite',
+    component: SetPasswordComponent,
+    data: { mode: 'invite' },
+  },
   { path: 'forbidden', component: ForbiddenComponent },
   {
     path: '',
@@ -53,9 +64,35 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./pages/knowledge.component').then((m) => m.KnowledgeComponent),
   },
   {
+    path: 'coach-review',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () =>
+      import('./pages/coach-review.component').then((m) => m.CoachReviewComponent),
+  },
+  {
+    path: 'standards',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/standards.component').then((m) => m.StandardsComponent),
+  },
+  {
     path: 'reports',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent),
+  },
+  {
+    path: 'analytics',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/analytics.component').then((m) => m.AnalyticsComponent),
+  },
+  {
+    path: 'cohorts',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/cohorts.component').then((m) => m.CohortsComponent),
+  },
+  {
+    path: 'badges',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/badges.component').then((m) => m.BadgesComponent),
   },
   { path: '**', redirectTo: '' },
 ];

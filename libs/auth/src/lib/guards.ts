@@ -7,26 +7,14 @@ import { ForgeSession } from './forge-api';
 import { TenantService } from './tenant.service';
 
 /**
- * The role and tenant guards decide on. Postgres (via `/api/me`) is the source
- * of truth when the app has an API: a refusal there denies even if stale
- * Firebase claims would allow. Only when the API is unavailable (none
- * configured, or down) do guards fall back to claims.
+ * The role and tenant guards decide on, from Postgres via `/api/me`. A refusal
+ * there, or no session, denies.
  *
- * Guards are UX; the API and security rules enforce access server-side.
+ * Guards are UX; the API enforces access server-side.
  */
 async function access(auth: AuthService, session: ForgeSession): Promise<CustomClaims | null> {
   const api = await session.settled();
-  if (api.kind === 'member') {
-    const { member, tenant } = api.me;
-    if (member.status !== 'active') return null;
-    return {
-      role: member.role,
-      tenantId: tenant?.id ?? member.tenantId ?? undefined,
-      entitlements: auth.claims()?.entitlements ?? [],
-    };
-  }
-  if (api.kind === 'denied') return null;
-  if (!auth.claims()) await auth.refreshClaims();
+  if (api.kind !== 'member' || api.me.member.status !== 'active') return null;
   return auth.claims();
 }
 
@@ -35,9 +23,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  if (!auth.claims()) {
-    await auth.refreshClaims();
-  }
+  await auth.ready();
   if (auth.isAuthenticated()) return true;
 
   return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
@@ -66,7 +52,7 @@ export const superadminGuard: CanActivateFn = async () => {
 
 /**
  * Ensures the user may act in the host-resolved tenant — the client-side half
- * of tenant isolation (the API and Firestore rules enforce the authoritative half).
+ * of tenant isolation (the API enforces the authoritative half).
  */
 export const tenantGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);

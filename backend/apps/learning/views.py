@@ -1,5 +1,6 @@
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import ValidationError
@@ -21,7 +22,14 @@ from .access import (
     require_enrollment,
     visible_courses,
 )
-from .models import Enrollment, Lesson, LessonProgress, Module, PublishStatus
+from .models import (
+    AU_CONTENT_TYPES,
+    Enrollment,
+    Lesson,
+    LessonProgress,
+    Module,
+    PublishStatus,
+)
 from .progress import complete_lesson, touch
 from .serializers import (
     AssignResultSerializer,
@@ -144,6 +152,24 @@ class ModuleDetailView(AuthorWrites, APIView):
         body.is_valid(raise_exception=True)
         return Response(ModuleSerializer(body.save()).data)
 
+    @extend_schema(responses={204: None})
+    def delete(self, request, module_id):
+        module = get_object_or_404(Module, tenant=acting_tenant(request), pk=module_id)
+        delete_authored(request, module, "learning.module.deleted")
+        return Response(status=204)
+
+
+def delete_authored(request, obj, action: str) -> None:
+    """Delete a module or lesson, unless learners already have progress on it."""
+    try:
+        with transaction.atomic():
+            record(action=action, actor=request.user, tenant=request.tenant, target=obj)
+            obj.delete()
+    except ProtectedError as exc:
+        raise Conflict(
+            "Learners have progress here, so it can't be deleted. Unpublish the course instead."
+        ) from exc
+
 
 def resolve_quiz(request, data: dict) -> dict:
     """Swap `quizId` for the acting tenant's quiz (404-like 400 if it isn't theirs)."""
@@ -199,9 +225,12 @@ def lesson_detail(lesson: Lesson, enrollment: Enrollment | None) -> dict:
         "assetRef": lesson.asset_ref,
         "externalUrl": lesson.external_url,
         "scormVersion": lesson.scorm_version,
+        "standardsManaged": hasattr(lesson, "binding"),
         "estimatedMinutes": lesson.estimated_minutes,
+        "xpReward": lesson.xp_reward,
         "frameworkTags": lesson.framework_tags,
         "keyPoints": lesson.key_points,
+        "transcript": lesson.transcript,
         "quiz": quiz,
         "progress": {
             "completedAt": progress.completed_at.isoformat() if progress.completed_at else None,
@@ -235,10 +264,23 @@ class LessonDetailView(AuthorWrites, APIView):
         lesson = get_lesson(request, lesson_id)
         body = LessonWriteSerializer(lesson, data=request.data, partial=True)
         body.is_valid(raise_exception=True)
+        if hasattr(lesson, "binding") and any(
+            field in body.validated_data
+            for field in {"content_type", "scorm_version", "quizId", "asset_ref", "external_url"}
+        ):
+            raise Conflict("Package lessons have immutable content. Attach a new package version.")
         for field, value in resolve_quiz(request, dict(body.validated_data)).items():
             setattr(lesson, field, value)
         lesson.save()
         return Response(lesson_detail(lesson, None))
+
+    @extend_schema(responses={204: None})
+    def delete(self, request, lesson_id):
+        lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Detach the package from this lesson before deleting it.")
+        delete_authored(request, lesson, "learning.lesson.deleted")
+        return Response(status=204)
 
 
 class EnrollView(APIView):
@@ -306,17 +348,33 @@ class MyEnrollmentsView(APIView):
     @extend_schema(responses=MyEnrollmentSerializer(many=True))
     def get(self, request):
         tenant = acting_tenant(request)
-        enrollments = Enrollment.objects.filter(
-            tenant=tenant, member=request.user, course__status=PublishStatus.PUBLISHED
-        ).select_related("course")
+        enrollments = list(
+            Enrollment.objects.filter(
+                tenant=tenant, member=request.user, course__status=PublishStatus.PUBLISHED
+            ).select_related("course")
+        )
+        # Three queries however many enrollments: enrollments, completed lessons, lessons.
+        done: set = set(
+            LessonProgress.objects.filter(
+                enrollment__in=enrollments, completed_at__isnull=False
+            ).values_list("enrollment_id", "lesson_id")
+        )
+        lessons_by_course: dict = {}
+        for lsn in (
+            Lesson.objects.filter(module__course__in=[e.course_id for e in enrollments])
+            .select_related("module")
+            .order_by("module__order", "module__created_at", "order", "created_at")
+        ):
+            lessons_by_course.setdefault(lsn.module.course_id, []).append(lsn)
         result = []
         for enrollment in enrollments:
-            done = completed_lesson_ids(enrollment)
-            lessons = Lesson.objects.filter(module__course=enrollment.course).order_by(
-                "module__order", "module__created_at", "order", "created_at"
-            )
             next_lesson = next(
-                (lsn for lsn in lessons.select_related("module") if lsn.pk not in done), None
+                (
+                    lsn
+                    for lsn in lessons_by_course.get(enrollment.course_id, [])
+                    if (enrollment.pk, lsn.pk) not in done
+                ),
+                None,
             )
             result.append(
                 {
@@ -345,6 +403,11 @@ class LessonCompleteView(APIView):
     @extend_schema(request=CompleteSerializer, responses=CompletionSerializer)
     def post(self, request, lesson_id):
         lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Complete this SCORM lesson inside its player.")
+        if lesson.content_type in AU_CONTENT_TYPES:
+            # Only the statements the content sends can complete it (apps/standards/cmi5.py).
+            raise Conflict("Complete this lesson inside its player.")
         if lesson.quiz_id is not None:
             raise Conflict("Finish this lesson's quiz to complete it.")
         enrollment = require_enrollment(request, lesson.module.course)
@@ -360,6 +423,8 @@ class LessonRuntimeView(APIView):
     @extend_schema(request=RuntimeSerializer, responses={204: None})
     def put(self, request, lesson_id):
         lesson = get_lesson(request, lesson_id)
+        if hasattr(lesson, "binding"):
+            raise Conflict("Save this SCORM lesson through its active launch.")
         enrollment = require_enrollment(request, lesson.module.course)
         body = RuntimeSerializer(data=request.data)
         body.is_valid(raise_exception=True)

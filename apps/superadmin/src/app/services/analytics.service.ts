@@ -1,5 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Functions, httpsCallable } from '@angular/fire/functions';
+import { ASSURANCE_ENV, forgeApiUrl } from '@assurance/auth';
+import { firstValueFrom } from 'rxjs';
 
 export interface TenantAnalyticsRow {
   tenantId: string;
@@ -24,11 +26,13 @@ export interface PlatformAnalytics {
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
-  private readonly fns = inject(Functions);
+  private readonly http = inject(HttpClient);
+  private readonly base = inject(ASSURANCE_ENV).apiBaseUrl;
 
   load(): Promise<PlatformAnalytics> {
-    return httpsCallable<void, PlatformAnalytics>(this.fns, 'platformAnalytics')().then(
-      (r) => r.data,
+    if (!this.base) return Promise.reject(new Error('The Forge API is not configured.'));
+    return firstValueFrom(
+      this.http.get<PlatformAnalytics>(forgeApiUrl(this.base, '/api/platform/analytics')),
     );
   }
 }

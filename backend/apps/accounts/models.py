@@ -1,7 +1,9 @@
 import uuid
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from apps.tenants.models import Tenant
 
@@ -16,15 +18,18 @@ class Role(models.TextChoices):
     B2C_CUSTOMER = "b2c_customer"
 
 
+# Roles staff may give; superadmin is granted only by `manage.py grant_superadmin`.
+ASSIGNABLE_ROLES = [r for r in Role.values if r != Role.SUPERADMIN]
+
+
 AUTHORING_ROLES = frozenset({Role.SUPERADMIN, Role.TENANT_ADMIN, Role.INSTRUCTOR})
 
 
 class Member(models.Model):
-    """A Firebase identity's membership in one tenant, and its role there.
+    """A person's membership in one tenant, and their role there.
 
-    Postgres is the source of truth for roles (plan §2); Firebase only proves who
-    the user is. Superadmins belong to no tenant and sign in to the project-level
-    Firebase pool.
+    Postgres is the source of truth for roles (plan §2). Members sign in with an
+    email and password that Django verifies (see `auth_views`). Superadmins belong to no tenant.
     """
 
     class Status(models.TextChoices):
@@ -36,8 +41,13 @@ class Member(models.Model):
     tenant = models.ForeignKey(
         Tenant, on_delete=models.PROTECT, null=True, blank=True, related_name="members"
     )
-    firebase_uid = models.CharField(max_length=128)
     email = models.EmailField()
+    # Django password hash. Empty means no password yet (invited).
+    password = models.CharField(max_length=128, blank=True, default="")
+    # Consecutive wrong passwords; kept in Postgres because serverless instances
+    # can't share an in-memory throttle.
+    failed_logins = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
     display_name = models.CharField(max_length=200, blank=True, default="")
     role = models.CharField(max_length=20, choices=Role, default=Role.LEARNER)
     status = models.CharField(max_length=20, choices=Status, default=Status.ACTIVE)
@@ -47,13 +57,17 @@ class Member(models.Model):
     class Meta:
         ordering = ["display_name", "email"]
         constraints = [
+            # One account per email per tenant (and one platform-level per email).
             models.UniqueConstraint(
-                fields=["tenant", "firebase_uid"], name="member_unique_per_tenant"
+                Lower("email"),
+                "tenant",
+                condition=Q(tenant__isnull=False),
+                name="member_email_unique_per_tenant",
             ),
             models.UniqueConstraint(
-                fields=["firebase_uid"],
+                Lower("email"),
                 condition=Q(tenant__isnull=True),
-                name="superadmin_unique_uid",
+                name="superadmin_email_unique",
             ),
             # Superadmins have no tenant; every other role has exactly one.
             models.CheckConstraint(
@@ -65,6 +79,16 @@ class Member(models.Model):
 
     def __str__(self) -> str:
         return f"{self.email} ({self.role}@{self.tenant_id or 'platform'})"
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    def set_password(self, raw: str) -> None:
+        self.password = make_password(raw)
+
+    def check_password(self, raw: str) -> bool:
+        return bool(self.password) and check_password(raw, self.password)
 
     # DRF calls these on request.user.
     @property
@@ -82,3 +106,40 @@ class Member(models.Model):
     @property
     def can_author(self) -> bool:
         return self.role in AUTHORING_ROLES
+
+
+class RefreshToken(models.Model):
+    """One refresh token. Rotated on every use; reuse of a spent token revokes its family."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="refresh_tokens")
+    # All tokens descended from one sign-in share a family, so a stolen-and-replayed
+    # token can end the whole chain.
+    family = models.UUIDField(db_index=True)
+    token_hash = models.CharField(max_length=64, unique=True)  # sha256 of the secret
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"refresh {self.family} for {self.member_id}"
+
+
+class OneTimeToken(models.Model):
+    """Emailed single-use link: password reset, or an invited member setting a password."""
+
+    class Purpose(models.TextChoices):
+        RESET = "reset"
+        INVITE = "invite"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="one_time_tokens")
+    purpose = models.CharField(max_length=10, choices=Purpose)
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.purpose} link for {self.member_id}"

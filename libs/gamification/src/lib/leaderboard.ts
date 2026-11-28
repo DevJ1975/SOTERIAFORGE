@@ -7,10 +7,9 @@
  * highest XP they both receive rank 1, and the next member receives rank 3.
  *
  * ## Anti-cheat / authoritative data notice
- * Leaderboard documents in Firestore are **denormalized and server-written**.
- * Cloud Functions aggregate and write `LeaderboardEntry[]` atomically; the client
- * MUST NOT write leaderboard data directly. The `rankEntries` helper here is
- * intended only for local sorting of data already fetched from Firestore (e.g.
+ * Leaderboards are **computed and served by the Forge API**; the client MUST NOT
+ * write leaderboard data directly. The `rankEntries` helper here is
+ * intended only for local sorting of data already fetched from the API (e.g.
  * when paginating results that arrive out-of-order, or for preview UIs).
  *
  * No state; all functions are pure.

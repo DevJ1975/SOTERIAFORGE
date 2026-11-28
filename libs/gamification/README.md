@@ -80,11 +80,10 @@ rankEntries([
 //   ]
 ```
 
-> **Anti-cheat:** Leaderboard documents in Firestore are **denormalized and
-> server-written**. Cloud Functions aggregate and write `LeaderboardEntry[]`
-> atomically; the client MUST NOT write leaderboard data directly.
+> **Anti-cheat:** Leaderboards are **computed and served by the Forge API**; the
+> client MUST NOT write leaderboard data directly.
 > `rankEntries` is a read-only sorting helper for data already fetched from
-> Firestore (e.g. paginated results arriving out of order, or preview UIs).
+> the API (e.g. paginated results arriving out of order, or preview UIs).
 
 ---
 
@@ -109,12 +108,12 @@ export class MyComponent {
 > but it is NEVER the authoritative source of truth.
 >
 > All XP-granting events (course completions, quiz passes, etc.) are validated
-> **server-side** by Cloud Functions before any Firestore writes occur:
+> **server-side** by the Forge API before anything is stored:
 >
 > - The server verifies the event source and integrity.
 > - Rate limiting and duplicate-event detection are applied server-side.
 > - The server writes the canonical `xp`, `level`, and `streakDays` values to
->   Firestore.
+>   the database.
 >
 > On the next data sync, authoritative server values automatically overwrite the
 > optimistic state. The client MUST NOT treat its local XP total as authoritative.

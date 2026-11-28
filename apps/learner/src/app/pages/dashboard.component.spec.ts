@@ -6,37 +6,13 @@ import {
   AuthService,
   TenantService,
 } from '@assurance/auth';
-import { MemberRepository } from '@assurance/data-access';
-import { LearningApi } from '@assurance/lms-core';
+import { GamificationApi, LearningApi } from '@assurance/lms-core';
 import { DashboardComponent } from './dashboard.component';
-import type { Member } from '@assurance/shared';
 
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
-};
-
-const mockMember: Member = {
-  uid: 'user-1',
-  tenantId: 'tenant-1',
-  role: 'learner',
-  status: 'active',
-  email: 'alice@example.com',
-  displayName: 'Alice Ortega',
-  xp: 350,
-  level: 2,
-  streakDays: 7,
-  lastActiveAt: new Date().toISOString(),
-  earnedBadgeIds: ['recruit'],
-  createdAt: '2024-01-01T00:00:00.000Z',
+  apiBaseUrl: '',
 };
 
 const mockAuthService = {
@@ -52,11 +28,12 @@ const mockTenantService = {
   tenantId: () => 'tenant-1',
 };
 
-const mockMemberRepository = {
-  getById: jest.fn().mockResolvedValue(mockMember),
-};
-
 const mockApi = { myEnrollments: jest.fn().mockResolvedValue([]) };
+// An async throw (not Promise.reject) so the rejection is handled where it is created.
+const offline = async () => {
+  throw new Error('offline');
+};
+const mockGamification = { progress: jest.fn(offline), badges: jest.fn(offline) };
 
 describe('DashboardComponent (Forge Home)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -65,6 +42,8 @@ describe('DashboardComponent (Forge Home)', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockApi.myEnrollments.mockResolvedValue([]);
+    mockGamification.progress.mockImplementation(offline);
+    mockGamification.badges.mockImplementation(offline);
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -73,8 +52,8 @@ describe('DashboardComponent (Forge Home)', () => {
         { provide: ASSURANCE_ENV, useValue: testEnv },
         { provide: AuthService, useValue: mockAuthService },
         { provide: TenantService, useValue: mockTenantService },
-        { provide: MemberRepository, useValue: mockMemberRepository },
         { provide: LearningApi, useValue: mockApi },
+        { provide: GamificationApi, useValue: mockGamification },
       ],
     }).compileComponents();
 
@@ -100,19 +79,59 @@ describe('DashboardComponent (Forge Home)', () => {
     );
   });
 
-  it('loads member from MemberRepository on init', async () => {
+  it('loads the score card from the progress API on init', async () => {
     await settle();
-    expect(mockMemberRepository.getById).toHaveBeenCalledWith('tenant-1', 'user-1');
+    expect(mockGamification.progress).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the member streak and a 14-day strip in the Pulse card', async () => {
+  it('shows the server streak and real activity days in the Pulse card', async () => {
+    // Active today, yesterday and four days ago: a 2-day streak, 3 active days.
+    const strip = Array.from({ length: 14 }, (_, i) => [13, 12, 9].includes(i));
+    mockGamification.progress.mockResolvedValue({
+      totalXp: 90,
+      todayXp: 20,
+      level: 1,
+      xpIntoLevel: 90,
+      xpToNext: 282,
+      streakDays: 2,
+      strip,
+      crew: null,
+    });
     await settle();
     const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
-    expect(pulse.querySelector('.hp__num')?.textContent).toBe('7');
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('2');
+    const days = pulse.querySelectorAll('sf-streak-strip .sf-streak__day');
+    expect(Array.from(days).map((d) => d.classList.contains('is-done'))).toEqual(strip);
+    expect(pulse.querySelector('sf-streak-strip')?.getAttribute('aria-label')).toBe(
+      'Active 3 of the last 14 days',
+    );
+  });
+
+  it('shows a broken streak as zero', async () => {
+    mockGamification.progress.mockResolvedValue({
+      totalXp: 0,
+      todayXp: 0,
+      level: 1,
+      xpIntoLevel: 0,
+      xpToNext: 282,
+      streakDays: 0,
+      strip: Array.from({ length: 14 }, () => false),
+      crew: null,
+    });
+    await settle();
+    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0');
+  });
+
+  it('shows a zero streak and an empty 14-day strip when the progress API is unavailable', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await settle(); // default mock rejects
+    const pulse = el.querySelector('assurance-home-pulse-card') as HTMLElement;
+    expect(pulse.querySelector('.hp__num')?.textContent).toBe('0');
     const strip = pulse.querySelector('sf-streak-strip') as HTMLElement;
     expect(strip.querySelectorAll('.sf-streak__day').length).toBe(14);
-    expect(strip.querySelectorAll('.sf-streak__day.is-done').length).toBe(7);
-    expect(strip.getAttribute('aria-label')).toBe('Active 7 of the last 14 days');
+    expect(strip.querySelectorAll('.sf-streak__day.is-done').length).toBe(0);
+    warn.mockRestore();
   });
 
   it('renders the Continue card with a progress ring and a Resume action', async () => {
@@ -213,16 +232,46 @@ describe('DashboardComponent (Forge Home)', () => {
     expect(words).toEqual(['Done:', 'Done:', 'Today:', 'Upcoming:', 'Upcoming:']);
   });
 
-  it('resolves mission badges from member.earnedBadgeIds, each with a state word', async () => {
+  it('shows the mission badges, each with a state word', async () => {
     await settle();
     const card = el.querySelector('assurance-home-badges-card') as HTMLElement;
-    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('1 of 8 earned');
+    // The badge request fails here: nothing is shown as earned.
+    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('0 of 8 earned');
     const metas = Array.from(card.querySelectorAll('.sf-badge__meta')).map((m) =>
       m.textContent?.trim(),
     );
-    expect(metas[0]).toBe('Earned');
+    expect(metas).not.toContain('Earned');
     expect(metas).toContain('In progress');
     expect(metas).toContain('Locked');
+  });
+
+  it('shows the badges the API says the member has earned', async () => {
+    const row = (key: string, state: string, kind = 'mission') => ({
+      id: key,
+      key,
+      name: key,
+      description: '',
+      icon: 'not-an-icon',
+      kind,
+      state,
+      progress: null,
+      earnedAt: null,
+      awardId: null,
+    });
+    mockGamification.badges.mockResolvedValue([
+      row('recruit', 'earned'),
+      row('ai', 'credential', 'credential'),
+      row('operator', 'progress'),
+      row('red', 'locked'),
+    ]);
+    await settle();
+    const card = el.querySelector('assurance-home-badges-card') as HTMLElement;
+    expect(card.querySelector('.hb__count')?.textContent?.trim()).toBe('2 of 4 earned');
+    const metas = Array.from(card.querySelectorAll('.sf-badge__meta')).map((m) =>
+      m.textContent?.trim(),
+    );
+    expect(metas).toContain('Earned');
+    expect(metas).toContain('In progress');
   });
 
   it('shows the AI coach sources and lets the learner defer the nudge', async () => {

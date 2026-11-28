@@ -165,8 +165,22 @@ describe('EngageComponent classroom controls', () => {
       await create();
       enterRoom();
       service.tiles.set([
-        { id: 'me', name: 'Class participant (you)', local: true },
-        { id: 'm1', name: 'Marcus', local: false },
+        {
+          id: 'me',
+          participantId: 'me',
+          name: 'Class participant (you)',
+          local: true,
+          staff: false,
+          screen: false,
+        },
+        {
+          id: 'm1',
+          participantId: 'm1',
+          name: 'Marcus',
+          local: false,
+          staff: false,
+          screen: false,
+        },
       ]);
       fixture.detectChanges();
       const tiles = Array.from(el().querySelectorAll('article.tile'));

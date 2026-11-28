@@ -1,8 +1,7 @@
 # Local course tutor
 
-The Angular tutor and admin Knowledge Base now call Django's `apps.coach`, not
-the legacy Firebase `askTutor` / `ingestKnowledge` functions. Firebase still
-verifies identity. The local pilot uses native macOS Ollama and Postgres
+The Angular tutor and admin Knowledge Base call Django's `apps.coach`, and the
+Django API verifies identity. The local pilot uses native macOS Ollama and Postgres
 pgvector; no model training, cloud inference, or Railway configuration is
 performed.
 
@@ -44,7 +43,7 @@ uv run --env-file .env python manage.py runserver
 ```
 
 Configure each Angular app's existing `apiBaseUrl` to the local Forge API.
-Keep `forgeApiInterceptor` enabled: it supplies Firebase identity and the
+Keep `forgeApiInterceptor` enabled: it supplies the access token and the
 acting tenant only to that configured API. A running Railway API cannot
 reach the Mac's localhost. Never enable this pilot on Railway expecting it
 to connect to the Mac.
@@ -81,19 +80,67 @@ not course text or chat.
 All routes require an active Forge member. Identity and tenant are determined
 server-side, not from caller-supplied user IDs.
 
-| Route                              | Access / behavior                               |
-| ---------------------------------- | ----------------------------------------------- |
-| `GET /api/coach/courses`           | Published courses permitted for this member     |
-| `GET /api/coach/sources`           | Staff-only source metadata in the acting tenant |
-| `PUT /api/coach/sources/<uuid>`    | Staff approval and atomic create/replace        |
-| `DELETE /api/coach/sources/<uuid>` | Staff removal                                   |
-| `POST /api/coach/ask`              | `{ "courseId": "<uuid>", "question": "..." }`   |
+| Route                                     | Access / behavior                               |
+| ----------------------------------------- | ----------------------------------------------- |
+| `GET /api/coach/courses`                  | Published courses permitted for this member     |
+| `GET /api/coach/sources`                  | Staff-only source metadata in the acting tenant |
+| `PUT /api/coach/sources/<uuid>`           | Staff approval and atomic create/replace        |
+| `DELETE /api/coach/sources/<uuid>`        | Staff removal                                   |
+| `POST /api/coach/ask`                     | `{ courseId, question, agent?, moduleId? }`     |
+| `POST /api/coach/ask/stream`              | The same answer as server-sent events           |
+| `POST /api/coach/exchanges/<uuid>/rating` | The asker's thumbs: `{ rating, note? }`         |
+| `GET /api/coach/review`                   | Staff: weekly summary and the review queue      |
+| `POST /api/coach/review/<uuid>`           | Staff: mark an item reviewed, with a note       |
 
 Ingestion accepts JSON `{ courseId, label, text, approved: true }` or multipart
 fields with `file` instead of `text`. Supply exactly one content input.
-Answers have `{ answer, abstained, citations }`; citations are built from
-retrieved database records and contain `sourceId`, `chunkId`, `label`,
-`courseId`, and nullable one-based `page`.
+Answers have `{ exchangeId, answer, abstained, citations, diagram, followUps }`;
+citations are built from retrieved database records and contain `sourceId`,
+`chunkId`, `label`, `courseId`, and nullable one-based `page`.
+
+## Ask Forge (Phase 4)
+
+**Module scope.** A source may be assigned to one module of its course
+(`moduleId` on ingestion). A question asked with `moduleId` retrieves the
+course-wide sources plus that module's; without it, course-wide sources only.
+The learner's lesson page passes the lesson's module.
+
+**Streaming.** `ask/stream` sends `status`, then `delta` events as the answer is
+written, then `done` with the full validated answer, or `error`. Streamed text is
+provisional: citations, abstention and access are checked when generation ends,
+and the client replaces what it showed with `done.answer` (or discards it on
+`error`). Refusals before generation (permission, throttle, tutor off or busy)
+are ordinary JSON errors. The inference slot is held until the stream ends; a
+client that disconnects frees it once the provider's current read returns.
+
+**Diagrams.** The model may propose one of four diagrams (`linear_flow`,
+`before_after`, `comparison`, `two_by_two`). `diagrams.py` checks it and writes
+the text alternative (`alt`) from the checked data; a malformed diagram is
+dropped and the written answer still stands. The client draws it as SVG with the
+text version available beside it.
+
+**Follow-ups.** Up to three suggested next questions; blanks and repeats of the
+question just asked are removed.
+
+**Guardrails.** `guardrails.py` refuses two kinds of question before any model
+call: requests for quiz, test or knowledge-check answers, and attempts to
+override the tutor's instructions. Both get a fixed reply and land in the review
+queue. These are pattern checks, not a content-safety classifier.
+
+**Log, thumbs and review.** Each exchange is stored for the thumbs and the staff
+review queue (`coach.Exchange`, under tenant RLS):
+
+- The learner is a keyed hash of the member, shown to staff as e.g.
+  "Learner 3f2a": the same person across questions, never a name.
+- Emails, phone numbers and SSN-shaped numbers are removed from the question
+  before it reaches the model or the log, and from thumbs-down notes.
+- The queue holds thumbs-down answers, abstentions and guardrail refusals from
+  the last 7 days (up to 90 on request), with counts of questions asked and the
+  share rated helpful. The Phase 4 exit gate (85% helpful in internal review)
+  reads from that summary.
+- Rows are deleted after `COACH_LOG_RETENTION_DAYS` (default 90) by
+  `manage.py purge_coach_log`, which has to be scheduled daily. Confirm the
+  retention period with whoever owns the FERPA policy before a real cohort uses it.
 
 Both source and chunk tables enforce tenant RLS in addition to query filters.
 Exact pgvector search filters tenant, permitted course, and embedding digest
@@ -107,7 +154,7 @@ enrollment records, or assessment tables.
   workers using a Postgres session advisory lock. Busy operations fail with
   503 instead of creating an unbounded queue. Use direct/session-pooled
   Postgres connections, not transaction pooling, for this pilot.
-- Generation: 8K context, up to 512 output tokens, non-thinking mode.
+- Generation: 8K context, up to 900 output tokens, non-thinking mode.
   Prompts are byte-bounded; lower-ranked passages are omitted to fit.
 - Embeddings: exactly 1,024 finite dimensions; provider truncation is disabled.
 - Questions: 1,000 characters and 1,500 UTF-8 bytes maximum.
@@ -130,8 +177,9 @@ enrollment records, or assessment tables.
 - Source text is treated as data in the prompt, not instructions. Prompt
   injection is not solved by a system prompt; curate and review approved
   material. Responses are rendered as plain text, never HTML.
-- Chat history is scoped to the mounted chat, cleared on course/account/tenant
-  changes, and not persisted by Django. There is no multi-turn memory yet.
+- Chat history in the browser is scoped to the mounted chat and cleared on
+  course/account/tenant changes. Django keeps each exchange for review (above)
+  but never feeds earlier turns back to the model: there is no multi-turn memory.
 - This tutor never awards grades, certifications, or permissions.
 
 ## OSHA-specific tutor
@@ -220,8 +268,8 @@ COACH_SMOKE=1 uv run pytest tests/test_coach_smoke.py --reuse-db
 The real smoke test ingests a generated text PDF, checks a page-cited answer,
 and verifies abstention on a question absent from the source. It also checks
 both specialist prompts with clearly labeled synthetic sources and verifies
-that another agent cannot retrieve them. Firebase
-verification alone is mocked; retrieval and inference are real.
+that another agent cannot retrieve them. Authentication
+alone is mocked; retrieval and inference are real.
 
 Before production, evaluate an instructor-reviewed corpus (~50 questions),
 tenant/course isolation, citation entailment, unsupported/adversarial questions,
@@ -231,6 +279,6 @@ memory pressure and swap under normal workload, not just model allocation.
 
 Production needs a separate secured inference host, distributed admission/rate
 limits, isolated parsing, monitoring, and a reviewed retention policy before
-persisting chat. Keep inference off the LiveKit media VPS. SSE streaming,
-diagram generation, ratings/review queues, OCR, transcription, regulatory
-versioning, and production deployment remain future work.
+persisting chat for real learners. Keep inference off the LiveKit media VPS.
+OCR, transcription, regulatory versioning, and production deployment remain
+future work.

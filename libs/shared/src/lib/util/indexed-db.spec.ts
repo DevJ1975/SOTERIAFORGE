@@ -3,9 +3,9 @@
  *
  * Two environments are exercised:
  *  1. No IndexedDB present (the default in this `node` jest project, and the
- *     real Cloud Functions / SSR runtime) — every method must be a safe no-op
+ *     SSR runtime) — every method must be a safe no-op
  *     returning empty/undefined and never throw. This is the Node-safety
- *     guarantee that lets `@assurance/shared` be imported by Cloud Functions.
+ *     guarantee that lets `@assurance/shared` be imported during SSR.
  *  2. A minimal in-memory `IDBFactory` fake installed on `globalThis` — proves
  *     real read/write/delete/clear semantics and that a fresh store instance
  *     (a "reload") sees previously persisted data.

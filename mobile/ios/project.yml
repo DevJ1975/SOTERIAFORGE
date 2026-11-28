@@ -5,25 +5,12 @@ options:
     iOS: '16.0'
   createIntermediateGroups: true
 
-packages:
-  Firebase:
-    url: https://github.com/firebase/firebase-ios-sdk
-    minVersion: '11.0.0'
-
 targets:
   SoteriaAssurance:
     type: application
     platform: iOS
     sources:
       - path: Sources
-    resources:
-      - path: GoogleService-Info.plist
-        optional: true
-    dependencies:
-      - package: Firebase
-        product: FirebaseAuth
-      - package: Firebase
-        product: FirebaseFirestore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.soteria.assurance

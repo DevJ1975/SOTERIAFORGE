@@ -7,6 +7,6 @@ from .models import Member
 class MemberAdmin(admin.ModelAdmin):
     list_display = ["email", "tenant", "role", "status"]
     list_filter = ["role", "status", "tenant"]
-    search_fields = ["email", "firebase_uid", "display_name"]
-    # Role changes go through the API so they are audited and mirrored to Firebase.
+    search_fields = ["email", "display_name"]
+    # Role changes go through the API so they are audited.
     readonly_fields = ["role"]

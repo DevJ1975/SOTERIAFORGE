@@ -27,7 +27,7 @@ final class LoginViewModel: ObservableObject {
                 let principal = try await auth.signIn(
                     email: email,
                     password: password,
-                    gcipTenantId: tenantId.isEmpty ? nil : tenantId
+                    tenantId: tenantId.isEmpty ? nil : tenantId
                 )
                 loading = false
                 onSignedIn(principal)

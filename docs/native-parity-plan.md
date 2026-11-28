@@ -1,5 +1,7 @@
 # Native Mobile Parity Plan (MO-12)
 
+> **Historical document. Written while the native clients used the Firebase SDKs. Firebase has since been removed: the Android and iOS data layers now call the Forge API (`mobile/README.md`). References below to Firestore persistence, rules, callables and GCIP describe the old stack; re-plan offline support against the API.**
+
 Executable implementation plan to bring the native **Android** (Kotlin/Compose) and
 **iOS** (SwiftUI) clients under `mobile/` to functional parity with the web learner
 PWA. This plan is written to be executed in the dedicated mobile toolchain

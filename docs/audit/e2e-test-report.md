@@ -1,5 +1,7 @@
 # E2E Test & Feature-Readiness Audit
 
+> **Historical document. A dated snapshot (2026-06-20) of the former Firebase-based stack. The Firebase, Firestore and Cloud Functions it describes have been removed; findings are kept for the record, not as current instructions.**
+
 End-to-end audit of the Soteria Assurance LMS as of branch
 `claude/hopeful-cerf-460pp1` (audit date 2026-06-20). This report covers (1) the
 automated suite that was actually executed with real pass/fail results, and (2) a

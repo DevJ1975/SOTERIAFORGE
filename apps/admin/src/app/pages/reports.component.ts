@@ -5,31 +5,23 @@ import {
   OnInit,
   inject,
   signal,
-  computed,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
-import { MemberRepository, EnrollmentRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
+import {
+  type ApiMember,
+  type EnrollmentReportRow,
+  MemberAdminService,
+  adminErrorMessage,
+  ReportsApi,
+} from '@assurance/tenant';
 import { toCsv } from '@assurance/shared';
-import type { Member, Enrollment } from '@assurance/shared';
-
-interface LearnerRow {
-  uid: string;
-  displayName: string;
-  email: string;
-  xp: number;
-  level: number;
-  streakDays: number;
-  enrollments: number;
-  completed: number;
-}
 
 @Component({
   selector: 'assurance-admin-reports',
   standalone: true,
-  imports: [ButtonModule, TableModule],
+  imports: [ButtonModule, TableModule, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="reports">
@@ -67,27 +59,27 @@ interface LearnerRow {
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>XP</th>
-              <th>Level</th>
-              <th>Streak (days)</th>
-              <th>Enrollments</th>
+              <th>Course</th>
+              <th>Progress</th>
               <th>Completed</th>
+              <th>Due</th>
+              <th>Last activity</th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-r>
             <tr>
-              <td>{{ r.displayName || '—' }}</td>
+              <td>{{ r.memberName || '—' }}</td>
               <td>{{ r.email }}</td>
-              <td>{{ r.xp }}</td>
-              <td>{{ r.level }}</td>
-              <td>{{ r.streakDays }}</td>
-              <td>{{ r.enrollments }}</td>
-              <td>{{ r.completed }}</td>
+              <td>{{ r.courseTitle }}</td>
+              <td>{{ r.progressPct }}%</td>
+              <td>{{ r.completedAt ? (r.completedAt | date: 'mediumDate') : '—' }}</td>
+              <td>{{ r.dueAt ? (r.dueAt | date: 'mediumDate') : '—' }}</td>
+              <td>{{ r.lastActivityAt ? (r.lastActivityAt | date: 'medium') : '—' }}</td>
             </tr>
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td colspan="7">No learner data found.</td>
+              <td colspan="7">No enrollment data found.</td>
             </tr>
           </ng-template>
         </p-table>
@@ -115,57 +107,32 @@ interface LearnerRow {
   ],
 })
 export class ReportsComponent implements OnInit {
-  private readonly memberRepo = inject(MemberRepository);
-  private readonly enrollmentRepo = inject(EnrollmentRepository);
-  private readonly tenantService = inject(TenantService);
+  private readonly memberAdmin = inject(MemberAdminService);
+  private readonly reportsApi = inject(ReportsApi);
   private readonly platformId = inject(PLATFORM_ID);
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  private readonly members = signal<Member[]>([]);
-  private readonly enrollments = signal<Enrollment[]>([]);
-
-  protected readonly rows = computed<LearnerRow[]>(() => {
-    const enrollsByUid = new Map<string, { total: number; completed: number }>();
-    for (const e of this.enrollments()) {
-      const prev = enrollsByUid.get(e.uid) ?? { total: 0, completed: 0 };
-      enrollsByUid.set(e.uid, {
-        total: prev.total + 1,
-        completed: prev.completed + (e.completed ? 1 : 0),
-      });
-    }
-    return this.members().map((m) => {
-      const stats = enrollsByUid.get(m.uid) ?? { total: 0, completed: 0 };
-      return {
-        uid: m.uid,
-        displayName: m.displayName ?? '',
-        email: m.email,
-        xp: m.xp,
-        level: m.level,
-        streakDays: m.streakDays,
-        enrollments: stats.total,
-        completed: stats.completed,
-      };
-    });
-  });
+  private readonly members = signal<ApiMember[]>([]);
+  protected readonly rows = signal<EnrollmentReportRow[]>([]);
 
   ngOnInit(): void {
     void this.load();
   }
 
   private async load(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.error.set(null);
     try {
-      const members = await this.memberRepo.listActive(tid);
-      const enrollments = await this.enrollmentRepo.listForTenant(tid);
+      const [members, rows] = await Promise.all([
+        this.memberAdmin.listMembers(),
+        this.reportsApi.enrollments(),
+      ]);
       this.members.set(members);
-      this.enrollments.set(enrollments);
+      this.rows.set(rows);
     } catch (err) {
-      this.error.set((err as Error).message ?? 'Failed to load report data');
+      this.error.set(adminErrorMessage(err, 'Failed to load report data'));
     } finally {
       this.loading.set(false);
     }
@@ -174,32 +141,41 @@ export class ReportsComponent implements OnInit {
   protected exportMembers(): void {
     const csv = toCsv(
       this.members().map((m) => ({
-        uid: m.uid,
-        displayName: m.displayName ?? '',
+        id: m.id,
+        displayName: m.displayName,
         email: m.email,
-        xp: m.xp,
-        level: m.level,
-        streakDays: m.streakDays,
         status: m.status,
         role: m.role,
       })),
-      ['uid', 'displayName', 'email', 'xp', 'level', 'streakDays', 'status', 'role'],
+      ['id', 'displayName', 'email', 'status', 'role'],
     );
     this.triggerDownload(csv, 'members.csv');
   }
 
   protected exportEnrollments(): void {
     const csv = toCsv(
-      this.enrollments().map((e) => ({
-        uid: e.uid,
-        courseId: e.courseId,
-        tenantId: e.tenantId,
-        progressPct: e.progressPct,
-        completed: e.completed,
-        score: e.score ?? '',
-        lastActivityAt: e.lastActivityAt ?? '',
+      this.rows().map((r) => ({
+        memberId: r.memberId,
+        memberName: r.memberName,
+        email: r.email,
+        courseId: r.courseId,
+        courseTitle: r.courseTitle,
+        progressPct: r.progressPct,
+        completedAt: r.completedAt ?? '',
+        dueAt: r.dueAt ?? '',
+        lastActivityAt: r.lastActivityAt ?? '',
       })),
-      ['uid', 'courseId', 'tenantId', 'progressPct', 'completed', 'score', 'lastActivityAt'],
+      [
+        'memberId',
+        'memberName',
+        'email',
+        'courseId',
+        'courseTitle',
+        'progressPct',
+        'completedAt',
+        'dueAt',
+        'lastActivityAt',
+      ],
     );
     this.triggerDownload(csv, 'enrollments.csv');
   }

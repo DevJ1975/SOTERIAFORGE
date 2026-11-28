@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .models import Exchange
 from .profiles import Agent
 
 
@@ -9,6 +10,8 @@ class IngestSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=60000, required=False)
     file = serializers.FileField(required=False)
     approved = serializers.BooleanField()
+    # A module of the course; omitted or null means the whole course.
+    moduleId = serializers.UUIDField(required=False, allow_null=True)
     agent = serializers.ChoiceField(choices=Agent.choices, default=Agent.GENERAL)
     referenceUrl = serializers.URLField(max_length=2048, allow_blank=True, default="")
     edition = serializers.CharField(max_length=200, allow_blank=True, default="")
@@ -31,6 +34,8 @@ class QuestionSerializer(serializers.Serializer):
     courseId = serializers.UUIDField()
     question = serializers.CharField(max_length=1000)
     agent = serializers.ChoiceField(choices=Agent.choices, default=Agent.GENERAL)
+    # The module the learner is studying: adds that module's sources to the course's.
+    moduleId = serializers.UUIDField(required=False, allow_null=True)
 
     def validate_question(self, value):
         if len(value.encode()) > 1500:
@@ -46,6 +51,7 @@ class CoachCourseSerializer(serializers.Serializer):
 class SourceSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     courseId = serializers.UUIDField()
+    moduleId = serializers.UUIDField(allow_null=True)
     title = serializers.CharField()
     chunkCount = serializers.IntegerField()
     updatedAt = serializers.DateTimeField()
@@ -84,6 +90,59 @@ class CitationSerializer(serializers.Serializer):
 
 
 class AnswerSerializer(serializers.Serializer):
+    exchangeId = serializers.UUIDField(allow_null=True)
     answer = serializers.CharField()
     abstained = serializers.BooleanField()
     citations = CitationSerializer(many=True)
+    # See diagrams.py for the four shapes; always carries `type`, `title` and `alt`.
+    diagram = serializers.DictField(allow_null=True)
+    followUps = serializers.ListField(child=serializers.CharField())
+
+
+class RatingSerializer(serializers.Serializer):
+    rating = serializers.ChoiceField(choices=Exchange.Rating.choices, allow_null=True)
+    note = serializers.CharField(max_length=500, allow_blank=True, default="")
+
+
+class ReviewUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Exchange.ReviewStatus.choices)
+    note = serializers.CharField(max_length=1000, allow_blank=True, default="")
+
+
+class ReviewCitationSerializer(serializers.Serializer):
+    label = serializers.CharField()
+
+
+class ReviewItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    createdAt = serializers.DateTimeField()
+    courseId = serializers.UUIDField()
+    courseTitle = serializers.CharField()
+    moduleId = serializers.UUIDField(allow_null=True)
+    agent = serializers.ChoiceField(choices=Agent.choices)
+    learner = serializers.CharField()
+    question = serializers.CharField()
+    answer = serializers.CharField()
+    abstained = serializers.BooleanField()
+    blocked = serializers.BooleanField()
+    rating = serializers.ChoiceField(choices=Exchange.Rating.choices, allow_null=True)
+    ratingNote = serializers.CharField(allow_blank=True)
+    citations = ReviewCitationSerializer(many=True)
+    reason = serializers.ChoiceField(choices=["thumbs_down", "abstained", "blocked"])
+    status = serializers.ChoiceField(choices=Exchange.ReviewStatus.choices)
+    reviewNote = serializers.CharField(allow_blank=True)
+    diagram = serializers.DictField(allow_null=True)
+
+
+class ReviewSummarySerializer(serializers.Serializer):
+    days = serializers.IntegerField()
+    asked = serializers.IntegerField()
+    helpful = serializers.IntegerField()
+    unhelpful = serializers.IntegerField()
+    abstained = serializers.IntegerField()
+    helpfulRate = serializers.FloatField(allow_null=True)
+
+
+class ReviewQueueSerializer(serializers.Serializer):
+    summary = ReviewSummarySerializer()
+    items = ReviewItemSerializer(many=True)

@@ -5,9 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
-import { QuizRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
-import type { Quiz } from '@assurance/shared';
+import { type ApiQuiz, AuthoringApi, authoringErrorMessage } from '@assurance/lms-core';
 
 @Component({
   selector: 'assurance-admin-quizzes',
@@ -128,10 +126,9 @@ import type { Quiz } from '@assurance/shared';
   ],
 })
 export class QuizzesComponent implements OnInit {
-  private readonly quizRepo = inject(QuizRepository);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
 
-  protected readonly quizzes = signal<Quiz[]>([]);
+  protected readonly quizzes = signal<ApiQuiz[]>([]);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly creating = signal(false);
@@ -145,43 +142,32 @@ export class QuizzesComponent implements OnInit {
   }
 
   private async loadQuizzes(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const list = await this.quizRepo.list(tid);
-      this.quizzes.set(list);
+      this.quizzes.set(await this.api.quizzes());
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load quizzes');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load quizzes'));
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async createQuiz(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid || !this.newTitle.trim()) return;
+    if (!this.newTitle.trim()) return;
     this.creating.set(true);
     this.createError.set(null);
     try {
-      const now = new Date().toISOString();
-      const newQuiz: Quiz = {
-        id: crypto.randomUUID(),
-        tenantId: tid,
+      await this.api.createQuiz({
         title: this.newTitle.trim(),
         questions: [],
         passThreshold: this.newPassThreshold ?? 70,
-        randomize: false,
-        scoring: 'percent',
-        createdAt: now,
-      };
-      await this.quizRepo.set(tid, newQuiz);
+      });
       this.newTitle = '';
       this.newPassThreshold = 70;
       await this.loadQuizzes();
     } catch (err) {
-      this.createError.set((err as Error).message ?? 'Failed to create quiz');
+      this.createError.set(authoringErrorMessage(err, 'Failed to create quiz'));
     } finally {
       this.creating.set(false);
     }

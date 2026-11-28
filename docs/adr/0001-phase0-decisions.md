@@ -1,6 +1,6 @@
 # ADR 0001 — Phase 0 foundational decisions
 
-- **Status:** Accepted
+- **Status:** Accepted; decision 1 (GCIP) and the Firebase/GCP hosting split are superseded by [the platform plan](../forge-platform-plan.md). Firebase has been removed; Django is the only backend.
 - **Date:** 2026-05-29
 - **Deciders:** Jay (product owner), platform architect
 

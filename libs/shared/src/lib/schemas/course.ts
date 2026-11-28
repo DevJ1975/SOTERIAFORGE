@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { CONTENT_TYPES, PUBLISH_STATUSES } from '../constants';
 import { auditable, count, docId, storageRef, tenantId, uid } from './primitives';
 
-/** /tenants/{tenantId}/courses/{courseId} */
+/**
+ * @deprecated Firestore-era document (/tenants/{tenantId}/courses/{courseId}). The API
+ * model is `apiCourse` in ./learning.ts.
+ */
 export const course = auditable.extend({
   id: docId,
   tenantId,
@@ -17,7 +20,7 @@ export const course = auditable.extend({
   sourceLibraryId: docId.optional(),
   /**
    * Author opt-in (MO-07): when true, learners may download this course's
-   * cacheable content (uploaded/same-origin media, Firebase Storage assets) for
+   * cacheable content (uploaded/same-origin media) for
    * offline use. Defaults to false so existing course docs validate unchanged.
    * Non-cacheable modules (YouTube/Vimeo/iframe) are surfaced as "requires
    * connection" in the learner UI rather than blocking the opt-in.
@@ -26,7 +29,10 @@ export const course = auditable.extend({
 });
 export type Course = z.infer<typeof course>;
 
-/** /tenants/{tenantId}/courses/{courseId}/modules/{moduleId} */
+/**
+ * @deprecated Firestore-era "module" (one content item), now a lesson: use `apiLesson` in
+ * ./learning.ts. Still read by the unwired offline `DownloadService` (libs/player).
+ */
 export const module = auditable.extend({
   id: docId,
   courseId: docId,
@@ -61,7 +67,9 @@ export const module = auditable.extend({
 });
 export type Module = z.infer<typeof module>;
 
-/** /tenants/{tenantId}/courses/{courseId}/enrollments/{uid} */
+/**
+ * @deprecated Firestore-era document. The API model is `apiEnrollment` in ./learning.ts.
+ */
 export const enrollment = auditable.extend({
   uid,
   courseId: docId,

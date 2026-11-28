@@ -11,10 +11,10 @@ import { updateStreak } from './streaks';
  * It MUST NOT be used as the authoritative source for XP grants.
  *
  * All XP-granting events (course completions, quiz passes, etc.) are validated
- * **server-side** by Cloud Functions before any Firestore writes occur. The server:
+ * **server-side** by the Forge API before anything is stored. The server:
  *   - Verifies the event source and its integrity.
  *   - Applies rate limiting and duplicate-event detection.
- *   - Writes the canonical `xp`, `level`, and `streakDays` values to Firestore.
+ *   - Writes the canonical `xp`, `level`, and `streakDays` values to the database.
  *
  * The client uses this service only to show a responsive UI before the server
  * confirms. On the next data sync the authoritative server values overwrite the

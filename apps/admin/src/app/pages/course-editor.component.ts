@@ -12,42 +12,20 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
-import { SelectModule } from 'primeng/select';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { CheckboxModule } from 'primeng/checkbox';
-import { CourseAuthoringService, AssignmentService } from '@assurance/lms-core';
 import {
-  CourseRepository,
-  GameRepository,
-  MemberRepository,
-  ModuleRepository,
-  QuizRepository,
-} from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
-import {
-  CONTENT_TYPES,
-  type ContentType,
-  type Course,
-  type Member,
-  type Module,
-} from '@assurance/shared';
-import type { Game, Quiz } from '@assurance/shared';
-
-interface QuizOption {
-  label: string;
-  value: string;
-}
-
-interface GameOption {
-  label: string;
-  value: string;
-}
-
-interface MemberOption {
-  label: string;
-  value: string;
-}
+  type ApiCourseOutline,
+  type ApiLesson,
+  type ApiLessonSummary,
+  type ApiModuleOutline,
+  AuthoringApi,
+  type LessonInput,
+  type LessonUpdate,
+  authoringErrorMessage,
+} from '@assurance/lms-core';
+import { MemberAdminService } from '@assurance/tenant';
+import { LessonFormComponent, type PickerOption } from './lesson-form.component';
 
 @Component({
   selector: 'assurance-admin-course-editor',
@@ -57,10 +35,9 @@ interface MemberOption {
     RouterLink,
     ButtonModule,
     InputTextModule,
-    TableModule,
-    SelectModule,
     MultiSelectModule,
     CheckboxModule,
+    LessonFormComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -79,6 +56,17 @@ interface MemberOption {
         @if (course()!.description) {
           <p>{{ course()!.description }}</p>
         }
+        <div class="course-editor__publish">
+          <p-button
+            [label]="course()!.status === 'published' ? 'Unpublish' : 'Publish'"
+            [severity]="course()!.status === 'published' ? 'secondary' : 'success'"
+            [loading]="publishing()"
+            (onClick)="togglePublish()"
+          />
+          @if (publishError()) {
+            <p class="course-editor__error">{{ publishError() }}</p>
+          }
+        </div>
 
         <!-- Offline availability -->
         <div class="course-editor__offline">
@@ -94,8 +82,8 @@ interface MemberOption {
             Available offline (allow learners to download)
           </label>
           <p class="course-editor__hint">
-            Learners can download cacheable content (uploaded/Storage media) for offline use.
-            YouTube/Vimeo modules still require a connection.
+            Learners can download cacheable content (uploaded media) for offline use. YouTube/Vimeo
+            lessons still require a connection.
           </p>
           @if (saveOfflineError()) {
             <p class="course-editor__error">{{ saveOfflineError() }}</p>
@@ -115,111 +103,177 @@ interface MemberOption {
               [(ngModel)]="newModuleTitle"
               aria-label="Module title"
             />
-            <p-select
-              [options]="contentTypeOptions"
-              [(ngModel)]="newContentType"
-              placeholder="Content type"
-              aria-label="Content type"
-            />
-            @if (newContentType === 'quiz') {
-              <p-select
-                [options]="quizOptions()"
-                [(ngModel)]="newQuizRef"
-                placeholder="Select quiz"
-                aria-label="Select quiz"
-              />
-            } @else if (newContentType === 'game') {
-              <p-select
-                [options]="gameOptions()"
-                [(ngModel)]="newGameRef"
-                placeholder="Select game"
-                aria-label="Select game"
-              />
-            } @else {
-              <input
-                pInputText
-                type="text"
-                placeholder="Video URL or asset ref (optional)"
-                [(ngModel)]="newExternalUrl"
-                aria-label="Video URL or asset ref"
-              />
-            }
             <input
               pInputText
-              type="number"
-              min="0"
-              step="1"
-              placeholder="Est. minutes"
-              [(ngModel)]="newEstimatedMinutes"
-              aria-label="Estimated minutes to complete"
-              class="course-editor__minutes-input"
+              type="text"
+              placeholder="Label (optional, e.g. Week 1)"
+              [(ngModel)]="newModuleLabel"
+              aria-label="Module label"
             />
             <p-button
               label="Add Module"
               [loading]="addingModule()"
-              [disabled]="!newModuleTitle.trim() || !newContentType"
+              [disabled]="!newModuleTitle.trim()"
               (onClick)="addModule()"
             />
           </div>
-          @if (addModuleError()) {
-            <p class="course-editor__error">{{ addModuleError() }}</p>
-          }
         </div>
 
-        <!-- Modules List -->
+        @if (structureError()) {
+          <p class="course-editor__error">{{ structureError() }}</p>
+        }
+
+        <!-- Modules and lessons -->
         <h2>Modules</h2>
-        @if (modulesLoading()) {
-          <p>Loading modules…</p>
-        } @else if (modulesError()) {
-          <p class="course-editor__error">{{ modulesError() }}</p>
-        } @else {
-          <p-table
-            [value]="modules()"
-            [paginator]="modules().length > 10"
-            [rows]="10"
-            styleClass="p-datatable-sm"
-          >
-            <ng-template pTemplate="header">
-              <tr>
-                <th>#</th>
-                <th>Title</th>
-                <th>Type</th>
-                <th>URL / Asset</th>
-                <th>Est. min</th>
-              </tr>
-            </ng-template>
-            <ng-template pTemplate="body" let-m>
-              <tr>
-                <td>{{ m.order + 1 }}</td>
-                <td>{{ m.title }}</td>
-                <td>{{ m.contentType }}</td>
-                <td>{{ m.externalUrl ?? m.assetRef ?? '—' }}</td>
-                <td>{{ m.estimatedMinutes != null ? m.estimatedMinutes : '—' }}</td>
-              </tr>
-            </ng-template>
-            <ng-template pTemplate="emptymessage">
-              <tr>
-                <td colspan="5">No modules yet. Add your first module above.</td>
-              </tr>
-            </ng-template>
-          </p-table>
-          @if (totalEstimatedMinutes() > 0) {
-            <p class="course-editor__total-time">
-              Total estimated time: {{ totalEstimatedMinutes() }} min
-            </p>
-          }
+        @for (
+          m of course()!.modules;
+          track m.id;
+          let mi = $index;
+          let first = $first;
+          let last = $last
+        ) {
+          <div class="course-editor__module">
+            <div class="course-editor__module-header">
+              <h3>{{ m.title }}</h3>
+              @if (m.label) {
+                <span class="course-editor__label">{{ m.label }}</span>
+              }
+              <p-button
+                icon="pi pi-arrow-up"
+                severity="secondary"
+                size="small"
+                [text]="true"
+                [disabled]="first"
+                (onClick)="moveModule(mi, -1)"
+                aria-label="Move module up"
+              />
+              <p-button
+                icon="pi pi-arrow-down"
+                severity="secondary"
+                size="small"
+                [text]="true"
+                [disabled]="last"
+                (onClick)="moveModule(mi, 1)"
+                aria-label="Move module down"
+              />
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                size="small"
+                [text]="true"
+                (onClick)="deleteModule(m)"
+                aria-label="Delete module"
+              />
+            </div>
+
+            <ul class="course-editor__lessons">
+              @for (
+                l of m.lessons;
+                track l.id;
+                let li = $index;
+                let lfirst = $first;
+                let llast = $last
+              ) {
+                <li>
+                  <div class="course-editor__lesson">
+                    <span class="course-editor__lesson-title">{{ li + 1 }}. {{ l.title }}</span>
+                    <span class="course-editor__lesson-meta">
+                      {{ l.contentType }}
+                      @if (l.hasQuiz) {
+                        · quiz
+                      }
+                      @if (l.estimatedMinutes != null) {
+                        · {{ l.estimatedMinutes }} min
+                      }
+                    </span>
+                    <p-button
+                      icon="pi pi-arrow-up"
+                      severity="secondary"
+                      size="small"
+                      [text]="true"
+                      [disabled]="lfirst"
+                      (onClick)="moveLesson(m, li, -1)"
+                      aria-label="Move lesson up"
+                    />
+                    <p-button
+                      icon="pi pi-arrow-down"
+                      severity="secondary"
+                      size="small"
+                      [text]="true"
+                      [disabled]="llast"
+                      (onClick)="moveLesson(m, li, 1)"
+                      aria-label="Move lesson down"
+                    />
+                    <p-button
+                      label="Edit"
+                      severity="secondary"
+                      size="small"
+                      (onClick)="startEdit(l)"
+                    />
+                    <p-button
+                      icon="pi pi-trash"
+                      severity="danger"
+                      size="small"
+                      [text]="true"
+                      (onClick)="deleteLesson(l)"
+                      aria-label="Delete lesson"
+                    />
+                  </div>
+                  @if (editingLesson()?.id === l.id) {
+                    <assurance-admin-lesson-form
+                      [lesson]="editingLesson()"
+                      [quizOptions]="quizOptions()"
+                      [gameOptions]="gameOptions()"
+                      [saving]="savingLesson()"
+                      (saved)="saveEdit($event)"
+                      (cancelled)="editingLesson.set(null)"
+                    />
+                  }
+                </li>
+              } @empty {
+                <li class="course-editor__hint">No lessons yet.</li>
+              }
+            </ul>
+
+            @if (addingLessonFor() === m.id) {
+              <assurance-admin-lesson-form
+                [quizOptions]="quizOptions()"
+                [gameOptions]="gameOptions()"
+                [saving]="savingLesson()"
+                (saved)="saveNew(m, $event)"
+                (cancelled)="addingLessonFor.set(null)"
+              />
+            } @else {
+              <p-button
+                label="Add lesson"
+                severity="secondary"
+                size="small"
+                (onClick)="startAdd(m)"
+              />
+            }
+          </div>
+        } @empty {
+          <p>No modules yet. Add your first module above.</p>
+        }
+        @if (totalEstimatedMinutes() > 0) {
+          <p class="course-editor__total-time">
+            Total estimated time: {{ totalEstimatedMinutes() }} min
+          </p>
         }
 
         <!-- Assign to Learners -->
         <div class="course-editor__assign">
           <h2>Assign to Learners</h2>
+          @if (course()!.status !== 'published') {
+            <p class="course-editor__hint">Publish the course before assigning it.</p>
+          }
           @if (membersLoading()) {
             <p>Loading members…</p>
           } @else {
             <div class="course-editor__assign-form">
               <p-multiSelect
                 [options]="memberOptions()"
-                [(ngModel)]="selectedUids"
+                [(ngModel)]="selectedMemberIds"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Select learners"
@@ -239,7 +293,7 @@ interface MemberOption {
               <p-button
                 label="Assign"
                 [loading]="assigning()"
-                [disabled]="selectedUids.length === 0"
+                [disabled]="selectedMemberIds.length === 0 || course()!.status !== 'published'"
                 (onClick)="assign()"
               />
             </div>
@@ -271,6 +325,9 @@ interface MemberOption {
       .course-editor__nav a {
         color: inherit;
         text-decoration: underline;
+      }
+      .course-editor__publish {
+        margin-top: 0.5rem;
       }
       .course-editor__status {
         color: #6b7280;
@@ -311,13 +368,52 @@ interface MemberOption {
         align-items: flex-end;
         margin-top: 0.75rem;
       }
-      .course-editor__minutes-input {
-        width: 8rem;
-      }
       .course-editor__total-time {
         margin-top: 0.75rem;
         font-weight: 600;
         color: #374151;
+      }
+      .course-editor__module {
+        background: var(--assurance-color-surface, #fff);
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      .course-editor__module-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .course-editor__module-header h3 {
+        margin: 0;
+        margin-right: auto;
+      }
+      .course-editor__label {
+        color: #6b7280;
+        font-size: 0.8125rem;
+      }
+      .course-editor__lessons {
+        list-style: none;
+        margin: 0.75rem 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .course-editor__lesson {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .course-editor__lesson-title {
+        margin-right: auto;
+      }
+      .course-editor__lesson-meta {
+        color: #6b7280;
+        font-size: 0.8125rem;
       }
       .course-editor__error {
         color: #b00020;
@@ -364,20 +460,14 @@ export class CourseEditorComponent implements OnInit {
   /** Route param injected via withComponentInputBinding. */
   readonly id = input.required<string>();
 
-  private readonly courseRepo = inject(CourseRepository);
-  private readonly moduleRepo = inject(ModuleRepository);
-  private readonly quizRepo = inject(QuizRepository);
-  private readonly gameRepo = inject(GameRepository);
-  private readonly memberRepo = inject(MemberRepository);
-  private readonly authoringService = inject(CourseAuthoringService);
-  private readonly assignmentService = inject(AssignmentService);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
+  private readonly members = inject(MemberAdminService);
 
-  protected readonly contentTypeOptions = CONTENT_TYPES.map((t) => ({ label: t, value: t }));
-
-  protected readonly course = signal<Course | null>(null);
+  protected readonly course = signal<ApiCourseOutline | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
+  protected readonly publishing = signal(false);
+  protected readonly publishError = signal<string | null>(null);
 
   // Offline availability (MO-07)
   protected availableOffline = false;
@@ -385,32 +475,29 @@ export class CourseEditorComponent implements OnInit {
   protected readonly saveOfflineError = signal<string | null>(null);
   protected readonly offlineSaved = signal(false);
 
-  protected readonly modules = signal<Module[]>([]);
-  protected readonly modulesLoading = signal(false);
-  protected readonly modulesError = signal<string | null>(null);
-
-  /** Course-level total estimated time (MO-14): sum of module minutes. */
+  /** Course-level total estimated time (MO-14): sum of lesson minutes. */
   protected readonly totalEstimatedMinutes = computed(() =>
-    this.modules().reduce((sum, m) => sum + (m.estimatedMinutes ?? 0), 0),
+    (this.course()?.modules ?? [])
+      .flatMap((m) => m.lessons)
+      .reduce((sum, l) => sum + (l.estimatedMinutes ?? 0), 0),
   );
 
-  protected readonly quizOptions = signal<QuizOption[]>([]);
-  protected readonly gameOptions = signal<GameOption[]>([]);
+  protected readonly quizOptions = signal<PickerOption[]>([]);
+  protected readonly gameOptions = signal<PickerOption[]>([]);
 
   protected newModuleTitle = '';
-  protected newContentType: ContentType | null = null;
-  protected newExternalUrl = '';
-  protected newQuizRef = '';
-  protected newGameRef = '';
-  /** Optional author-estimated minutes for the new module (MO-14). */
-  protected newEstimatedMinutes: number | null = null;
+  protected newModuleLabel = '';
   protected readonly addingModule = signal(false);
-  protected readonly addModuleError = signal<string | null>(null);
+  protected readonly structureError = signal<string | null>(null);
+
+  protected readonly addingLessonFor = signal<string | null>(null);
+  protected readonly editingLesson = signal<ApiLesson | null>(null);
+  protected readonly savingLesson = signal(false);
 
   // Assignment state
-  protected readonly memberOptions = signal<MemberOption[]>([]);
+  protected readonly memberOptions = signal<PickerOption[]>([]);
   protected readonly membersLoading = signal(false);
-  protected selectedUids: string[] = [];
+  protected selectedMemberIds: string[] = [];
   protected assignDueDate = '';
   protected readonly assigning = signal(false);
   protected readonly assignError = signal<string | null>(null);
@@ -430,144 +517,218 @@ export class CourseEditorComponent implements OnInit {
   }
 
   private async loadCourse(courseId: string): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [c, quizList, gameList] = await Promise.all([
-        this.courseRepo.getById(tid, courseId),
-        this.quizRepo.list(tid),
-        this.gameRepo.list(tid),
-      ]);
+      const c = await this.api.course(courseId);
       this.course.set(c);
-      this.availableOffline = c?.availableOffline ?? false;
-      this.quizOptions.set((quizList as Quiz[]).map((q) => ({ label: q.title, value: q.id })));
-      this.gameOptions.set((gameList as Game[]).map((g) => ({ label: g.title, value: g.id })));
-      await Promise.all([this.loadModules(tid, courseId), this.loadMembers(tid)]);
+      this.availableOffline = c.availableOffline;
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load course');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load course'));
+      return;
     } finally {
       this.loading.set(false);
     }
+    // The pickers are conveniences: a failure leaves them empty instead of blocking the editor.
+    void this.loadPickers();
+    void this.loadMembers();
   }
 
-  private async loadModules(tenantId: string, courseId: string): Promise<void> {
-    this.modulesLoading.set(true);
-    this.modulesError.set(null);
-    try {
-      const list = await this.moduleRepo.listOrdered(tenantId, courseId);
-      this.modules.set(list);
-    } catch (err) {
-      this.modulesError.set((err as Error).message ?? 'Failed to load modules');
-    } finally {
-      this.modulesLoading.set(false);
-    }
+  private async loadPickers(): Promise<void> {
+    const [quizzes, games] = await Promise.all([
+      this.api.quizzes().catch(() => []),
+      this.api.games().catch(() => []),
+    ]);
+    this.quizOptions.set(quizzes.map((q) => ({ label: q.title, value: q.id })));
+    this.gameOptions.set(games.map((g) => ({ label: g.title, value: g.id })));
   }
 
-  private async loadMembers(tenantId: string): Promise<void> {
+  private async loadMembers(): Promise<void> {
     this.membersLoading.set(true);
     try {
-      const members: Member[] = await this.memberRepo.listActive(tenantId);
+      const list = await this.members.listMembers();
       this.memberOptions.set(
-        members.map((m) => ({
-          label: m.displayName ?? m.email,
-          value: m.uid,
-        })),
+        list
+          .filter((m) => m.status === 'active')
+          .map((m) => ({ label: m.displayName || m.email, value: m.id })),
       );
     } catch {
-      // Non-fatal: assignment section just shows empty list
+      // Non-fatal: assignment section just shows an empty list
       this.memberOptions.set([]);
     } finally {
       this.membersLoading.set(false);
     }
   }
 
-  protected async addModule(): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    const courseId = this.id();
-    if (!tid || !courseId || !this.newModuleTitle.trim() || !this.newContentType) return;
-    this.addingModule.set(true);
-    this.addModuleError.set(null);
+  /** Re-reads the outline after a structure change. */
+  private async refresh(): Promise<void> {
+    this.course.set(await this.api.course(this.id()));
+  }
+
+  /** Runs a structure change, then reloads; failures land in `structureError`. */
+  private async mutate(action: () => Promise<unknown>, fallback: string): Promise<boolean> {
+    this.structureError.set(null);
     try {
-      const isQuiz = this.newContentType === 'quiz';
-      const isGame = this.newContentType === 'game';
-      await this.authoringService.addModule({
-        tenantId: tid,
-        courseId,
-        title: this.newModuleTitle.trim(),
-        contentType: this.newContentType,
-        assetRef:
-          isQuiz && this.newQuizRef
-            ? this.newQuizRef
-            : isGame && this.newGameRef
-              ? this.newGameRef
-              : undefined,
-        externalUrl:
-          !isQuiz && !isGame && this.newExternalUrl.trim() ? this.newExternalUrl.trim() : undefined,
-        estimatedMinutes:
-          this.newEstimatedMinutes != null && this.newEstimatedMinutes >= 0
-            ? Math.floor(this.newEstimatedMinutes)
-            : undefined,
-      });
-      this.newModuleTitle = '';
-      this.newContentType = null;
-      this.newExternalUrl = '';
-      this.newQuizRef = '';
-      this.newGameRef = '';
-      this.newEstimatedMinutes = null;
-      await this.loadModules(tid, courseId);
+      await action();
+      await this.refresh();
+      return true;
     } catch (err) {
-      this.addModuleError.set((err as Error).message ?? 'Failed to add module');
-    } finally {
-      this.addingModule.set(false);
+      this.structureError.set(authoringErrorMessage(err, fallback));
+      return false;
     }
+  }
+
+  protected async togglePublish(): Promise<void> {
+    const current = this.course();
+    if (!current) return;
+    this.publishing.set(true);
+    this.publishError.set(null);
+    try {
+      const updated =
+        current.status === 'published'
+          ? await this.api.unpublish(current.id)
+          : await this.api.publish(current.id);
+      this.course.set({ ...current, status: updated.status });
+    } catch (err) {
+      this.publishError.set(authoringErrorMessage(err, 'Failed to change publish status'));
+    } finally {
+      this.publishing.set(false);
+    }
+  }
+
+  protected async addModule(): Promise<void> {
+    const current = this.course();
+    const title = this.newModuleTitle.trim();
+    if (!current || !title) return;
+    this.addingModule.set(true);
+    const done = await this.mutate(
+      () =>
+        this.api.addModule(current.id, {
+          title,
+          label: this.newModuleLabel.trim(),
+          order: current.modules.length,
+        }),
+      'Failed to add module',
+    );
+    if (done) {
+      this.newModuleTitle = '';
+      this.newModuleLabel = '';
+    }
+    this.addingModule.set(false);
+  }
+
+  protected async deleteModule(m: ApiModuleOutline): Promise<void> {
+    await this.mutate(() => this.api.deleteModule(m.id), 'Failed to delete module');
+  }
+
+  protected async moveModule(index: number, delta: -1 | 1): Promise<void> {
+    const ids = swap(
+      (this.course()?.modules ?? []).map((m) => m.id),
+      index,
+      index + delta,
+    );
+    if (ids) await this.mutate(() => this.api.reorderModules(ids), 'Failed to reorder modules');
+  }
+
+  protected startAdd(m: ApiModuleOutline): void {
+    this.editingLesson.set(null);
+    this.addingLessonFor.set(m.id);
+  }
+
+  protected async startEdit(l: ApiLessonSummary): Promise<void> {
+    this.addingLessonFor.set(null);
+    this.structureError.set(null);
+    try {
+      this.editingLesson.set(await this.api.lesson(l.id));
+    } catch (err) {
+      this.structureError.set(authoringErrorMessage(err, 'Failed to load lesson'));
+    }
+  }
+
+  protected async saveNew(m: ApiModuleOutline, update: LessonUpdate): Promise<void> {
+    this.savingLesson.set(true);
+    const done = await this.mutate(
+      () =>
+        this.api.addLesson(m.id, {
+          ...(update as LessonInput),
+          order: m.lessons.length,
+        }),
+      'Failed to add lesson',
+    );
+    if (done) this.addingLessonFor.set(null);
+    this.savingLesson.set(false);
+  }
+
+  protected async saveEdit(update: LessonUpdate): Promise<void> {
+    const lesson = this.editingLesson();
+    if (!lesson) return;
+    this.savingLesson.set(true);
+    const done = await this.mutate(
+      () => this.api.updateLesson(lesson.id, update),
+      'Failed to save lesson',
+    );
+    if (done) this.editingLesson.set(null);
+    this.savingLesson.set(false);
+  }
+
+  protected async deleteLesson(l: ApiLessonSummary): Promise<void> {
+    await this.mutate(() => this.api.deleteLesson(l.id), 'Failed to delete lesson');
+  }
+
+  protected async moveLesson(m: ApiModuleOutline, index: number, delta: -1 | 1): Promise<void> {
+    const ids = swap(
+      m.lessons.map((l) => l.id),
+      index,
+      index + delta,
+    );
+    if (ids) await this.mutate(() => this.api.reorderLessons(ids), 'Failed to reorder lessons');
   }
 
   /** Persist the `availableOffline` author opt-in (MO-07). */
   protected async saveOfflineSetting(): Promise<void> {
-    const tid = this.tenantService.tenantId();
     const current = this.course();
-    if (!tid || !current) return;
+    if (!current) return;
     this.savingOffline.set(true);
     this.saveOfflineError.set(null);
     this.offlineSaved.set(false);
     try {
-      const updated: Course = { ...current, availableOffline: this.availableOffline };
-      await this.courseRepo.set(tid, updated);
-      this.course.set(updated);
+      await this.api.updateCourse(current.id, { availableOffline: this.availableOffline });
+      this.course.set({ ...current, availableOffline: this.availableOffline });
       this.offlineSaved.set(true);
     } catch (err) {
       // Revert the toggle to the persisted value on failure.
-      this.availableOffline = current.availableOffline ?? false;
-      this.saveOfflineError.set((err as Error).message ?? 'Failed to save offline setting');
+      this.availableOffline = current.availableOffline;
+      this.saveOfflineError.set(authoringErrorMessage(err, 'Failed to save offline setting'));
     } finally {
       this.savingOffline.set(false);
     }
   }
 
   protected async assign(): Promise<void> {
-    const tid = this.tenantService.tenantId();
     const courseId = this.id();
-    if (!tid || !courseId || this.selectedUids.length === 0) return;
+    if (!courseId || this.selectedMemberIds.length === 0) return;
     this.assigning.set(true);
     this.assignError.set(null);
     this.assignResult.set(null);
     try {
       const dueAt = this.assignDueDate ? new Date(this.assignDueDate).toISOString() : undefined;
-      const result = await this.assignmentService.assign({
-        tenantId: tid,
-        courseId,
-        uids: this.selectedUids,
-        dueAt,
-      });
-      this.assignResult.set(result);
-      this.selectedUids = [];
+      this.assignResult.set(
+        await this.api.assign(courseId, { memberIds: this.selectedMemberIds, dueAt }),
+      );
+      this.selectedMemberIds = [];
       this.assignDueDate = '';
     } catch (err) {
-      this.assignError.set((err as Error).message ?? 'Failed to assign course');
+      this.assignError.set(authoringErrorMessage(err, 'Failed to assign course'));
     } finally {
       this.assigning.set(false);
     }
   }
+}
+
+/** The ids with positions `a` and `b` swapped, or null when `b` is off the end. */
+function swap(ids: string[], a: number, b: number): string[] | null {
+  if (b < 0 || b >= ids.length || a < 0 || a >= ids.length) return null;
+  const next = [...ids];
+  [next[a], next[b]] = [next[b], next[a]];
+  return next;
 }

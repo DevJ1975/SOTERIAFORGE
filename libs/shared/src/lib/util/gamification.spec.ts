@@ -1,10 +1,4 @@
-import {
-  STREAK_REMINDER_DECAY_DAYS,
-  levelFromXp,
-  nextStreak,
-  shouldSendStreakReminder,
-  xpForLevel,
-} from './gamification';
+import { levelFromXp, nextStreak, xpForLevel } from './gamification';
 
 describe('xpForLevel (canonical floored curve)', () => {
   it('is floor(100 * N^1.5) — the floor is load-bearing for client/server parity', () => {
@@ -73,74 +67,5 @@ describe('nextStreak', () => {
       streakDays: 1,
       incremented: true,
     });
-  });
-});
-
-describe('shouldSendStreakReminder (MO-11 selection + daily cap)', () => {
-  const NOW = '2026-06-20T18:00:00Z';
-
-  it('nudges the canonical at-risk member: active yesterday, live streak, not yet reminded', () => {
-    expect(
-      shouldSendStreakReminder({ streakDays: 5, lastActiveAt: '2026-06-19T20:00:00Z' }, NOW),
-    ).toBe(true);
-  });
-
-  it('does not nudge when there is no streak to protect (streakDays = 0)', () => {
-    expect(
-      shouldSendStreakReminder({ streakDays: 0, lastActiveAt: '2026-06-19T20:00:00Z' }, NOW),
-    ).toBe(false);
-  });
-
-  it('does not nudge a member who has already been active today (streak safe)', () => {
-    expect(
-      shouldSendStreakReminder({ streakDays: 5, lastActiveAt: '2026-06-20T08:00:00Z' }, NOW),
-    ).toBe(false);
-  });
-
-  it('does not nudge when lastActiveAt is missing', () => {
-    expect(shouldSendStreakReminder({ streakDays: 5 }, NOW)).toBe(false);
-  });
-
-  it('still nudges within the 7-day decay window but not beyond it', () => {
-    // 6 days inactive — inside the window.
-    expect(
-      shouldSendStreakReminder({ streakDays: 9, lastActiveAt: '2026-06-14T12:00:00Z' }, NOW),
-    ).toBe(true);
-    // Exactly 7 days inactive — boundary, still inside.
-    expect(
-      shouldSendStreakReminder({ streakDays: 9, lastActiveAt: '2026-06-13T12:00:00Z' }, NOW),
-    ).toBe(true);
-    // 8 days inactive — abandoned, stop nudging.
-    expect(
-      shouldSendStreakReminder({ streakDays: 9, lastActiveAt: '2026-06-12T12:00:00Z' }, NOW),
-    ).toBe(false);
-    // Sanity: the constant is the window we tested against.
-    expect(STREAK_REMINDER_DECAY_DAYS).toBe(7);
-  });
-
-  it('enforces the daily cap: skip when already reminded today (idempotent)', () => {
-    expect(
-      shouldSendStreakReminder(
-        {
-          streakDays: 5,
-          lastActiveAt: '2026-06-19T20:00:00Z',
-          lastStreakReminderAt: '2026-06-20T06:00:00Z',
-        },
-        NOW,
-      ),
-    ).toBe(false);
-  });
-
-  it('nudges again the next day after a prior reminder (cap is per-day)', () => {
-    expect(
-      shouldSendStreakReminder(
-        {
-          streakDays: 5,
-          lastActiveAt: '2026-06-19T20:00:00Z',
-          lastStreakReminderAt: '2026-06-19T18:00:00Z',
-        },
-        NOW,
-      ),
-    ).toBe(true);
   });
 });

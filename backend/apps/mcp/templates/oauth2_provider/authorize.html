@@ -1,0 +1,28 @@
+{% extends "mcp/base.html" %}
+{% block title %}Connect {{ application.name|default:"AI assistant" }} · Soteria Forge{% endblock %}
+{% block content %}
+  {% if not error %}
+    <h1>Connect {{ application.name|default:"this AI assistant" }}?</h1>
+    <p>It will act as <strong>{{ forge_member.email }}</strong>
+      ({{ forge_member.get_role_display }}{% if forge_tenant %} at {{ forge_tenant.name }}{% else %}, platform{% endif %}).
+      It can do what your role can do through Soteria Forge's AI tools, and every change is recorded in the audit log.</p>
+    <ul class="scopes">
+      {% for scope in scopes_descriptions %}<li>{{ scope }}</li>{% endfor %}
+      <li>It can't publish, unpublish or delete published courses.</li>
+    </ul>
+    <p class="muted">Only connect apps you started connecting yourself, just now.
+      Wrong account? <a href="{% url 'mcp-logout' %}?next={{ request.get_full_path|urlencode }}">Sign in as someone else</a>.</p>
+    <form id="authorizationForm" method="post">
+      {% csrf_token %}
+      {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
+      {% if form.errors or form.non_field_errors %}<div class="error" role="alert">{{ form.errors }}{{ form.non_field_errors }}</div>{% endif %}
+      <div class="row">
+        <button type="submit" class="secondary">Cancel</button>
+        <button type="submit" name="allow" value="Authorize">Connect</button>
+      </div>
+    </form>
+  {% else %}
+    <h1>Can't connect</h1>
+    <p class="error" role="alert">{{ error.description|default:error.error }}</p>
+  {% endif %}
+{% endblock %}

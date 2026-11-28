@@ -1,6 +1,6 @@
 # Soteria Assurance — iOS
 
-Native iOS client (Swift · SwiftUI · firebase-ios-sdk).
+Native iOS client (Swift · SwiftUI) for the Forge API.
 
 > **Requires macOS + Xcode.** This app cannot be built on Linux. The sources here
 > were authored in a Linux sandbox and have not been compiled — treat the first
@@ -11,41 +11,38 @@ Native iOS client (Swift · SwiftUI · firebase-ios-sdk).
 - Xcode 15+ (iOS 16 deployment target)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) to
   generate the `.xcodeproj` from `project.yml`
-- A Firebase project with **Identity Platform multi-tenancy** + Email/Password.
+- A reachable Forge API (Django on Railway, or `http://localhost:8000` locally) and a
+  member account on it. The API URL is `ForgeAPI.baseURL` in `Sources/Services/ForgeAPI.swift`.
 
 ## Setup
 
-1. In the Firebase console, register an iOS app with bundle id
-   `com.soteria.assurance` and download `GoogleService-Info.plist`.
-2. Place it at `ios/GoogleService-Info.plist` (gitignored — never commit it).
-   See `GoogleService-Info.plist.example` for the shape.
-3. Generate and open the project:
+1. Generate and open the project:
    ```bash
    cd ios
    xcodegen generate
    open SoteriaAssurance.xcodeproj
    ```
-   Xcode resolves the `firebase-ios-sdk` Swift Package on first open.
-4. Build & run on a simulator or device.
+2. Build & run on a simulator or device.
 
 > Prefer not to use XcodeGen? Create a new SwiftUI App target named
-> `SoteriaAssurance` (bundle id `com.soteria.assurance`), add the
-> `firebase-ios-sdk` package (products **FirebaseAuth**, **FirebaseFirestore**),
-> then add the files under `Sources/` and the plist.
+> `SoteriaAssurance` (bundle id `com.soteria.assurance`), then add the files under
+> `Sources/`. There are no package dependencies.
 
 ## Architecture
 
 ```
 Sources/
-  Models.swift                 Course · Module · Enrollment · Principal (mirror libs/shared)
-  Services/AuthService.swift   GCIP tenant sign-in + ID-token claims
-  Services/CourseService.swift tenant-scoped Firestore reads
+  Models.swift                 Course · Module · Lesson · Principal (Forge API wire shapes)
+  Services/ForgeAPI.swift      JSON over URLSession, in-memory tokens
+  Services/AuthService.swift   POST /api/auth/login, GET /api/me
+  Services/CourseService.swift GET /api/courses, GET /api/courses/{id}
   ViewModels/                  LoginViewModel · CoursesViewModel (@MainActor ObservableObject)
   Views/                       RootView · LoginView · CoursesView
-  SoteriaAssuranceApp.swift    @main + FirebaseApp.configure()
+  SoteriaAssuranceApp.swift    @main
 ```
 
-Sign-in sets `Auth.auth().tenantID` before authenticating, then reads
-`role` / `tenantId` custom claims from the refreshed ID token. All Firestore
-reads are rooted at `/tenants/{tenantId}/...` so server-side rules enforce
-isolation.
+Sign-in posts the organization (tenant) id, email and password to `/api/auth/login`
+(`client: "mobile"`, so the refresh token comes back in the body), then reads the
+member's role and tenant from `/api/me`. Every request carries the access token and
+`X-Forge-Tenant`; the API scopes data to the tenant with Postgres row-level security.
+A 401 triggers one refresh via `/api/auth/refresh`. Tokens live in memory only.

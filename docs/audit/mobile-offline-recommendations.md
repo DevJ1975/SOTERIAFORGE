@@ -1,5 +1,7 @@
 # Mobile-First & Offline — Prioritized Recommendations Backlog
 
+> **Historical document. Backlog derived from the former Firebase-based stack. Firestore persistence, callables and FCM items no longer apply; the Firebase code it cites has been removed.**
+
 A scoped, buildable backlog for making Soteria Assurance genuinely mobile-first
 and offline-capable. Derived from the readiness audit (`e2e-test-report.md`) and
 competitor benchmarking (`competitor-analysis.md`). Intended consumer: the Angular

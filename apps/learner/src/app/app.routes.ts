@@ -1,7 +1,14 @@
 import { Routes } from '@angular/router';
 import { authGuard, tenantGuard } from '@assurance/auth';
-import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
+import {
+  ForbiddenComponent,
+  ForgotPasswordComponent,
+  LoginComponent,
+  SetPasswordComponent,
+} from '@assurance/auth-ui';
 import type { SfCrumb } from '@assurance/ui';
+import { dispatchLaunchGuard } from './pages/dispatch/dispatch-launch';
+import type { LessonComponent } from './pages/lesson/lesson.component';
 
 /**
  * Route `data` keys read by the Forge shell in AppComponent:
@@ -22,6 +29,12 @@ const placeholder = () =>
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent, data: { sfShell: 'none' } },
   { path: 'forgot-password', component: ForgotPasswordComponent, data: { sfShell: 'none' } },
+  { path: 'reset-password', component: SetPasswordComponent, data: { sfShell: 'none' } },
+  {
+    path: 'accept-invite',
+    component: SetPasswordComponent,
+    data: { mode: 'invite', sfShell: 'none' },
+  },
   { path: 'forbidden', component: ForbiddenComponent, data: { sfShell: 'none' } },
   {
     path: '',
@@ -46,6 +59,7 @@ export const appRoutes: Routes = [
   {
     path: 'courses/:courseId/lessons/:lessonId',
     canActivate: [authGuard, tenantGuard],
+    canDeactivate: [(component: LessonComponent) => component.canLeave()],
     data: {
       crumbs: [{ label: 'Courses', link: '/courses' }, { label: 'Course' }, { label: 'Lesson' }],
     },
@@ -63,15 +77,8 @@ export const appRoutes: Routes = [
   {
     path: 'progress',
     canActivate: [authGuard, tenantGuard],
-    data: {
-      crumbs: crumb('Progress'),
-      title: 'My Progress',
-      description:
-        'XP, levels, badges and your crew standings. Leaderboards show crews only; your individual score stays private to you and your instructor.',
-      phase: 'Arrives in Phase 3',
-      icon: 'progress-star',
-    },
-    loadComponent: placeholder,
+    data: { crumbs: crumb('Progress') },
+    loadComponent: () => import('./pages/progress.component').then((m) => m.ProgressComponent),
   },
   {
     path: 'analytics',
@@ -97,20 +104,23 @@ export const appRoutes: Routes = [
     },
     loadComponent: placeholder,
   },
-  {
-    // Individual, tenant-wide ranking: kept reachable by URL but not linked from
-    // the Forge rail until it is reworked to crews only (SFG-SPC-FRG-011).
-    path: 'leaderboard',
-    canActivate: [authGuard, tenantGuard],
-    data: { crumbs: crumb('Leaderboard') },
-    loadComponent: () =>
-      import('./pages/leaderboard.component').then((m) => m.LeaderboardPageComponent),
-  },
+  // The leaderboard is crews-only and lives on My Progress (SFG-SPC-FRG-011); the old
+  // individual ranking is gone, so keep bookmarks and the bottom-nav link working.
+  { path: 'leaderboard', redirectTo: 'progress', pathMatch: 'full' },
   {
     path: 'tutor',
     canActivate: [authGuard, tenantGuard],
     data: { crumbs: crumb('Ask Forge') },
     loadComponent: () => import('./pages/tutor.component').then((m) => m.TutorPageComponent),
+  },
+  {
+    // A course opened from another LMS (SCORM or cmi5 export). The launch guard runs
+    // first so cmi5 launch parameters survive the redirect to sign in.
+    path: 'dispatch/:id',
+    canActivate: [dispatchLaunchGuard, authGuard, tenantGuard],
+    data: { sfShell: 'none' },
+    loadComponent: () =>
+      import('./pages/dispatch/dispatch.component').then((m) => m.DispatchComponent),
   },
   { path: '**', redirectTo: '' },
 ];

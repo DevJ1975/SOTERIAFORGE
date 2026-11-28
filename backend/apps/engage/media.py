@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import timedelta
 from urllib.parse import urlsplit
@@ -104,3 +105,85 @@ def join_credentials(classroom: Classroom, member: Member, *, can_screen_share: 
         "token": token,
         "canScreenShare": can_screen_share,
     }
+
+
+def _client() -> api.LiveKitAPI:
+    return api.LiveKitAPI(
+        settings.LIVEKIT_API_URL,
+        settings.LIVEKIT_API_KEY,
+        settings.LIVEKIT_API_SECRET,
+        timeout=ClientTimeout(total=5),
+    )
+
+
+TOPIC = "forge-engage"
+
+
+def notify(room_name: str, session_id, version: int, identities: list[str] | None = None) -> None:
+    """Tell clients in the room that the session state changed, so they refetch it.
+
+    Best effort: clients also poll, so a failed ping only delays an update. Nothing but
+    the session id and version travels over the media server.
+    """
+
+    async def send() -> None:
+        async with _client() as client:
+            await client.room.send_data(
+                api.SendDataRequest(
+                    room=room_name,
+                    data=json.dumps({"sessionId": str(session_id), "version": version}).encode(),
+                    kind=api.DataPacket.Kind.RELIABLE,
+                    topic=TOPIC,
+                    destination_identities=identities or [],
+                )
+            )
+
+    try:
+        check_configuration()
+        async_to_sync(send)()
+    except (api.TwirpError, ClientError, TimeoutError, MediaUnavailable):
+        logger.info("Engage state ping not delivered for session %s", session_id)
+
+
+def mute(room_name: str, identity: str) -> None:
+    """Mute a participant's microphone. They can unmute themselves again."""
+
+    async def run() -> None:
+        async with _client() as client:
+            who = api.RoomParticipantIdentity(room=room_name, identity=identity)
+            participant = await client.room.get_participant(who)
+            for track in participant.tracks:
+                if track.type == api.TrackType.AUDIO and not track.muted:
+                    await client.room.mute_published_track(
+                        api.MuteRoomTrackRequest(
+                            room=room_name, identity=identity, track_sid=track.sid, muted=True
+                        )
+                    )
+
+    _moderate(run)
+
+
+def remove(room_name: str, identity: str) -> None:
+    """Disconnect a participant from the room."""
+
+    async def run() -> None:
+        async with _client() as client:
+            await client.room.remove_participant(
+                api.RoomParticipantIdentity(room=room_name, identity=identity)
+            )
+
+    _moderate(run)
+
+
+def _moderate(run) -> None:
+    check_configuration()
+    try:
+        async_to_sync(run)()
+    except api.TwirpError as error:
+        if error.code == "not_found":
+            return  # already gone
+        logger.warning("LiveKit moderation call failed: %s", error.code)
+        raise MediaUnavailable() from None
+    except (ClientError, TimeoutError):
+        logger.warning("LiveKit moderation call failed")
+        raise MediaUnavailable() from None

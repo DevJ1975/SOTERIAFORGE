@@ -5,9 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
-import { GameRepository } from '@assurance/data-access';
-import { TenantService } from '@assurance/auth';
-import type { Game } from '@assurance/shared';
+import { type ApiGame, AuthoringApi, authoringErrorMessage } from '@assurance/lms-core';
 import {
   validateCardGameConfig,
   type CardGameConfig,
@@ -49,7 +47,7 @@ type GameKind = CardGameConfig['kind'];
           <input
             pInputText
             type="text"
-            placeholder="Rive asset ref (gs:// path)"
+            placeholder="Rive asset ref (asset:<id>)"
             [(ngModel)]="editRiveAssetRef"
             aria-label="Rive asset ref"
           />
@@ -408,10 +406,9 @@ export class GameEditorComponent {
   /** Route param injected via withComponentInputBinding. */
   readonly id = input.required<string>();
 
-  private readonly gameRepo = inject(GameRepository);
-  private readonly tenantService = inject(TenantService);
+  private readonly api = inject(AuthoringApi);
 
-  protected readonly game = signal<Game | null>(null);
+  protected readonly game = signal<ApiGame | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly saving = signal(false);
@@ -446,20 +443,16 @@ export class GameEditorComponent {
   }
 
   private async loadGame(gameId: string): Promise<void> {
-    const tid = this.tenantService.tenantId();
-    if (!tid) return;
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const g = await this.gameRepo.getById(tid, gameId);
+      const g = await this.api.game(gameId);
       this.game.set(g);
-      if (g) {
-        this.editRiveAssetRef = g.riveAssetRef ?? '';
-        this.initEditorState(g.config as unknown as CardGameConfig);
-        this.runValidation(g.config as unknown as CardGameConfig);
-      }
+      this.editRiveAssetRef = g.riveAssetRef ?? '';
+      this.initEditorState(g.config as unknown as CardGameConfig);
+      this.runValidation(g.config as unknown as CardGameConfig);
     } catch (err) {
-      this.loadError.set((err as Error).message ?? 'Failed to load game');
+      this.loadError.set(authoringErrorMessage(err, 'Failed to load game'));
     } finally {
       this.loading.set(false);
     }
@@ -705,9 +698,8 @@ export class GameEditorComponent {
   }
 
   protected async saveGame(): Promise<void> {
-    const tid = this.tenantService.tenantId();
     const current = this.game();
-    if (!tid || !current) return;
+    if (!current) return;
 
     const config = this.buildConfig();
     if (!config) return;
@@ -720,17 +712,14 @@ export class GameEditorComponent {
     this.saveError.set(null);
     this.saveSuccess.set(false);
     try {
-      const updated: Game = {
-        ...current,
+      const saved = await this.api.updateGame(current.id, {
         config: config as unknown as Record<string, unknown>,
-        riveAssetRef: this.editRiveAssetRef.trim() || undefined,
-        updatedAt: new Date().toISOString(),
-      };
-      await this.gameRepo.set(tid, updated);
-      this.game.set(updated);
+        riveAssetRef: this.editRiveAssetRef.trim(),
+      });
+      this.game.set(saved);
       this.saveSuccess.set(true);
     } catch (err) {
-      this.saveError.set((err as Error).message ?? 'Failed to save game');
+      this.saveError.set(authoringErrorMessage(err, 'Failed to save game'));
     } finally {
       this.saving.set(false);
     }

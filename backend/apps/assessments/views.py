@@ -1,15 +1,19 @@
+import re
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import TENANT_STAFF, HasTenantRole, IsActiveMember
 from apps.audit.models import record
+from apps.gamification.awards import XP_PER_QUIZ_POINT
 from apps.learning.access import Conflict, acting_tenant, get_lesson, require_enrollment
-from apps.learning.progress import complete_lesson, lock_enrollment, touch
+from apps.learning.progress import Completion, complete_lesson, lock_enrollment, touch
+from apps.standards import events
 
 from .grading import MalformedQuiz, grade, is_correct, parse_questions
 from .models import CheckAnswer, Quiz, QuizAttempt
@@ -125,7 +129,9 @@ class LessonCheckView(APIView):
                 total = sum(q["points"] for q in questions)
                 earned = sum(q["points"] for q in questions if q["id"] in first_right)
                 score = int(earned * 100 / total + 0.5) if total else 100
-                completion = complete_lesson(enrollment, lesson, score=score)
+                completion = complete_lesson(
+                    enrollment, lesson, score=score, extra_xp=earned * XP_PER_QUIZ_POINT
+                )
             else:
                 touch(enrollment)
 
@@ -142,16 +148,62 @@ class LessonCheckView(APIView):
         )
 
 
+IDEMPOTENCY_KEY = re.compile(r"^[A-Za-z0-9._:-]{8,100}$")
+
+
+def idempotency_key(request) -> str | None:
+    key = request.headers.get("Idempotency-Key")
+    if key is None:
+        return None
+    if not IDEMPOTENCY_KEY.match(key):
+        raise ValidationError(
+            {"Idempotency-Key": "Use 8-100 letters, digits, '.', '_', ':' or '-'."}
+        )
+    return key
+
+
+def attempt_json(attempt: QuizAttempt, max_attempts: int | None, completion) -> dict:
+    return {
+        "earnedPoints": attempt.earned_points,
+        "totalPoints": attempt.total_points,
+        "scorePct": attempt.score_pct,
+        "passed": attempt.passed,
+        "perQuestion": attempt.per_question,
+        "attemptsUsed": attempt.number,
+        "attemptsRemaining": max(0, max_attempts - attempt.number)
+        if max_attempts is not None
+        else None,
+        "completion": completion.as_json() if completion else None,
+    }
+
+
 class LessonAttemptView(APIView):
     """Submit a whole graded quiz (port of `submitQuiz`). The server grades,
-    enforces `maxAttempts` under a row lock, and completes the lesson on a pass."""
+    enforces `maxAttempts` under a row lock, and completes the lesson on a pass.
 
-    @extend_schema(request=AttemptSerializer, responses=AttemptResultSerializer)
+    An `Idempotency-Key` header makes the submission safe to replay (the offline
+    outbox): the same key returns the original attempt and spends nothing.
+    """
+
+    @extend_schema(
+        request=AttemptSerializer,
+        responses=AttemptResultSerializer,
+        parameters=[
+            OpenApiParameter(
+                "Idempotency-Key",
+                str,
+                OpenApiParameter.HEADER,
+                description="Client-generated id for this submission (8-100 characters). "
+                "A replay with the same key returns the original result.",
+            )
+        ],
+    )
     def post(self, request, lesson_id):
         lesson = get_lesson(request, lesson_id)
         if lesson.quiz is None or lesson.content_type != "quiz":
             raise Conflict("This lesson isn't a graded quiz.")
         enrollment = require_enrollment(request, lesson.module.course)
+        key = idempotency_key(request)
         body = AttemptSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         responses = [dict(r) for r in body.validated_data["responses"]]
@@ -160,6 +212,21 @@ class LessonAttemptView(APIView):
 
         with transaction.atomic():
             enrollment = lock_enrollment(enrollment)
+            if key is not None:
+                earlier = QuizAttempt.objects.filter(
+                    enrollment=enrollment, quiz=quiz, idempotency_key=key
+                ).first()
+                if earlier is not None:
+                    if earlier.responses != responses:
+                        raise Conflict("This Idempotency-Key was used for different answers.")
+                    replayed = Completion(
+                        enrollment.progress_pct, enrollment.completed_at is not None, False
+                    )
+                    return Response(
+                        attempt_json(
+                            earlier, quiz.max_attempts, replayed if earlier.passed else None
+                        )
+                    )
             used = QuizAttempt.objects.filter(enrollment=enrollment, quiz=quiz).count()
             if quiz.max_attempts is not None and used >= quiz.max_attempts:
                 raise Conflict("No quiz attempts remaining.")
@@ -175,6 +242,7 @@ class LessonAttemptView(APIView):
                 score_pct=result.score_pct,
                 passed=result.passed,
                 per_question=result.per_question_json(),
+                idempotency_key=key or "",
             )
             record(
                 action="assessments.quiz.graded",
@@ -186,23 +254,16 @@ class LessonAttemptView(APIView):
                 passed=result.passed,
                 number=attempt.number,
             )
+            events.quiz_event(attempt)
             if result.passed:
-                completion = complete_lesson(enrollment, lesson, score=result.score_pct)
+                completion = complete_lesson(
+                    enrollment,
+                    lesson,
+                    score=result.score_pct,
+                    extra_xp=result.earned_points * XP_PER_QUIZ_POINT,
+                )
             else:
                 completion = None
                 touch(enrollment)
 
-        return Response(
-            {
-                "earnedPoints": result.earned_points,
-                "totalPoints": result.total_points,
-                "scorePct": result.score_pct,
-                "passed": result.passed,
-                "perQuestion": result.per_question_json(),
-                "attemptsUsed": attempt.number,
-                "attemptsRemaining": max(0, quiz.max_attempts - attempt.number)
-                if quiz.max_attempts is not None
-                else None,
-                "completion": completion.as_json() if completion else None,
-            }
-        )
+        return Response(attempt_json(attempt, quiz.max_attempts, completion))

@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { BrandingService } from '@assurance/tenant';
-import { TenantRepository } from '@assurance/data-access';
+import { BrandingService, adminErrorMessage } from '@assurance/tenant';
 import { TenantService } from '@assurance/auth';
 import { ThemeService } from '@assurance/ui';
 import type { Branding } from '@assurance/shared';
@@ -26,13 +25,16 @@ function formToBranding(form: BrandingForm): Branding {
     faviconUrl: form.faviconUrl || undefined,
     fontFamily: form.fontFamily || undefined,
     emailFromName: form.emailFromName || undefined,
-    colors: {
-      '--assurance-color-primary': form.colorPrimary,
-      '--assurance-color-surface': form.colorSurface,
-      '--assurance-color-accent': form.colorAccent,
-      '--assurance-color-text': form.colorText,
-      '--assurance-color-text-muted': form.colorTextMuted,
-    },
+    // The API rejects blank token values, so a cleared colour is simply left out.
+    colors: Object.fromEntries(
+      Object.entries({
+        '--assurance-color-primary': form.colorPrimary,
+        '--assurance-color-surface': form.colorSurface,
+        '--assurance-color-accent': form.colorAccent,
+        '--assurance-color-text': form.colorText,
+        '--assurance-color-text-muted': form.colorTextMuted,
+      }).filter(([, value]) => value.trim() !== ''),
+    ),
   };
 }
 
@@ -260,7 +262,6 @@ function formToBranding(form: BrandingForm): Branding {
   ],
 })
 export class BrandingComponent implements OnInit {
-  private readonly tenantRepo = inject(TenantRepository);
   private readonly brandingService = inject(BrandingService);
   private readonly themeService = inject(ThemeService);
   private readonly tenantService = inject(TenantService);
@@ -297,21 +298,23 @@ export class BrandingComponent implements OnInit {
       return;
     }
     try {
-      const t = await this.tenantRepo.getById(tid);
-      if (t?.branding) {
-        const b = t.branding;
+      const b = await this.brandingService.getBranding();
+      if (b) {
+        const colors = b.colors ?? {};
         this.form.set({
           logoUrl: b.logoUrl ?? '',
           faviconUrl: b.faviconUrl ?? '',
           fontFamily: b.fontFamily ?? '',
           emailFromName: b.emailFromName ?? '',
-          colorPrimary: b.colors['--assurance-color-primary'] ?? '#1d4ed8',
-          colorSurface: b.colors['--assurance-color-surface'] ?? '#ffffff',
-          colorAccent: b.colors['--assurance-color-accent'] ?? '#7c3aed',
-          colorText: b.colors['--assurance-color-text'] ?? '#111827',
-          colorTextMuted: b.colors['--assurance-color-text-muted'] ?? '#6b7280',
+          colorPrimary: colors['--assurance-color-primary'] ?? '#1d4ed8',
+          colorSurface: colors['--assurance-color-surface'] ?? '#ffffff',
+          colorAccent: colors['--assurance-color-accent'] ?? '#7c3aed',
+          colorText: colors['--assurance-color-text'] ?? '#111827',
+          colorTextMuted: colors['--assurance-color-text-muted'] ?? '#6b7280',
         });
       }
+    } catch {
+      // No branding yet (or the API is unreachable): start from the defaults.
     } finally {
       this.loading.set(false);
     }
@@ -331,7 +334,7 @@ export class BrandingComponent implements OnInit {
       await this.brandingService.updateBranding(tid, formToBranding(this.form()));
       this.saveSuccess.set(true);
     } catch (err) {
-      this.saveError.set((err as Error).message ?? 'Save failed');
+      this.saveError.set(adminErrorMessage(err, 'Save failed'));
     } finally {
       this.saving.set(false);
     }

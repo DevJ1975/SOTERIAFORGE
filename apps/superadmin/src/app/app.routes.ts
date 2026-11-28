@@ -1,10 +1,21 @@
 import { Routes } from '@angular/router';
 import { authGuard, superadminGuard } from '@assurance/auth';
-import { ForbiddenComponent, ForgotPasswordComponent, LoginComponent } from '@assurance/auth-ui';
+import {
+  ForbiddenComponent,
+  ForgotPasswordComponent,
+  LoginComponent,
+  SetPasswordComponent,
+} from '@assurance/auth-ui';
 
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: SetPasswordComponent },
+  {
+    path: 'accept-invite',
+    component: SetPasswordComponent,
+    data: { mode: 'invite' },
+  },
   { path: 'forbidden', component: ForbiddenComponent },
   {
     path: '',
@@ -16,11 +27,6 @@ export const appRoutes: Routes = [
     path: 'tenants',
     canActivate: [authGuard, superadminGuard],
     loadComponent: () => import('./pages/tenants.component').then((m) => m.TenantsComponent),
-  },
-  {
-    path: 'catalog',
-    canActivate: [authGuard, superadminGuard],
-    loadComponent: () => import('./pages/catalog.component').then((m) => m.CatalogComponent),
   },
   {
     path: 'analytics',

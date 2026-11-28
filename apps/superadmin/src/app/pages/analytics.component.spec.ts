@@ -7,14 +7,7 @@ import { AnalyticsComponent } from './analytics.component';
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'https://api.example.com',
 };
 
 const mockAnalytics: PlatformAnalytics = {
@@ -122,6 +115,6 @@ describe('AnalyticsComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Network error');
+    expect(fixture.nativeElement.textContent).toContain('Failed to load analytics');
   });
 });

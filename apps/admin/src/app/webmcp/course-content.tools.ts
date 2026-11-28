@@ -7,19 +7,28 @@ import {
 } from '@angular/core';
 import { z } from 'zod';
 import { AuthService, TenantService, canAccessTenant, canAuthor } from '@assurance/auth';
-import { CourseRepository, ModuleRepository } from '@assurance/data-access';
-import { CourseAuthoringService } from '@assurance/lms-core';
-import { CONTENT_TYPES, type Module } from '@assurance/shared';
+import {
+  type ApiCourseOutline,
+  type ApiLesson,
+  AuthoringApi,
+  authoringErrorMessage,
+} from '@assurance/lms-core';
+import { CONTENT_TYPES } from '@assurance/shared';
 import { CourseAssetUploader, MAX_UPLOAD_BYTES } from './course-asset-uploader';
 
 /**
  * WebMCP tools that let an in-browser AI agent read, create and update course
  * content on behalf of the signed-in author (Angular 22 experimental WebMCP).
  *
+ * Tool "modules" are lessons: the content items learners work through. A course
+ * also has module groups ("sections") that lessons sit in; `forge_add_module`
+ * takes an optional `sectionId` and otherwise appends to the last section.
+ *
  * Guardrails:
  * - Every call runs as the signed-in user, inside the tenant resolved from the
- *   host. Tenant id never comes from the agent. Tools refuse unless the user may
- *   author in that tenant; Firestore/Storage rules enforce the same server-side.
+ *   host (the API client sends it; it never comes from the agent). Tools refuse
+ *   unless the user may author in that tenant; the Forge API enforces the same
+ *   server-side.
  * - Agents can draft and edit, but cannot publish, unpublish, archive or delete.
  *   Those stay human actions in the course editor.
  * - Arguments are re-validated with zod; the JSON schemas are only hints.
@@ -47,10 +56,7 @@ function authorContext(): { tenantId: string } | { error: string } {
 
 /** Services a tool body uses, injected before any `await` (injection context is sync-only). */
 interface Deps {
-  tenantId: string;
-  courses: CourseRepository;
-  modules: ModuleRepository;
-  authoring: CourseAuthoringService;
+  api: AuthoringApi;
   uploader: CourseAssetUploader;
 }
 
@@ -63,10 +69,7 @@ function run<S extends z.ZodTypeAny>(
   const ctx = authorContext();
   if ('error' in ctx) return Promise.resolve(fail(ctx.error));
   const deps: Deps = {
-    tenantId: ctx.tenantId,
-    courses: inject(CourseRepository),
-    modules: inject(ModuleRepository),
-    authoring: inject(CourseAuthoringService),
+    api: inject(AuthoringApi),
     uploader: inject(CourseAssetUploader),
   };
   const parsed = schema.safeParse(args ?? {});
@@ -75,34 +78,46 @@ function run<S extends z.ZodTypeAny>(
     return Promise.resolve(fail(`Invalid arguments. ${issues.join('; ')}`));
   }
   return body(parsed.data, deps).catch((err: unknown) =>
-    fail(err instanceof Error ? err.message : String(err)),
+    fail(authoringErrorMessage(err, err instanceof Error ? err.message : String(err))),
   );
 }
 
-function moduleSummary(m: Module) {
+/** What the agent sees for one lesson (its "module"). */
+function moduleSummary(l: ApiLesson, order: number) {
   return {
-    id: m.id,
-    title: m.title,
-    order: m.order,
-    contentType: m.contentType,
-    externalUrl: m.externalUrl,
-    assetRef: m.assetRef,
-    estimatedMinutes: m.estimatedMinutes,
-    xpReward: m.xpReward,
-    completion: m.completion,
+    id: l.id,
+    title: l.title,
+    order,
+    sectionId: l.moduleId,
+    sectionTitle: l.moduleTitle,
+    contentType: l.contentType,
+    externalUrl: l.externalUrl || undefined,
+    assetRef: l.assetRef || undefined,
+    quizId: l.quiz?.id,
+    estimatedMinutes: l.estimatedMinutes ?? undefined,
+    xpReward: l.xpReward,
   };
 }
 
-async function requireCourse({ courses, tenantId }: Deps, courseId: string) {
-  const course = await courses.getById(tenantId, courseId);
-  if (!course) throw new Error(`Course ${courseId} not found.`);
-  return course;
+async function requireCourse({ api }: Deps, courseId: string): Promise<ApiCourseOutline> {
+  try {
+    return await api.course(courseId);
+  } catch {
+    throw new Error(`Course ${courseId} not found.`);
+  }
 }
 
-async function requireModule({ modules, tenantId }: Deps, courseId: string, moduleId: string) {
-  const mod = await modules.getById(tenantId, courseId, moduleId);
-  if (!mod) throw new Error(`Module ${moduleId} not found in course ${courseId}.`);
-  return mod;
+async function requireModule({ api }: Deps, courseId: string, moduleId: string) {
+  let lesson: ApiLesson | null = null;
+  try {
+    lesson = await api.lesson(moduleId);
+  } catch {
+    // fall through to the not-found error
+  }
+  if (!lesson || lesson.courseId !== courseId) {
+    throw new Error(`Module ${moduleId} not found in course ${courseId}.`);
+  }
+  return lesson;
 }
 
 // ---- argument schemas (zod is authoritative) --------------------------------
@@ -113,7 +128,7 @@ const httpsUrl = z
   .url()
   .refine((u) => u.startsWith('https://'), 'must be an https:// URL');
 const minutes = z.number().int().min(0).max(600);
-const xp = z.number().int().min(0).max(10_000);
+const xp = z.number().int().min(0).max(1000);
 const tags = z.array(z.string().min(1).max(50)).max(20);
 
 const getCourseArgs = z.object({ courseId: id });
@@ -128,13 +143,13 @@ const updateCourseArgs = z
     title: z.string().min(1).max(300).optional(),
     description: z.string().max(5000).optional(),
     tags: tags.optional(),
-    xpReward: xp.optional(),
     availableOffline: z.boolean().optional(),
   })
   .refine((a) => Object.keys(a).length > 1, 'give at least one field to change');
 const addModuleArgs = z
   .object({
     courseId: id,
+    sectionId: id.optional(),
     title: z.string().min(1).max(300),
     contentType: z.enum(CONTENT_TYPES),
     externalUrl: httpsUrl.optional(),
@@ -153,8 +168,6 @@ const updateModuleArgs = z
     externalUrl: httpsUrl.optional(),
     estimatedMinutes: minutes.optional(),
     xpReward: xp.optional(),
-    minScore: z.number().min(0).max(100).optional(),
-    minProgressPct: z.number().min(0).max(100).optional(),
   })
   .refine((a) => Object.keys(a).length > 2, 'give at least one field to change');
 const reorderArgs = z.object({ courseId: id, moduleIds: z.array(id).min(1).max(500) });
@@ -207,8 +220,8 @@ export const listCoursesTool = {
   inputSchema: { type: 'object', properties: {} },
   annotations: { readOnlyHint: true, untrustedContentHint: true },
   execute: (args: unknown) =>
-    run(z.object({}), args, async (_input, { courses: repo, tenantId }) => {
-      const courses = await repo.listAll(tenantId);
+    run(z.object({}), args, async (_input, { api }) => {
+      const courses = await api.courses();
       return ok({
         courses: courses.map((c) => ({
           id: c.id,
@@ -224,7 +237,7 @@ export const listCoursesTool = {
 export const getCourseTool = {
   name: 'forge_get_course',
   description:
-    'Get one course with its modules in learner order: titles, content types, URLs, estimated minutes, XP and completion rules.',
+    'Get one course with its modules (lessons) in learner order: titles, content types, URLs, estimated minutes and XP, plus the course sections the lessons sit in.',
   inputSchema: {
     type: 'object',
     properties: { courseId: { type: 'string', description: 'Course id from forge_list_courses' } },
@@ -233,9 +246,18 @@ export const getCourseTool = {
   annotations: { readOnlyHint: true, untrustedContentHint: true },
   execute: (args: unknown) =>
     run(getCourseArgs, args, async ({ courseId }, deps) => {
-      const course = await requireCourse(deps, courseId);
-      const modules = await deps.modules.listOrdered(deps.tenantId, courseId);
-      return ok({ course, modules: modules.map(moduleSummary) });
+      const outline = await requireCourse(deps, courseId);
+      const sections = outline.modules;
+      // Sections and lessons are reported below; the enrollment is the author's own, not content.
+      const course = { ...outline, modules: undefined, enrollment: undefined };
+      const lessons = await Promise.all(
+        sections.flatMap((m) => m.lessons).map((l) => deps.api.lesson(l.id)),
+      );
+      return ok({
+        course,
+        sections: sections.map((m) => ({ id: m.id, title: m.title, label: m.label })),
+        modules: lessons.map((l, i) => moduleSummary(l, i)),
+      });
     }),
 } as const;
 
@@ -254,8 +276,8 @@ export const createCourseDraftTool = {
   },
   annotations: { consequentialHint: true },
   execute: (args: unknown) =>
-    run(createCourseArgs, args, async (input, { authoring, tenantId }) => {
-      const course = await authoring.createCourse({ tenantId, ...input });
+    run(createCourseArgs, args, async (input, { api }) => {
+      const course = await api.createCourse(input);
       return ok({ courseId: course.id, status: course.status });
     }),
 } as const;
@@ -263,7 +285,7 @@ export const createCourseDraftTool = {
 export const updateCourseTool = {
   name: 'forge_update_course',
   description:
-    'Update course details: title, description, tags, XP reward or offline availability. Changes to a published course are visible to learners immediately. Does not change publish status.',
+    'Update course details: title, description, tags or offline availability. Changes to a published course are visible to learners immediately. Does not change publish status.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -271,7 +293,6 @@ export const updateCourseTool = {
       title: { type: 'string' },
       description: { type: 'string' },
       tags: { type: 'array', items: { type: 'string' } },
-      xpReward: { type: 'integer', minimum: 0 },
       availableOffline: { type: 'boolean' },
     },
     required: ['courseId'],
@@ -280,7 +301,7 @@ export const updateCourseTool = {
   execute: (args: unknown) =>
     run(updateCourseArgs, args, async ({ courseId, ...patch }, deps) => {
       const course = await requireCourse(deps, courseId);
-      await deps.authoring.updateCourse(deps.tenantId, courseId, patch);
+      await deps.api.updateCourse(courseId, patch);
       return ok({ courseId, status: course.status, updated: Object.keys(patch) });
     }),
 } as const;
@@ -288,11 +309,12 @@ export const updateCourseTool = {
 export const addModuleTool = {
   name: 'forge_add_module',
   description:
-    'Append a module to a course. For video use externalUrl, or add the module and then call forge_upload_module_video. For quiz or game modules, contentRef is the quiz or game id.',
+    'Append a module (a lesson) to a course. It goes in sectionId, or the last section (one is created if the course has none). For video use externalUrl, or add the module and then call forge_upload_module_video. For quiz or game modules, contentRef is the quiz or game id.',
   inputSchema: {
     type: 'object',
     properties: {
       courseId: { type: 'string' },
+      sectionId: { type: 'string', description: 'Section id from forge_get_course (optional)' },
       title: { type: 'string' },
       contentType: { type: 'string', enum: [...CONTENT_TYPES] },
       externalUrl: { type: 'string', description: 'https:// URL of the content' },
@@ -304,24 +326,36 @@ export const addModuleTool = {
   annotations: { consequentialHint: true },
   execute: (args: unknown) =>
     run(addModuleArgs, args, async (input, deps) => {
-      await requireCourse(deps, input.courseId);
-      const mod = await deps.authoring.addModule({
-        tenantId: deps.tenantId,
-        courseId: input.courseId,
+      const course = await requireCourse(deps, input.courseId);
+      let section = input.sectionId
+        ? course.modules.find((m) => m.id === input.sectionId)
+        : course.modules[course.modules.length - 1];
+      if (input.sectionId && !section) {
+        return fail(`Section ${input.sectionId} not found in course ${input.courseId}.`);
+      }
+      if (!section) {
+        const created = await deps.api.addModule(input.courseId, { title: 'Lessons', order: 0 });
+        section = { ...created, lessons: [] };
+      }
+      const isQuiz = input.contentType === 'quiz';
+      const isGame = input.contentType === 'game';
+      const lesson = await deps.api.addLesson(section.id, {
         title: input.title,
         contentType: input.contentType,
+        order: section.lessons.length,
         externalUrl: input.externalUrl,
-        assetRef: input.contentRef,
+        assetRef: isGame ? input.contentRef : undefined,
+        quizId: isQuiz ? input.contentRef : undefined,
         estimatedMinutes: input.estimatedMinutes,
       });
-      return ok({ module: moduleSummary(mod) });
+      return ok({ module: moduleSummary(lesson, section.lessons.length) });
     }),
 } as const;
 
 export const updateModuleTool = {
   name: 'forge_update_module',
   description:
-    'Update a module: title, external URL, estimated minutes, XP reward, or completion rules (minScore, minProgressPct as 0–100).',
+    'Update a module (lesson): title, external URL, estimated minutes or XP reward (0–1000). Changes to a published course are visible to learners immediately.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -330,34 +364,23 @@ export const updateModuleTool = {
       title: { type: 'string' },
       externalUrl: { type: 'string' },
       estimatedMinutes: { type: 'integer', minimum: 0 },
-      xpReward: { type: 'integer', minimum: 0 },
-      minScore: { type: 'number', minimum: 0, maximum: 100 },
-      minProgressPct: { type: 'number', minimum: 0, maximum: 100 },
+      xpReward: { type: 'integer', minimum: 0, maximum: 1000 },
     },
     required: ['courseId', 'moduleId'],
   },
   annotations: { consequentialHint: true },
   execute: (args: unknown) =>
-    run(updateModuleArgs, args, async (input, deps) => {
-      const { courseId, moduleId, minScore, minProgressPct, ...fields } = input;
-      const mod = await requireModule(deps, courseId, moduleId);
-      const patch: Record<string, unknown> = { ...fields };
-      if (minScore !== undefined || minProgressPct !== undefined) {
-        patch['completion'] = {
-          ...mod.completion,
-          ...(minScore !== undefined ? { minScore } : {}),
-          ...(minProgressPct !== undefined ? { minProgressPct } : {}),
-        };
-      }
-      await deps.authoring.updateModule(deps.tenantId, courseId, moduleId, patch);
-      return ok({ moduleId, updated: Object.keys(patch) });
+    run(updateModuleArgs, args, async ({ courseId, moduleId, ...fields }, deps) => {
+      await requireModule(deps, courseId, moduleId);
+      await deps.api.updateLesson(moduleId, fields);
+      return ok({ moduleId, updated: Object.keys(fields) });
     }),
 } as const;
 
 export const reorderModulesTool = {
   name: 'forge_reorder_modules',
   description:
-    'Set the learner order of a course’s modules. moduleIds must list every module in the course exactly once, in the new order.',
+    'Set the learner order of a course’s modules (lessons). moduleIds must list every module in the course exactly once, in the new order. Modules stay in their section; only their order within it changes.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -369,15 +392,22 @@ export const reorderModulesTool = {
   annotations: { consequentialHint: true },
   execute: (args: unknown) =>
     run(reorderArgs, args, async ({ courseId, moduleIds }, deps) => {
-      const existing = await deps.modules.listOrdered(deps.tenantId, courseId);
-      const known = new Set(existing.map((m) => m.id));
+      const course = await requireCourse(deps, courseId);
+      const known = new Set(course.modules.flatMap((m) => m.lessons.map((l) => l.id)));
       const given = new Set(moduleIds);
       if (given.size !== moduleIds.length || given.size !== known.size) {
         return fail(`moduleIds must list all ${known.size} modules exactly once.`);
       }
       const unknown = moduleIds.filter((m) => !known.has(m));
       if (unknown.length) return fail(`Unknown module ids: ${unknown.join(', ')}`);
-      await deps.authoring.reorder(deps.tenantId, courseId, moduleIds);
+      // A lesson's position is within its section: renumber each section by the new sequence.
+      const position = new Map(moduleIds.map((m, i) => [m, i]));
+      for (const section of course.modules) {
+        const ordered = section.lessons
+          .map((l) => l.id)
+          .sort((a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0));
+        await deps.api.reorderLessons(ordered);
+      }
       return ok({ courseId, order: moduleIds });
     }),
 } as const;
@@ -385,7 +415,7 @@ export const reorderModulesTool = {
 export const uploadModuleVideoTool = {
   name: 'forge_upload_module_video',
   description:
-    'Upload a video file to an existing video module and make it the module’s source (replacing any external URL). Give the file as an https sourceUrl (up to 500 MB) or as base64Data (up to 10 MB).',
+    'Upload a video file to an existing video module (lesson) and make it the module’s source (replacing any external URL). Give the file as an https sourceUrl (up to 500 MB) or as base64Data (up to 10 MB).',
   inputSchema: {
     type: 'object',
     properties: {
@@ -412,13 +442,10 @@ export const uploadModuleVideoTool = {
             client?.signal ?? new AbortController().signal,
           )
         : decodeBase64(input.base64Data as string, input.mimeType);
-      const asset = await deps.uploader.upload(deps.tenantId, input.courseId, blob, input.fileName);
+      const asset = await deps.uploader.upload(blob, input.fileName);
       // The player prefers externalUrl, so clear it to make the upload the source.
-      await deps.authoring.updateModule(deps.tenantId, input.courseId, mod.id, {
-        assetRef: asset.downloadUrl,
-        externalUrl: undefined,
-      });
-      return ok({ moduleId: mod.id, bytes: blob.size, assetRef: asset.downloadUrl });
+      await deps.api.updateLesson(mod.id, { assetRef: asset.assetRef, externalUrl: '' });
+      return ok({ moduleId: mod.id, bytes: blob.size, assetRef: asset.assetRef });
     }),
 } as const;
 

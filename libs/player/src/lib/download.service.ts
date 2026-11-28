@@ -10,10 +10,8 @@ import type { Module } from '@assurance/shared';
  * relevant API, and no-ops/returns a safe value off-browser):
  *
  *  1. **Cacheability detection.** A module's content is cacheable when it is
- *     same-origin or a Firebase Storage download URL (served from `assetRef` /
- *     an `externalUrl` pointing at `firebasestorage.googleapis.com` /
- *     `*.firebasestorage.app`). It is NOT cacheable when it streams from a
- *     third-party embed host (YouTube/Vimeo/etc.) — those are iframes the Cache
+ *     same-origin (a relative asset path or an `externalUrl` on the app origin). It is NOT
+ *     cacheable when it streams from a third-party embed host (YouTube/Vimeo/etc.) — those are iframes the Cache
  *     Storage API cannot capture, so the learner UI shows "requires connection".
  *  2. **Download.** Each cacheable module asset is fetched into a named Cache
  *     Storage cache ({@link OFFLINE_CACHE_NAME}) via
@@ -104,16 +102,6 @@ function isEmbedHost(host: string): boolean {
   return EMBED_HOSTS.some((e) => h === e || h.endsWith(`.${e}`));
 }
 
-/** True when `host` is a Firebase Storage download host. */
-function isFirebaseStorageHost(host: string): boolean {
-  const h = host.toLowerCase();
-  return (
-    h === 'firebasestorage.googleapis.com' ||
-    h === 'storage.googleapis.com' ||
-    h.endsWith('.firebasestorage.app')
-  );
-}
-
 @Injectable({ providedIn: 'root' })
 export class DownloadService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -138,8 +126,7 @@ export class DownloadService {
    * cacheable content (no asset, or an embed-host external URL).
    *
    * - `externalUrl` on an embed host (YouTube/Vimeo/…) → not cacheable (`null`).
-   * - `externalUrl` that is same-origin or a Firebase Storage URL → cacheable.
-   * - `assetRef` (a Storage download URL or same-origin path) → cacheable.
+   * - `externalUrl` or `assetRef` that is same-origin → cacheable.
    *
    * Malformed URLs are treated as not cacheable.
    */
@@ -164,9 +151,8 @@ export class DownloadService {
       return true;
     }
     if (isEmbedHost(parsed.host)) return false;
-    if (isFirebaseStorageHost(parsed.host)) return true;
     // Unknown cross-origin host: not safely cacheable (CORS/opaque), and not a
-    // recognised self-hosted asset — treat as requiring a connection.
+    // same-origin asset — treat as requiring a connection.
     return false;
   }
 

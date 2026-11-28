@@ -8,8 +8,8 @@ import { AuthService, authErrorMessageKey } from '@assurance/auth';
 import { AuthShellComponent } from './auth-shell.component';
 
 /**
- * Forgot-password screen. Sends a Firebase password-reset email (tenant-scoped);
- * the user completes the reset on Firebase's hosted action page.
+ * Forgot-password screen. Asks the Forge API to email a reset link (tenant-scoped);
+ * the link opens `SetPasswordComponent`.
  *
  * Enumeration-safe: an unknown email still shows the neutral "check your email"
  * confirmation rather than revealing whether an account exists.

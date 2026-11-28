@@ -1,221 +1,176 @@
-jest.mock('firebase/auth', () => ({
-  onAuthStateChanged: jest.fn(() => () => undefined),
-  onIdTokenChanged: jest.fn(() => () => undefined),
-}));
-
-import { ApplicationRef, signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { firstValueFrom } from 'rxjs';
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from './assurance-environment';
 import { AuthService } from './auth.service';
-import { FIREBASE_AUTH } from './firebase-auth';
-import { type ForgeMe, ForgeSession, forgeApiInterceptor, forgeApiUrl } from './forge-api';
+import type { ForgeMe } from './forge-me';
+import { ForgeSession, forgeApiInterceptor, forgeApiUrl } from './forge-api';
 import { TenantService } from './tenant.service';
 
 const env: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  apiBaseUrl: 'http://api.test/',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'https://api.test',
 };
 
-const me: ForgeMe = {
+const ME: ForgeMe = {
   member: {
     id: 'm1',
-    uid: 'marcus',
-    tenantId: 'lakewood',
-    email: 'marcus@example.com',
-    displayName: 'Marcus Walker',
-    role: 'learner',
+    uid: 'm1',
+    tenantId: 'acme',
+    email: 'a@example.com',
+    displayName: 'A',
+    role: 'instructor',
     status: 'active',
   },
-  tenant: { id: 'lakewood', name: 'Lakewood University', status: 'active', branding: {} },
-  canAuthor: false,
+  tenant: { id: 'acme', name: 'Acme', status: 'active', branding: {} },
+  canAuthor: true,
 };
 
-const uid = signal<string | null>(null);
-let currentUser: { getIdToken: () => Promise<string> } | null;
-let tenantId: string | null;
-
-function setup(apiBaseUrl: string | undefined = env.apiBaseUrl) {
-  TestBed.configureTestingModule({
-    providers: [
-      provideHttpClient(withInterceptors([forgeApiInterceptor])),
-      provideHttpClientTesting(),
-      { provide: ASSURANCE_ENV, useValue: { ...env, apiBaseUrl } },
-      {
-        provide: FIREBASE_AUTH,
-        useValue: {
-          get currentUser() {
-            return currentUser;
-          },
-        },
-      },
-      { provide: TenantService, useValue: { tenantId: () => tenantId } },
-      { provide: AuthService, useValue: { uid } },
-    ],
+describe('forgeApiUrl', () => {
+  it('joins base and path with exactly one slash', () => {
+    expect(forgeApiUrl('https://api.test/', '/api/me')).toBe('https://api.test/api/me');
+    expect(forgeApiUrl('https://api.test', 'api/me')).toBe('https://api.test/api/me');
   });
-  return { http: TestBed.inject(HttpClient), ctrl: TestBed.inject(HttpTestingController) };
-}
-
-/** Lets the interceptor's async getIdToken() resolve before asserting on requests. */
-const flushMicrotasks = () => new Promise((r) => setTimeout(r, 0));
+});
 
 describe('forgeApiInterceptor', () => {
+  let http: HttpClient;
+  let httpMock: HttpTestingController;
+  let token: string | null;
+  let renewed: string | null;
+  const renewAccessToken = jest.fn(async () => renewed);
+
   beforeEach(() => {
+    token = 'tok-1';
+    renewed = 'tok-2';
+    renewAccessToken.mockClear();
     TestBed.resetTestingModule();
-    currentUser = { getIdToken: async () => 'id-token' };
-    tenantId = 'lakewood';
-    uid.set(null);
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([forgeApiInterceptor])),
+        provideHttpClientTesting(),
+        { provide: ASSURANCE_ENV, useValue: env },
+        { provide: AuthService, useValue: { getAccessToken: async () => token, renewAccessToken } },
+        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    httpMock = TestBed.inject(HttpTestingController);
   });
+  afterEach(() => httpMock.verify());
 
-  it('joins URLs without doubling slashes', () => {
-    expect(forgeApiUrl('http://api.test/', '/api/me')).toBe('http://api.test/api/me');
-  });
+  const flush = () => new Promise<void>((r) => setTimeout(r));
 
-  it('adds the ID token and tenant to API requests', async () => {
-    const { http, ctrl } = setup();
-    const done = firstValueFrom(http.get('http://api.test/api/me'));
-    await flushMicrotasks();
-    const req = ctrl.expectOne('http://api.test/api/me');
-    expect(req.request.headers.get('Authorization')).toBe('Bearer id-token');
-    expect(req.request.headers.get('X-Forge-Tenant')).toBe('lakewood');
+  it('adds the bearer token and tenant to Forge API requests', async () => {
+    http.get('https://api.test/api/me').subscribe();
+    await flush();
+    const req = httpMock.expectOne('https://api.test/api/me');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer tok-1');
+    expect(req.request.headers.get('X-Forge-Tenant')).toBe('acme');
     req.flush({});
-    await done;
   });
 
   it('never sends the token anywhere else', async () => {
-    const { http, ctrl } = setup();
-    const done = firstValueFrom(http.get('http://api.test.evil.example/steal'));
-    await flushMicrotasks();
-    const req = ctrl.expectOne('http://api.test.evil.example/steal');
+    http.get('https://cdn.example.com/file.pdf').subscribe();
+    await flush();
+    const req = httpMock.expectOne('https://cdn.example.com/file.pdf');
     expect(req.request.headers.has('Authorization')).toBe(false);
     expect(req.request.headers.has('X-Forge-Tenant')).toBe(false);
     req.flush({});
-    await done;
   });
 
-  it('sends anonymous API requests without an Authorization header', async () => {
-    currentUser = null;
-    tenantId = null;
-    const { http, ctrl } = setup();
-    const done = firstValueFrom(http.get('http://api.test/healthz'));
-    await flushMicrotasks();
-    const req = ctrl.expectOne('http://api.test/healthz');
+  it('omits Authorization when signed out but still names the tenant', async () => {
+    token = null;
+    http.get('https://api.test/api/health').subscribe();
+    await flush();
+    const req = httpMock.expectOne('https://api.test/api/health');
     expect(req.request.headers.has('Authorization')).toBe(false);
+    expect(req.request.headers.get('X-Forge-Tenant')).toBe('acme');
     req.flush({});
-    await done;
+  });
+
+  it('retries once with a renewed token after a 401', async () => {
+    const result = jest.fn();
+    http.get('https://api.test/api/me').subscribe(result);
+    await flush();
+    httpMock
+      .expectOne('https://api.test/api/me')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    await flush();
+    const retry = httpMock.expectOne('https://api.test/api/me');
+    expect(retry.request.headers.get('Authorization')).toBe('Bearer tok-2');
+    retry.flush({ ok: true });
+    expect(renewAccessToken).toHaveBeenCalledTimes(1);
+    expect(result).toHaveBeenCalledWith({ ok: true });
+  });
+
+  it('surfaces the 401 when the session cannot be renewed', async () => {
+    renewed = null;
+    const error = jest.fn();
+    http.get('https://api.test/api/me').subscribe({ error });
+    await flush();
+    httpMock
+      .expectOne('https://api.test/api/me')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    await flush();
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
+  });
+
+  it('does not try to renew when the request had no token', async () => {
+    token = null;
+    const error = jest.fn();
+    http.get('https://api.test/api/me').subscribe({ error });
+    await flush();
+    httpMock
+      .expectOne('https://api.test/api/me')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    await flush();
+    expect(renewAccessToken).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalled();
   });
 });
 
 describe('ForgeSession', () => {
-  beforeEach(() => {
+  const meSignal = signal<ForgeMe | null>(null);
+  const meStatus = signal<number | null>(null);
+
+  function session(): ForgeSession {
     TestBed.resetTestingModule();
-    currentUser = { getIdToken: async () => 'id-token' };
-    tenantId = 'lakewood';
-    uid.set(null);
-  });
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AuthService,
+          useValue: { ready: async () => undefined, me: meSignal, meStatus },
+        },
+      ],
+    });
+    return TestBed.inject(ForgeSession);
+  }
 
-  const settle = async () => {
-    TestBed.inject(ApplicationRef).tick();
-    await flushMicrotasks();
-  };
-
-  it('loads /api/me after sign-in and clears on sign-out', async () => {
-    const { ctrl } = setup();
-    const session = TestBed.inject(ForgeSession);
-    await settle();
-    ctrl.expectNone('http://api.test/api/me');
-
-    uid.set('marcus');
-    await settle();
-    ctrl.expectOne('http://api.test/api/me').flush(me);
-    await settle();
-    expect(session.role()).toBe('learner');
-    expect(session.canAuthor()).toBe(false);
-
-    uid.set(null);
-    await settle();
-    expect(session.role()).toBeNull();
-  });
-
-  it('refetches when a different user signs in on the same tab', async () => {
-    const { ctrl } = setup();
-    TestBed.inject(ForgeSession);
-    uid.set('marcus');
-    await settle();
-    ctrl.expectOne('http://api.test/api/me').flush(me);
-    uid.set('jamil');
-    await settle();
-    ctrl.expectOne('http://api.test/api/me').flush({ ...me, canAuthor: true });
-  });
-
-  it('stays idle when no API is configured', async () => {
-    const { ctrl } = setup('');
-    TestBed.inject(ForgeSession);
-    uid.set('marcus');
-    await settle();
-    ctrl.verify();
-  });
-});
-
-describe('ForgeSession.settled', () => {
   beforeEach(() => {
-    TestBed.resetTestingModule();
-    currentUser = { getIdToken: async () => 'id-token' };
-    tenantId = 'lakewood';
-    uid.set(null);
+    meSignal.set(null);
+    meStatus.set(null);
   });
 
-  const tick = async () => {
-    TestBed.inject(ApplicationRef).tick();
-    await flushMicrotasks();
-  };
-
-  it('is unavailable when signed out', async () => {
-    setup();
-    expect(await TestBed.inject(ForgeSession).settled()).toEqual({ kind: 'unavailable' });
+  it('exposes the member, role and authoring ability from the API', async () => {
+    meSignal.set(ME);
+    const s = session();
+    expect(s.role()).toBe('instructor');
+    expect(s.canAuthor()).toBe(true);
+    expect(await s.settled()).toEqual({ kind: 'member', me: ME });
   });
 
-  it('waits for /api/me and returns the membership', async () => {
-    const { ctrl } = setup();
-    const session = TestBed.inject(ForgeSession);
-    uid.set('marcus');
-    await tick();
-    const result = session.settled();
-    ctrl.expectOne('http://api.test/api/me').flush(me);
-    await tick();
-    expect(await result).toEqual({ kind: 'member', me });
+  it.each([401, 403])('classifies a %i from /api/me as denied', async (status) => {
+    meStatus.set(status);
+    expect(await session().settled()).toEqual({ kind: 'denied' });
   });
 
-  it.each([401, 403])('is denied on HTTP %s', async (status) => {
-    const { ctrl } = setup();
-    const session = TestBed.inject(ForgeSession);
-    uid.set('marcus');
-    await tick();
-    const result = session.settled();
-    ctrl.expectOne('http://api.test/api/me').flush({}, { status, statusText: 'no' });
-    await tick();
-    expect(await result).toEqual({ kind: 'denied' });
-  });
-
-  it('is unavailable when the API is down', async () => {
-    const { ctrl } = setup();
-    const session = TestBed.inject(ForgeSession);
-    uid.set('marcus');
-    await tick();
-    const result = session.settled();
-    ctrl.expectOne('http://api.test/api/me').flush({}, { status: 503, statusText: 'down' });
-    await tick();
-    expect(await result).toEqual({ kind: 'unavailable' });
+  it('classifies no session or an API outage as unavailable', async () => {
+    expect(await session().settled()).toEqual({ kind: 'unavailable' });
+    meStatus.set(0);
+    expect(await session().settled()).toEqual({ kind: 'unavailable' });
+    expect(session().role()).toBeNull();
   });
 });

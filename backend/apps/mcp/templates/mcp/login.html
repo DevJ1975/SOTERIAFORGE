@@ -1,0 +1,19 @@
+{% extends "mcp/base.html" %}
+{% block title %}Sign in · Soteria Forge{% endblock %}
+{% block content %}
+  <h1>Sign in to connect an AI assistant</h1>
+  <p class="muted">Claude or ChatGPT will act as you, with your role in your organization. You can disconnect it at any time.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="org">Organization ID</label>
+    <input id="org" name="org" type="text" value="{{ org }}" autocomplete="organization" autocapitalize="none" placeholder="e.g. lakewood (blank for platform admins)">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="{{ email }}" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+  </form>
+{% endblock %}

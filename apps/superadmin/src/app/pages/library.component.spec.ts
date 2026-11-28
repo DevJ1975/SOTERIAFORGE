@@ -1,74 +1,43 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ASSURANCE_ENV, type AssuranceEnvironment } from '@assurance/auth';
-import { LibraryRepository, TenantRepository } from '@assurance/data-access';
-import type { Course, Tenant } from '@assurance/shared';
-import { LibraryService, type ShareLibraryCourseResult } from '../services/library.service';
+import type { ApiCourse } from '@assurance/lms-core';
+import { LibraryService } from '../services/library.service';
+import { type TenantRow, TenantsService } from '../services/tenants.service';
 import { LibraryComponent } from './library.component';
-
-// Polyfill crypto.randomUUID for jsdom
-if (!('randomUUID' in crypto)) {
-  Object.defineProperty(crypto, 'randomUUID', {
-    value: () =>
-      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      }),
-    configurable: true,
-  });
-}
 
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: 'https://api.example.com',
 };
 
-const mockCourse: Course = {
+const mockCourse: ApiCourse = {
   id: 'course-lib-1',
-  tenantId: 'platform',
   title: 'Library Course One',
   description: 'A library course description',
   status: 'published',
-  badgeRefs: [],
   tags: [],
-  xpReward: 0,
   availableOffline: false,
   createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
-const mockTenant: Tenant = {
+const acme: TenantRow = {
   id: 'acme',
   name: 'Acme Corp',
   status: 'active',
   plan: 'pro',
-  branding: { colors: {} },
+  customDomain: '',
   createdAt: '2024-01-01T00:00:00.000Z',
 };
 
-const libraryRepoStub = {
-  list: jest.fn(async (): Promise<Course[]> => []),
-  setCourse: jest.fn(async (_c: Course): Promise<void> => undefined),
-  getCourse: jest.fn(async (_id: string): Promise<Course | undefined> => undefined),
-  listModules: jest.fn(async (_id: string) => []),
-  setModule: jest.fn(async () => undefined),
+const libraryStub = {
+  list: jest.fn(async (): Promise<ApiCourse[]> => []),
+  createCourse: jest.fn(async (): Promise<ApiCourse> => mockCourse),
+  share: jest.fn(async () => ({ created: [{ tenantId: 'acme', courseId: 'new-1' }] })),
 };
-
-const tenantRepoStub = {
-  list: jest.fn(async (): Promise<Tenant[]> => []),
-};
-
-const libraryServiceStub = {
-  share: jest.fn(async (): Promise<ShareLibraryCourseResult> => ({ ok: true, created: 1 })),
-};
+const tenantsStub = { list: jest.fn(async (): Promise<TenantRow[]> => []) };
 
 describe('LibraryComponent', () => {
   beforeEach(async () => {
@@ -78,90 +47,64 @@ describe('LibraryComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ASSURANCE_ENV, useValue: testEnv },
-        { provide: LibraryRepository, useValue: libraryRepoStub },
-        { provide: TenantRepository, useValue: tenantRepoStub },
-        { provide: LibraryService, useValue: libraryServiceStub },
+        { provide: LibraryService, useValue: libraryStub },
+        { provide: TenantsService, useValue: tenantsStub },
       ],
     }).compileComponents();
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(LibraryComponent);
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  it('calls LibraryRepository.list on init', async () => {
+  it('renders the heading and loads the library on init', async () => {
     const fixture = TestBed.createComponent(LibraryComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(libraryRepoStub.list).toHaveBeenCalledTimes(1);
+    expect(libraryStub.list).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.textContent).toContain('Global Course Library');
   });
 
   it('renders loaded courses in the table', async () => {
-    libraryRepoStub.list.mockResolvedValueOnce([mockCourse]);
+    libraryStub.list.mockResolvedValueOnce([mockCourse]);
     const fixture = TestBed.createComponent(LibraryComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Library Course One');
+    expect(fixture.nativeElement.textContent).toContain('Library Course One');
   });
 
-  it('calls LibraryRepository.setCourse with a new course on create', async () => {
+  it('creates a course through the API and reloads', async () => {
     const fixture = TestBed.createComponent(LibraryComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-
     const comp = fixture.componentInstance as unknown as {
       newTitle: string;
       newDescription: string;
       createCourse(): Promise<void>;
     };
-
     comp.newTitle = 'My New Library Course';
     comp.newDescription = 'Great content';
     await comp.createCourse();
-
-    expect(libraryRepoStub.setCourse).toHaveBeenCalledTimes(1);
-    const [calledCourse] = libraryRepoStub.setCourse.mock.calls[0] as [Course];
-    expect(calledCourse.title).toBe('My New Library Course');
-    expect(calledCourse.tenantId).toBe('platform');
-    expect(calledCourse.status).toBe('published');
-    expect(calledCourse.xpReward).toBe(0);
-    expect(calledCourse.badgeRefs).toEqual([]);
-    expect(calledCourse.tags).toEqual([]);
-    expect(calledCourse.createdAt).toBeTruthy();
+    expect(libraryStub.createCourse).toHaveBeenCalledWith({
+      title: 'My New Library Course',
+      description: 'Great content',
+    });
+    expect(libraryStub.list).toHaveBeenCalledTimes(2);
   });
 
-  it('calls LibraryService.share with the selected tenants', async () => {
-    libraryRepoStub.list.mockResolvedValueOnce([mockCourse]);
-    tenantRepoStub.list.mockResolvedValueOnce([mockTenant]);
-
+  it('shares the course to the selected tenants', async () => {
+    libraryStub.list.mockResolvedValueOnce([mockCourse]);
+    tenantsStub.list.mockResolvedValueOnce([acme]);
     const fixture = TestBed.createComponent(LibraryComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-
     const comp = fixture.componentInstance as unknown as {
-      openShare(c: Course): Promise<void>;
+      openShare(c: ApiCourse): Promise<void>;
       toggleTenant(id: string, checked: boolean): void;
       share(): Promise<void>;
+      shareResult(): { created: number } | null;
     };
-
     await comp.openShare(mockCourse);
     comp.toggleTenant('acme', true);
     await comp.share();
-
-    expect(libraryServiceStub.share).toHaveBeenCalledTimes(1);
-    expect(libraryServiceStub.share).toHaveBeenCalledWith({
-      libraryCourseId: 'course-lib-1',
-      tenantIds: ['acme'],
-    });
-  });
-
-  it('renders the Global Course Library heading', () => {
-    const fixture = TestBed.createComponent(LibraryComponent);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Global Course Library');
+    expect(libraryStub.share).toHaveBeenCalledWith('course-lib-1', ['acme']);
+    expect(comp.shareResult()).toEqual({ created: 1 });
   });
 });

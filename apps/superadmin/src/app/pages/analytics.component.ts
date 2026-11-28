@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
+import { apiErrorMessage } from '../services/api-error';
 import { AnalyticsService } from '../services/analytics.service';
 import type { PlatformAnalytics, TenantAnalyticsRow } from '../services/analytics.service';
 
@@ -124,7 +125,7 @@ export class AnalyticsComponent implements OnInit {
       this.data.set(result);
       this.tenantRows.set(result.tenants);
     } catch (err) {
-      this.error.set((err as Error).message ?? 'Failed to load analytics');
+      this.error.set(apiErrorMessage(err, 'Failed to load analytics'));
     } finally {
       this.loading.set(false);
     }

@@ -47,7 +47,7 @@ private fun AppRoot() {
             val vm = remember { LoginViewModel(onSignedIn = { principal = it }) }
             LoginScreen(vm, Modifier.padding(padding))
         } else {
-            val vm = remember(current.uid) { CoursesViewModel(principal = current) }
+            val vm = remember(current.id) { CoursesViewModel(principal = current) }
             CoursesScreen(
                 vm = vm,
                 onOpenCourse = { /* TODO: navigate to course detail / module player */ },

@@ -9,8 +9,11 @@ import {
   inject,
   input,
   signal,
+  viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TutorChatComponent } from '@assurance/ai-tutor';
+import { AuthService, TenantService } from '@assurance/auth';
 import {
   LearningApi,
   apiErrorMessage,
@@ -20,16 +23,27 @@ import {
   type ApiLessonSummary,
 } from '@assurance/lms-core';
 import { SfIconComponent } from '@assurance/ui';
+import { AwardOverlayComponent } from './award-overlay.component';
 import { KnowledgeCheckComponent } from './knowledge-check.component';
+import { ManagedCmi5PlayerComponent, ManagedScormPlayerComponent } from '@assurance/standards';
 
 const VIDEO_FILE = /\.(mp4|webm|ogg|m4v)(\?|#|$)/i;
 const HTTP_URL = /^https?:\/\//i;
+const ASSET_REF = /^asset:([0-9a-f-]{36})$/i;
 
 /** Lesson screen: label, framework tags, content, key points and the knowledge check. */
 @Component({
   selector: 'assurance-lesson',
   standalone: true,
-  imports: [RouterLink, SfIconComponent, KnowledgeCheckComponent],
+  imports: [
+    RouterLink,
+    SfIconComponent,
+    KnowledgeCheckComponent,
+    ManagedScormPlayerComponent,
+    ManagedCmi5PlayerComponent,
+    AwardOverlayComponent,
+    TutorChatComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="ls" aria-labelledby="ls-title">
@@ -67,49 +81,72 @@ const HTTP_URL = /^https?:\/\//i;
         </header>
 
         <section class="sf-card" aria-label="Lesson content">
-          @switch (l.contentType) {
-            @case ('quiz') {
-              <p class="sf-sub">Complete the quiz below to finish this lesson.</p>
-            }
-            @case ('video') {
-              @if (videoSrc(); as src) {
-                @if (isVideoFile()) {
-                  <video class="ls__video" controls preload="metadata" [src]="src">
-                    Your browser cannot play this video.
-                    <a [href]="src" target="_blank" rel="noopener noreferrer">Open the video</a>
-                  </video>
+          @if (l.standardsManaged) {
+            <assurance-managed-scorm-player [lessonId]="l.id" (completed)="onCompleted($event)" />
+          } @else {
+            @switch (l.contentType) {
+              @case ('quiz') {
+                <p class="sf-sub">Complete the quiz below to finish this lesson.</p>
+              }
+              @case ('video') {
+                @if (videoSrc(); as src) {
+                  @if (isVideoFile()) {
+                    <video class="ls__video" controls preload="metadata" [src]="src">
+                      Your browser cannot play this video.
+                      <a [href]="src" target="_blank" rel="noopener noreferrer">Open the video</a>
+                    </video>
+                  } @else {
+                    <a
+                      class="sf-btn sf-btn--secondary"
+                      [href]="src"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open video
+                    </a>
+                  }
+                } @else if (assetPending()) {
+                  <p class="sf-sub">Loading video…</p>
+                } @else if (assetError()) {
+                  <p class="ls__error" role="alert">{{ assetError() }}</p>
+                  <button type="button" class="sf-btn sf-btn--secondary" (click)="resolveAsset()">
+                    Retry
+                  </button>
                 } @else {
+                  <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
+                }
+              }
+              @case ('cmi5') {
+                <assurance-managed-cmi5-player
+                  [lessonId]="l.id"
+                  (completed)="onCompleted($event)"
+                />
+              }
+              @case ('unity') {
+                <assurance-managed-cmi5-player
+                  [lessonId]="l.id"
+                  (completed)="onCompleted($event)"
+                />
+              }
+              @default {
+                @if (externalLink(); as href) {
                   <a
                     class="sf-btn sf-btn--secondary"
-                    [href]="src"
+                    [href]="href"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Open video
+                    Open {{ typeName() }} content
                   </a>
+                  <p class="sf-sub ls__note" role="note">
+                    {{ typeName() }} content opens in a new tab. It is not shown inside this app
+                    yet; come back and mark the lesson complete when you finish.
+                  </p>
+                } @else {
+                  <p class="sf-sub" role="note">
+                    This {{ typeName() }} lesson cannot be opened in this app yet.
+                  </p>
                 }
-              } @else {
-                <p class="sf-sub" role="note">No video is available for this lesson yet.</p>
-              }
-            }
-            @default {
-              @if (externalLink(); as href) {
-                <a
-                  class="sf-btn sf-btn--secondary"
-                  [href]="href"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open {{ typeName() }} content
-                </a>
-                <p class="sf-sub ls__note" role="note">
-                  {{ typeName() }} content opens in a new tab. It is not shown inside this app yet;
-                  come back and mark the lesson complete when you finish.
-                </p>
-              } @else {
-                <p class="sf-sub" role="note">
-                  This {{ typeName() }} lesson cannot be opened in this app yet.
-                </p>
               }
             }
           }
@@ -131,6 +168,23 @@ const HTTP_URL = /^https?:\/\//i;
           </section>
         }
 
+        @if (tenantId() && uid()) {
+          <details class="sf-card ls__tutor" (toggle)="onTutorToggle($event)">
+            <summary class="ls__tutor-summary">Ask Forge about this lesson</summary>
+            <!-- Mounted on first open, so reading a lesson makes no coach requests. -->
+            @if (tutorOpened()) {
+              <div class="ls__tutor-chat" role="region" aria-label="Ask Forge chat">
+                <assurance-tutor-chat
+                  [tenantId]="tenantId()!"
+                  [uid]="uid()!"
+                  [courseId]="courseId()"
+                  [moduleId]="l.moduleId"
+                />
+              </div>
+            }
+          </details>
+        }
+
         @if (l.quiz; as quiz) {
           <section class="sf-card">
             <assurance-knowledge-check
@@ -140,7 +194,9 @@ const HTTP_URL = /^https?:\/\//i;
               (completed)="onCompleted($event)"
             />
           </section>
-        } @else if (!completion() && !l.progress?.completedAt) {
+        } @else if (
+          !l.standardsManaged && !launched() && !completion() && !l.progress?.completedAt
+        ) {
           <div class="ls__actions">
             @if (completeError()) {
               <p class="ls__error" role="alert">{{ completeError() }}</p>
@@ -155,6 +211,12 @@ const HTTP_URL = /^https?:\/\//i;
               {{ completing() ? 'Saving…' : 'Mark as complete' }}
             </button>
           </div>
+        }
+
+        @if (completion()?.award; as award) {
+          @if (!awardSeen()) {
+            <assurance-award-overlay [award]="award" (closed)="awardSeen.set(true)" />
+          }
         }
 
         <div class="ls__live" role="status" aria-live="polite">
@@ -268,6 +330,14 @@ const HTTP_URL = /^https?:\/\//i;
         outline: 3px solid rgba(220, 72, 27, 0.45);
         outline-offset: 4px;
       }
+      .ls__tutor-summary {
+        cursor: pointer;
+        padding: var(--sf-space-3) 0;
+        font-weight: var(--sf-weight-semibold);
+      }
+      .ls__tutor-chat {
+        height: 28rem;
+      }
       .ls__error {
         color: var(--sf-danger);
         font-weight: var(--sf-weight-semibold);
@@ -277,7 +347,24 @@ const HTTP_URL = /^https?:\/\//i;
   ],
 })
 export class LessonComponent {
+  private readonly scormPlayer = viewChild(ManagedScormPlayerComponent);
+
+  canLeave(): boolean {
+    return (
+      !this.scormPlayer()?.hasUnsavedChanges() ||
+      window.confirm('SCORM progress has not been saved. Leave and lose unsaved changes?')
+    );
+  }
   private readonly api = inject(LearningApi);
+  private readonly auth = inject(AuthService);
+  private readonly tenantSvc = inject(TenantService);
+  protected readonly tenantId = computed(() => this.tenantSvc.tenantId() ?? null);
+  protected readonly uid = computed(() => this.auth.principal()?.uid ?? null);
+  /** The coach chat is created the first time its panel is opened, then kept. */
+  protected readonly tutorOpened = signal(false);
+  protected onTutorToggle(event: Event): void {
+    if ((event.target as HTMLDetailsElement).open) this.tutorOpened.set(true);
+  }
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private hasShownLesson = false;
@@ -292,7 +379,13 @@ export class LessonComponent {
   readonly error = signal<string | null>(null);
   readonly completion = signal<ApiCompletion | null>(null);
   readonly completing = signal(false);
+  /** The award overlay shows once per completion; closing it keeps it closed. */
+  readonly awardSeen = signal(false);
   readonly completeError = signal<string | null>(null);
+  /** Signed URL for an uploaded (`asset:<id>`) video; it expires, so it is never cached. */
+  readonly assetSrc = signal('');
+  readonly assetPending = signal(false);
+  readonly assetError = signal<string | null>(null);
 
   private loadSeq = 0;
 
@@ -311,7 +404,10 @@ export class LessonComponent {
     this.error.set(null);
     this.lesson.set(null);
     this.completion.set(null);
+    this.awardSeen.set(false);
     this.completeError.set(null);
+    this.assetSrc.set('');
+    this.assetError.set(null);
     // Fetch lesson and outline together; the outline powers the label, Previous/Next and the
     // enrollment check. A missing outline never blocks the lesson itself.
     const [lessonRes, outlineRes] = await Promise.allSettled([
@@ -346,6 +442,7 @@ export class LessonComponent {
     this.outline.set(outline);
     this.lesson.set(lessonRes.value);
     this.loading.set(false);
+    void this.resolveAsset();
     if (this.hasShownLesson) {
       // Navigating between lessons destroys the clicked link; restore focus to the new title.
       afterNextRender(
@@ -388,6 +485,12 @@ export class LessonComponent {
       : mod || 'LESSON';
   });
 
+  /** cmi5 and Unity lessons complete only through what the content reports. */
+  readonly launched = computed(() => {
+    const t = this.lesson()?.contentType;
+    return t === 'cmi5' || t === 'unity';
+  });
+
   readonly typeName = computed(() => {
     const t = this.lesson()?.contentType;
     return t === 'scorm' ? 'SCORM' : t === 'cmi5' ? 'cmi5' : t === 'unity' ? 'Unity' : (t ?? '');
@@ -397,14 +500,38 @@ export class LessonComponent {
     const l = this.lesson();
     if (!l) return '';
     if (HTTP_URL.test(l.externalUrl)) return l.externalUrl;
+    if (this.assetSrc()) return this.assetSrc();
     return HTTP_URL.test(l.assetRef) || l.assetRef.startsWith('/') ? l.assetRef : '';
   });
 
   readonly isVideoFile = computed(() => {
     const l = this.lesson();
     const src = this.videoSrc();
-    return !!l && !!src && (src === l.assetRef || VIDEO_FILE.test(src));
+    return !!l && !!src && (src === l.assetRef || src === this.assetSrc() || VIDEO_FILE.test(src));
   });
+
+  /** Video lessons whose file was uploaded to Forge storage get a fresh signed URL. */
+  async resolveAsset(): Promise<void> {
+    const l = this.lesson();
+    const id =
+      l?.contentType === 'video' && !HTTP_URL.test(l.externalUrl)
+        ? ASSET_REF.exec(l.assetRef)?.[1]
+        : undefined;
+    if (!l || !id) return;
+    const seq = this.loadSeq;
+    this.assetPending.set(true);
+    this.assetError.set(null);
+    try {
+      const { url } = await this.api.assetUrl(id);
+      if (seq === this.loadSeq) this.assetSrc.set(url);
+    } catch (e) {
+      if (seq === this.loadSeq) {
+        this.assetError.set(apiErrorMessage(e, 'Could not load the video. Please try again.'));
+      }
+    } finally {
+      if (seq === this.loadSeq) this.assetPending.set(false);
+    }
+  }
 
   readonly externalLink = computed(() => {
     const url = this.lesson()?.externalUrl ?? '';

@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # main is production; feat/angular-22-upgrade deploys staging on Railway, which
+    # waits for this workflow ("Wait for CI") before it builds.
+    branches: [main, feat/angular-22-upgrade]
   pull_request:
   workflow_dispatch:
 
@@ -46,6 +48,8 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - name: Test
         run: npx nx run-many -t test --parallel=2 --ci --coverage
+      - name: Build-script tests
+        run: node --test scripts/*.test.mjs
 
   build:
     runs-on: ubuntu-latest
@@ -55,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [learner, admin, superadmin, storefront, functions]
+        project: [learner, admin, superadmin, storefront]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -83,7 +87,8 @@ jobs:
   # E2E needs a served app + browsers; run on main pushes and manual dispatch,
   # not on every PR (the learner-e2e project is still linted in the lint job).
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright has no Chromium build for ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
     continue-on-error: true
     steps:
@@ -98,26 +103,43 @@ jobs:
       - name: E2E tests
         run: npx nx e2e learner-e2e
 
-  rules-tests:
+  # The simulator rules (rust/README.md): test them, then build the Python module
+  # the backend job installs, so Django's replay tests run against this commit's rules.
+  rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          node-version: 24
-          cache: npm
-      # The Firestore emulator requires a JRE.
-      - uses: actions/setup-java@v4
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
         with:
-          distribution: temurin
-          java-version: '17'
-      - run: npm ci --legacy-peer-deps
-      # Use the workspace-pinned firebase-tools (verified locally), not latest global.
-      - name: Firestore rules tests (emulator)
-        # demo-* project ids run the emulator with no credentials required.
-        run: npx firebase emulators:exec --only firestore --project demo-soteria-forge "npx nx test-rules data-access --skip-nx-cache"
+          workspaces: rust
+      - name: Format check
+        working-directory: rust
+        run: cargo fmt --check
+      - name: Lint
+        working-directory: rust
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test
+        working-directory: rust
+        run: cargo test --locked
+      # manylinux 2_28 runs on the API image (python:3.13-slim) and on this runner.
+      - name: Build the forge_sim wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          target: x86_64
+          manylinux: 2_28
+          args: --release --locked -m rust/forge-sim-py/Cargo.toml -i python3.13 --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-sim-wheel
+          path: dist/*.whl
+          if-no-files-found: error
 
   backend:
+    needs: rust
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -140,11 +162,82 @@ jobs:
         with:
           version: '0.12.23'
       - run: uv sync --frozen
+      # The SCORM player serves scorm-again from backend/runtime, as the image does.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install the SCORM runtime
+        run: npm ci --omit=dev --ignore-scripts --prefix runtime
+      - uses: actions/download-artifact@v4
+        with:
+          name: forge-sim-wheel
+          path: backend/dist
+      # Not in pyproject.toml yet, so install it beside the locked dependencies.
+      # `uv run` keeps it; the import fails the job if the wheel doesn't load, which
+      # would otherwise only show as skipped tests.
+      - name: Install the forge_sim wheel
+        run: uv pip install dist/*.whl && uv run python -c "import forge_sim; print('rules', forge_sim.RULES_VERSION)"
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Migrations are committed
         run: DJANGO_DEBUG=true uv run python manage.py makemigrations --check --dry-run
       - name: Test
         run: uv run pytest
-      - name: OpenAPI schema is valid
-        run: DJANGO_DEBUG=true uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null
+      # backend/openapi.json is the contract the zod schemas in libs/shared are tested
+      # against (learning-contract.spec.ts), so it must match the code.
+      - name: OpenAPI schema is valid and committed
+        run: |
+          DJANGO_DEBUG=true uv run python manage.py spectacular --validate --fail-on-warn \
+            --format openapi-json --file openapi.json
+          git diff --exit-code -- openapi.json || {
+            echo "::error::backend/openapi.json is stale. Regenerate it (see libs/shared/src/lib/schemas/learning-contract.spec.ts) and commit it."
+            exit 1
+          }
+
+  # Railway builds these images; build them here first so a Dockerfile break fails CI,
+  # not a deploy. Nothing is pushed.
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: backend
+            file: backend/Dockerfile
+          - name: learner
+            context: .
+            file: Dockerfile
+            args: |
+              APP=learner
+              FORGE_API_BASE_URL=https://api.forge.trainovate.ai
+              FORGE_ROOT_DOMAIN=forge.trainovate.ai
+          - name: storefront
+            context: .
+            file: docker/storefront.Dockerfile
+            args: |
+              FORGE_ROOT_DOMAIN=forge.trainovate.ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.args }}
+          tags: forge-${{ matrix.name }}:ci
+          load: true
+          push: false
+      - name: Django deploy checks
+        if: matrix.name == 'api'
+        run: |
+          docker run --rm -e DJANGO_SECRET_KEY="$(openssl rand -hex 32)" \
+            -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci \
+            -e DJANGO_ALLOWED_HOSTS=api.forge.trainovate.ai \
+            -e EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend \
+            forge-api:ci python manage.py check --deploy --fail-level WARNING
+      - name: Bundle points at the build-time API
+        if: matrix.name == 'learner'
+        run: |
+          docker run --rm forge-learner:ci sh -c \
+            "grep -l 'api.forge.trainovate.ai' /usr/share/nginx/html/main-*.js"

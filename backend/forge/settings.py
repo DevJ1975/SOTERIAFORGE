@@ -1,7 +1,9 @@
 """Soteria Forge API settings. Everything environment-specific comes from env vars
-(Railway service variables in deployed environments, `.env` locally)."""
+(service variables on Railway, task-definition variables and secrets on AWS, `.env`
+locally)."""
 
 import os
+import re
 from pathlib import Path
 
 import dj_database_url
@@ -32,6 +34,9 @@ if os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
 # Railway's deploy health check sends this Host header; without it /healthz is a 400.
 if os.environ.get("RAILWAY_ENVIRONMENT_NAME"):
     ALLOWED_HOSTS.append("healthcheck.railway.app")
+# Only Django admin uses cookies/CSRF (the API authenticates with Django access tokens),
+# and it must be served over https on the same host.
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -49,10 +54,20 @@ INSTALLED_APPS = [
     "apps.engage",
     "apps.learning",
     "apps.assessments",
+    "apps.gamification",
     "apps.coach",
+    "apps.standards",
+    "apps.games",
+    "apps.reports",
+    "apps.library",
+    "apps.assets",
+    # Before oauth2_provider so its templates (consent page) override the toolkit's.
+    "apps.mcp",
+    "oauth2_provider",
 ]
 
 MIDDLEWARE = [
+    "forge.health.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -85,6 +100,15 @@ TEMPLATES = [
     }
 ]
 
+# RlsMiddleware keeps the tenant in a *session* setting and resets it after each
+# request. Transaction-mode poolers (pgbouncer / Supabase port 6543) hand the same
+# server connection to different requests mid-session, which could expose one
+# tenant's rows to another. Use a direct or session-mode connection string.
+if any(m in os.environ.get("DATABASE_URL", "") for m in (":6543", "pgbouncer=true")):
+    raise RuntimeError(
+        "DATABASE_URL points at a transaction-mode pooler; row-level security needs "
+        "a direct or session-mode Postgres connection"
+    )
 DATABASES = {
     "default": dj_database_url.config(
         env="DATABASE_URL",
@@ -93,6 +117,20 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+# AWS: an RDS-managed secret holds the owner's username/password as separate values,
+# so the connection can be given in parts instead of one DATABASE_URL.
+if not os.environ.get("DATABASE_URL") and os.environ.get("DB_HOST"):
+    DATABASES["default"].update(
+        HOST=os.environ["DB_HOST"],
+        PORT=os.environ.get("DB_PORT", "5432"),
+        NAME=os.environ.get("DB_NAME", "forge"),
+        USER=os.environ.get("DB_USER", "forge"),
+        PASSWORD=os.environ.get("DB_PASSWORD", ""),
+    )
+    DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = os.environ.get(
+        "DB_SSLMODE", "require"
+    )
+
 # The web process connects as the RLS-bound runtime role (apps/tenants/dbroles.py);
 # migrations and `ensure_app_role` run with DB_USE_OWNER=1 as the owner.
 if os.environ.get("DB_APP_PASSWORD") and not env_bool("DB_USE_OWNER"):
@@ -115,39 +153,100 @@ STORAGES = {
 
 # --- API ---------------------------------------------------------------------
 REST_FRAMEWORK = {
-    # Firebase ID tokens only: no session/basic auth on the API.
-    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.accounts.authentication.FirebaseAuthentication"],
+    # Django-issued access tokens only: no session/basic auth on the API.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.TokenAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["apps.accounts.permissions.IsActiveMember"],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "forge.schema.ForgeAutoSchema",
     "UNAUTHENTICATED_USER": None,
 }
 SPECTACULAR_SETTINGS = {
     "TITLE": "Soteria Forge API",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Separate request and response components, so a response lists every field the
+    # server always sends (the zod contract test in libs/shared relies on it).
+    "COMPONENT_SPLIT_REQUEST": True,
     # Several models have a `status` field; name each choice set explicitly.
     "ENUM_NAME_OVERRIDES": {
         "TenantStatusEnum": "apps.tenants.models.Tenant.Status",
         "MemberStatusEnum": "apps.accounts.models.Member.Status",
         "PublishStatusEnum": "apps.learning.models.PublishStatus",
         "CoachAgentEnum": "apps.coach.profiles.Agent.choices",
+        "RoleEnum": "apps.accounts.models.Role",
+        "AssignableRoleEnum": "apps.accounts.models.ASSIGNABLE_ROLES",
+        "BadgeKindEnum": "apps.gamification.models.Badge.Kind",
+        "CoachReviewStatusEnum": "apps.coach.models.Exchange.ReviewStatus",
+        "CoachRatingEnum": "apps.coach.models.Exchange.Rating",
     },
 }
 
-# Angular apps on Vercel: tenant subdomains + the apex storefront.
+# Angular apps: learner on <tenant>.<root>, superadmin on app.<root>, the storefront on
+# the apex, and admin on <tenant>.<admin root> (docs/railway-go-live-plan.md, D2). Each
+# pattern allows exactly one label under its root.
 ROOT_DOMAIN = os.environ.get("FORGE_ROOT_DOMAIN", "soteriaforge.com")
-CORS_ALLOWED_ORIGIN_REGEXES = [rf"^https://([a-z0-9-]+\.)?{ROOT_DOMAIN.replace('.', r'\.')}$"]
+ADMIN_ROOT_DOMAIN = os.environ.get("FORGE_ADMIN_ROOT_DOMAIN", f"admin.{ROOT_DOMAIN}")
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    rf"^https://([a-z0-9-]+\.)?{re.escape(domain)}$" for domain in (ROOT_DOMAIN, ADMIN_ROOT_DOMAIN)
+]
 CORS_ALLOWED_ORIGINS = env_list("CORS_EXTRA_ORIGINS")
-# Firebase ID token + the host-resolved tenant (apps/accounts/authentication.py).
-CORS_ALLOW_HEADERS = (*default_headers, "x-forge-tenant")
+# Bearer token + the host-resolved tenant (apps/accounts/authentication.py), and the
+# client marker the refresh endpoint requires alongside its cookie.
+# `x-experience-api-version` is sent by cmi5 Assignable Units (apps/standards/cmi5.py).
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-forge-tenant",
+    "x-forge-client",
+    "x-experience-api-version",
+)
+# The refresh token travels in an HttpOnly cookie on /api/auth/.
+CORS_ALLOW_CREDENTIALS = True
 if DEBUG:
     CORS_ALLOWED_ORIGIN_REGEXES.append(r"^http://([a-z0-9-]+\.)?localhost(:\d+)?$")
 
-# --- Firebase (identity only) ------------------------------------------------
-# Service-account JSON (inline). Absent locally/in tests: token verification uses
-# Application Default Credentials or is mocked.
-FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
-FIREBASE_CREDENTIALS_JSON = os.environ.get("FIREBASE_CREDENTIALS_JSON", "")
+# --- Sign-in (apps/accounts/auth_views.py) ------------------------------------
+AUTH_ACCESS_TTL = int(os.environ.get("AUTH_ACCESS_TTL_SECONDS", "900"))
+AUTH_REFRESH_TTL = int(os.environ.get("AUTH_REFRESH_TTL_SECONDS", str(14 * 86400)))
+AUTH_RESET_TTL = 3600
+AUTH_INVITE_TTL = 7 * 86400
+AUTH_LOCKOUT_ATTEMPTS = 5
+AUTH_LOCKOUT_SECONDS = 900
+AUTH_COOKIE_NAME = "forge_refresh"
+# "Lax" works when the app and API share a site (*.soteriaforge.com); a frontend on
+# another site (e.g. *.vercel.app previews) needs "None" (always with Secure).
+AUTH_COOKIE_SAMESITE = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
+# Base URL for emailed links; defaults to the member's tenant host.
+AUTH_LINK_BASE_URL = os.environ.get("AUTH_LINK_BASE_URL", "")
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# --- Email (password reset and invites) ----------------------------------------
+_mail_backend = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+MAILERS = {
+    "default": {
+        "BACKEND": _mail_backend,
+        "OPTIONS": (
+            {
+                "host": os.environ.get("EMAIL_HOST", ""),
+                "port": int(os.environ.get("EMAIL_PORT", "587")),
+                "username": os.environ.get("EMAIL_HOST_USER", ""),
+                "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+                "use_tls": env_bool("EMAIL_USE_TLS", True),
+            }
+            if _mail_backend.endswith("smtp.EmailBackend")
+            else {}
+        ),
+    }
+}
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"Soteria Forge <no-reply@{ROOT_DOMAIN}>")
 
 # Browser-facing WebSocket URL and server-side HTTP API URL may differ in containers.
 LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
@@ -157,15 +256,113 @@ LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 
 # Local AI pilot: intentionally loopback-only; Railway cannot reach a Mac's localhost.
 COACH_ENABLED = env_bool("COACH_ENABLED")
+# Questions and answers are kept this long for the thumbs and the staff review queue.
+COACH_LOG_RETENTION_DAYS = int(os.environ.get("COACH_LOG_RETENTION_DAYS", "90"))
 COACH_MODEL = "qwen3:8b"
 COACH_MODEL_DIGEST = "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
 COACH_EMBED_MODEL = "qwen3-embedding:0.6b"
 COACH_EMBED_DIGEST = "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d"
 
+STANDARDS_ENABLED = env_bool("STANDARDS_ENABLED")
+STANDARDS_CONTENT_ORIGIN = os.environ.get("STANDARDS_CONTENT_ORIGIN", "")
+STANDARDS_APP_ORIGINS = env_list("STANDARDS_APP_ORIGINS")
+STANDARDS_LAUNCH_TTL = 7200
+# cmi5 / Unity lessons: how long one launch may keep reporting statements.
+CMI5_SESSION_TTL = 4 * 3600
+STANDARDS_S3_ENDPOINT = os.environ.get("STANDARDS_S3_ENDPOINT", "")
+STANDARDS_S3_BUCKET = os.environ.get("STANDARDS_S3_BUCKET", "")
+STANDARDS_S3_ACCESS_KEY = os.environ.get("STANDARDS_S3_ACCESS_KEY", "")
+STANDARDS_S3_SECRET_KEY = os.environ.get("STANDARDS_S3_SECRET_KEY", "")
+STANDARDS_S3_REGION = os.environ.get("STANDARDS_S3_REGION", "auto")
+STANDARDS_LOCAL_ROOT = os.environ.get("STANDARDS_LOCAL_ROOT", "")
+SCORM_RUNTIME_PATH = os.environ.get("SCORM_RUNTIME_PATH") or str(
+    BASE_DIR / "runtime" / "node_modules" / "scorm-again" / "dist" / "scorm-again.min.js"
+)
+XAPI_RECORDING_ENABLED = env_bool("XAPI_RECORDING_ENABLED")
+XAPI_ACTIVITY_BASE = os.environ.get("XAPI_ACTIVITY_BASE", "https://soteriaforge.com/xapi")
+XAPI_LRS_ENDPOINT = os.environ.get("XAPI_LRS_ENDPOINT", "")
+XAPI_LRS_AUTH = os.environ.get("XAPI_LRS_AUTH", "")
+
+# --- MCP server + OAuth 2.1 (apps/mcp, docs/forge-mcp.md) ---------------------
+# The API's public origin: the OAuth issuer, and the MCP resource is <origin>/mcp.
+PUBLIC_URL = os.environ.get("FORGE_PUBLIC_URL", "").rstrip("/") or (
+    f"https://{os.environ['RAILWAY_PUBLIC_DOMAIN']}"
+    if os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    else "http://localhost:8000"
+)
+MCP_ISSUER_URL = PUBLIC_URL
+MCP_RESOURCE_URL = f"{PUBLIC_URL}/mcp"
+# OAuth clients may only redirect to these hosts (https), or to loopback (http).
+MCP_REDIRECT_HOSTS = env_list(
+    "MCP_REDIRECT_HOSTS", "claude.ai,claude.com,chatgpt.com,chat.openai.com"
+)
+# Browser origins allowed to call /mcp directly (server-to-server calls send none).
+MCP_ALLOWED_ORIGINS = [f"https://{h}" for h in MCP_REDIRECT_HOSTS] + (
+    ["http://localhost:*", "http://127.0.0.1:*"] if DEBUG else []
+)
+# Hosts forge_import_media may fetch generated files from (https only), comma-separated.
+MCP_MEDIA_IMPORT_HOSTS = env_list("MCP_MEDIA_IMPORT_HOSTS")
+
+LOGIN_URL = "/oauth/login/"
+AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+MCP_SCOPE = "forge"
+OAUTH2_PROVIDER = {
+    "SCOPES": {MCP_SCOPE: "Use Soteria Forge as you, with your role in your organization"},
+    "DEFAULT_SCOPES": [MCP_SCOPE],
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 60,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 30 * 24 * 60 * 60,
+    "ROTATE_REFRESH_TOKEN": True,
+    # A replayed refresh token revokes its whole family (RFC 9700 §4.14.2).
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "REQUEST_APPROVAL_PROMPT": "force",
+    "PKCE_REQUIRED": True,
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"],  # http only for loopback (apps/mcp/dcr.py)
+    # RFC 9700 (OAuth security BCP): S256 only, bearer in headers only, iss in the
+    # authorization response, and access/refresh tokens stored only as hashes.
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_REQUIRED": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    "OIDC_ISS_ENDPOINT": PUBLIC_URL,
+    # ChatGPT registers with RFC 7591; Claude can also use a client ID metadata document.
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": ("apps.mcp.dcr.AllowlistedRedirectsDCRPermission",),
+    "CIMD_ENABLED": True,
+    "CIMD_REGISTRATION_PERMISSION_CLASSES": ("oauth2_provider.cimd.HostAllowlistCIMDPermission",),
+    "CIMD_ALLOWED_HOSTS": MCP_REDIRECT_HOSTS,
+}
+
+# W008 flags http redirect URIs; they're needed for loopback clients (RFC 8252), and
+# registration accepts http only for loopback hosts (apps/mcp/dcr.py).
+SILENCED_SYSTEM_CHECKS = [
+    "oauth2_provider.W008",
+    # HSTS stays host-only and unpreloaded until every host is confirmed HTTPS-only
+    # (docs/railway-go-live-plan.md, F12). Preload is hard to undo.
+    "security.W005",
+    "security.W021",
+]
+
+# Release and code tools (platform superadmins). Tokens are Railway service variables.
+RAILWAY_API_TOKEN = os.environ.get("RAILWAY_API_TOKEN", "")
+RAILWAY_PROJECT_ID = os.environ.get("RAILWAY_PROJECT_ID", "")  # set by Railway
+RAILWAY_SERVICE_ID = os.environ.get("RAILWAY_SERVICE_ID", "")  # set by Railway
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_REPO = os.environ.get("GITHUB_REPO", "DevJ1975/SOTERIAFORGE")
+FORGE_STAGING_BRANCH = os.environ.get("FORGE_STAGING_BRANCH", "feat/angular-22-upgrade")
+FORGE_PRODUCTION_BRANCH = os.environ.get("FORGE_PRODUCTION_BRANCH", "main")
+
+# --- Open Badges 3.0 credentials (apps/gamification/credentials.py) ------------
+# Ed25519 private key, PEM (PKCS8), as a secret service variable. Without it badge
+# awards are still recorded; the signed credential is unavailable (503).
+BADGE_SIGNING_KEY = os.environ.get("BADGE_SIGNING_KEY", "").replace("\\n", "\n")
+
 # --- Security ----------------------------------------------------------------
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = not DEBUG
-# Railway's health check probes over plain HTTP inside its network.
+# Health checks probe over plain HTTP inside the platform's network.
 SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
 # Start short; raise to 31536000 once every API host is confirmed HTTPS-only.
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0" if DEBUG else "3600"))
@@ -186,7 +383,8 @@ if os.environ.get("SENTRY_DSN"):
 
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
-        environment=os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
+        environment=os.environ.get("FORGE_ENVIRONMENT")
+        or os.environ.get("RAILWAY_ENVIRONMENT_NAME", "local"),
         send_default_pii=False,  # FERPA: no learner PII in error reports
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0")),
     )

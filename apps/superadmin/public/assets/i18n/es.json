@@ -18,12 +18,21 @@
     "errors": {
       "invalidCredentials": "Correo o contraseña no válidos.",
       "emailInUse": "Ya existe una cuenta con este correo.",
-      "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+      "weakPassword": "La contraseña debe tener al menos 12 caracteres.",
       "invalidEmail": "Introduce un correo electrónico válido.",
       "tooManyRequests": "Demasiados intentos. Inténtalo de nuevo más tarde.",
       "network": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
-    }
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "invalidLink": "Este enlace no es válido o ha caducado. Solicita uno nuevo.",
+      "passwordsDontMatch": "Las contraseñas no coinciden."
+    },
+    "chooseNewPassword": "Elige una nueva contraseña",
+    "acceptInvite": "Configura tu cuenta",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "savePassword": "Guardar contraseña",
+    "passwordHint": "Usa al menos {{min}} caracteres. Una frase corta es fácil de recordar y difícil de adivinar.",
+    "passwordSet": "Tu contraseña está lista. Ya puedes iniciar sesión."
   },
   "common": {
     "signIn": "Iniciar sesión",
@@ -40,6 +49,10 @@
     "account": "Mi aprendizaje",
     "reports": "Informes"
   },
-  "dashboard": { "welcome": "Bienvenido" },
-  "footer": { "poweredBy": "Desarrollado por Trainovation Technologies, LLC" }
+  "dashboard": {
+    "welcome": "Bienvenido"
+  },
+  "footer": {
+    "poweredBy": "Desarrollado por Trainovation Technologies, LLC"
+  }
 }

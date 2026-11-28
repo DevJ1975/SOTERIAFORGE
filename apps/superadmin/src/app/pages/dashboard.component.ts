@@ -82,10 +82,5 @@ export class SuperadminDashboardComponent {
       title: 'Billing',
       description: 'Subscription plans, invoices, and seat usage across tenants. (Phase 1+)',
     },
-    {
-      title: 'B2C Catalog',
-      description: 'Public-facing course marketplace and consumer enrolment flows. (Phase 1+)',
-      link: '/catalog',
-    },
   ];
 }

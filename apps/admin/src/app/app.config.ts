@@ -4,7 +4,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { ASSURANCE_ENV, forgeApiInterceptor, provideForgeApi } from '@assurance/auth';
-import { provideForgeFirebase } from '@assurance/data-access';
 import { provideObservability } from '@assurance/ui';
 import { provideForgeTransloco } from '@assurance/ui';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
@@ -16,17 +15,12 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes, withComponentInputBinding()),
     provideObservability(),
-    // Forge API (Django): the interceptor adds the Firebase ID token + tenant.
+    // Forge API (Django): the interceptor adds the access token + tenant.
     provideHttpClient(withFetch(), withInterceptors([forgeApiInterceptor])),
     provideForgeApi(),
     provideForgeTransloco(),
     provideAnimationsAsync(),
     providePrimeNG({ theme: { preset: Aura } }),
     { provide: ASSURANCE_ENV, useValue: environment },
-    provideForgeFirebase({
-      firebase: environment.firebase,
-      appCheckSiteKey: environment.appCheckSiteKey,
-      useEmulators: !environment.production,
-    }),
   ],
 };

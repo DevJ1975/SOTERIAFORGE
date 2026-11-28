@@ -30,14 +30,13 @@ class CoursesViewModel(
     }
 
     fun refresh() {
-        val tenantId = principal.tenantId
-        if (tenantId == null) {
+        if (principal.tenantId == null) {
             _state.update { it.copy(loading = false, error = "No tenant bound to this account") }
             return
         }
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            runCatching { repo.listPublishedCourses(tenantId) }
+            runCatching { repo.listPublishedCourses() }
                 .onSuccess { list -> _state.update { it.copy(loading = false, courses = list) } }
                 .onFailure { e ->
                     _state.update { it.copy(loading = false, error = e.message ?: "Failed to load") }

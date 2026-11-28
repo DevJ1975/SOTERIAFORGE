@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
-import { ASSURANCE_ENV } from '@assurance/auth';
+import { STOREFRONT_ENV } from '../../environments/storefront-environment';
 
 /** Options accepted by {@link SeoService.setSeo}. */
 export interface SeoOptions {
@@ -33,7 +33,7 @@ export interface SeoOptions {
 export class SeoService {
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
-  private readonly env = inject(ASSURANCE_ENV);
+  private readonly env = inject(STOREFRONT_ENV);
   private readonly doc = inject(DOCUMENT);
 
   /** `https://<rootDomain>` with no trailing slash (falls back to the prod host). */

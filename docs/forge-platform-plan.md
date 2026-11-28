@@ -5,6 +5,14 @@
 - **Supersedes (on acceptance):** ADR 0001 decisions 5–7 and the "Firebase/GCP hosts
   data and business logic" split in `docs/deployment.md`
 
+> **Status update (2026-10-27): Firebase has been removed completely.** This plan
+> originally kept Firebase Auth/GCIP and FCM; that was reversed. Sign-in is
+> Django-native, push notifications are dropped, `apps/functions`, Firestore,
+> Storage rules and `libs/data-access` are deleted, and Django on Railway is the
+> only backend. The sections below are the original plan and are kept as a
+> historical record: where they say "keep Firebase" or describe Firebase token
+> auth, FCM or `firebase-admin`, they no longer apply.
+
 ### Local AI pilot (2026-10-27)
 
 The [local course tutor](./local-ai-tutor.md) now connects Angular tutor and
@@ -213,7 +221,7 @@ web process connecting as `forge_app` (no superuser, no BYPASSRLS; superusers
 skip RLS even when forced, and Railway's default user is one); migrations run
 as the owner and `ensure_app_role` refreshes grants on each deploy. The learner
 and admin apps call the API (`forgeApiInterceptor`, `ForgeSession` →
-`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` signs
+`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` (since removed with Firebase) signed
 in real Firebase Auth emulator users against Django running as `forge_app` and
 checks auth, tenant isolation, the role change, claim mirroring, audit and
 revocation (10/10).
@@ -271,21 +279,151 @@ seed_course --tenant <id> [--publish]` loads a demo course.
 type): offline download, focused one-module-per-screen mode, the in-page module
 player and live progress updates (progress refreshes on load).
 
-**Remaining for Phase 2:**
+### Phase 2 finished (2026-11-21)
 
-- **Question types:** ordering and matching have no learner input yet. The lesson
-  blocks with a message instead of letting a learner spend graded attempts.
-- **SCORM/cmi5/game/Unity lessons** show an "Open" link only; the player needs
-  rebuilding on lessons, and with it offline download and runtime-state saving.
-  A video stored as a bare storage key is not resolved.
-- **SCORM upload** needs the object-storage decision (Railway Bucket vs R2, §8).
-- **Zod schemas** in `libs/shared` still describe the Firestore model; update them
-  to the lesson model and add the OpenAPI contract test.
-- **Offline replay:** completion and first-try answers are safe to replay; add
-  `Idempotency-Key` for graded attempts so a replay can't use up an attempt.
-- **Admin app** still authors courses in Firestore; move authoring to the API.
-- **Performance:** `GET /api/enrollments/me` queries once per enrollment; fold into
-  one query before cohorts grow. Learner initial bundle is 1.26 MB against a 1.00 MB budget.
+- **Ordering and matching questions** are answerable in the learner app: Move up /
+  Move down for ordering (no drag needed, keyboard and screen-reader friendly) and a
+  menu per item for matching. The API shows ordering items in a stable shuffle, never
+  the authored order (which is often the answer), and sends matching questions their
+  two columns (`matching.left`, `matching.right`). The MCP quiz tools now refuse
+  matching questions that couldn't be answered (fewer than 2 pairs, an empty side, a
+  left item used twice).
+- **Lesson players:** SCORM (managed player), cmi5 and Unity lessons play inside the
+  app; uploaded videos (`asset:<id>`) play from a short-lived signed URL.
+- **SCORM upload** runs against Railway Bucket, R2 or Amazon S3; it is switched on by
+  configuring a bucket (docs/todo.md, "For you").
+- **Zod contract:** `libs/shared/src/lib/schemas/learning.ts` describes the lesson
+  model, and `LearningApi` uses its types. `learning-contract.spec.ts` checks it
+  against the committed `backend/openapi.json`; CI fails when that file is stale. It
+  caught two real gaps on the way in: the completion award's `badges` were missing
+  from the schema, and enrollment dates were documented as never null. The schema
+  build also had six existing warnings, now fixed (it uses separate request and
+  response components). The Firestore `course` / `module` / `enrollment` schemas
+  are deprecated.
+- **Offline replay:** graded attempts accept an `Idempotency-Key`. A replay returns
+  the original result without spending an attempt or paying XP twice; the same key
+  with different answers is a 409. The learner app reuses the key when a submission's
+  outcome is unknown (offline, timeout, 5xx).
+- **Admin authoring** uses the API (no Firestore left in the admin app).
+- **Performance:** `GET /api/enrollments/me` uses three queries however many
+  enrollments there are (a test pins it). The learner initial bundle is 772 kB, under
+  the 1 MB budget.
+
+Not done, and moved to docs/todo.md: **offline download** of lessons. The old
+`DownloadService` (libs/player) is still written against the Firestore module and
+is not wired into any app.
+
+### Phase 3 progress (2026-10-27)
+
+**Slice 1 done: XP, levels, Pulse streak, crews and the crew leaderboard** in a new
+`gamification` app under tenant RLS.
+
+- **XP ledger.** `XpEvent` is append-only, enforced by a Postgres trigger and by revoking
+  UPDATE/DELETE from the runtime role (like the audit log). `amount` can't be negative
+  (database check), and each (member, source, source id) pays out once, so replays and
+  races can't double-award. Every award is also audited.
+- **Derived, not stored.** Total XP, level and streak are computed from the ledger and
+  from `ActivityDay` rows, so there is no counter to drift. The level curve is a port of
+  the shared TypeScript one (`floor(100 * N^1.5)`) with parity tests at the thresholds.
+- **Where XP is earned** (one hook in `complete_lesson`, on a lesson's first completion
+  only): the lesson's authored reward (default 20, set 0-1000 per lesson) plus 10 XP per
+  quiz point. A graded quiz pays on a pass; a knowledge check pays for first-try-correct
+  points only. The completion response carries an `award` (XP, level, level-up, streak)
+  for the award overlay.
+- **Pulse streak.** A streak is the run of consecutive UTC days with a first lesson
+  completion, ending today or yesterday; otherwise it reads 0. The 14-day strip shows
+  real activity days. Home's Pulse card now uses them (the member-doc values are only a
+  fallback when the API is down).
+- **Cohort -> section -> crew**, staff-managed (learners only, one crew per member per
+  cohort, enforced by a database constraint; roster changes are audited).
+- **Crew-only leaderboard.** `GET /api/leaderboard/crews?period=daily|weekly|allTime`
+  ranks crews and never returns a learner's name or id. Daily and weekly boards are UTC
+  date windows (ISO week, Monday start) over the ledger, so the leaderboard reset jobs
+  are no longer needed. `GET /api/me/progress` is the private score card.
+
+**Product decisions made here (change them if wrong):**
+
+- A crew's score is the **average XP per crew member**, so a bigger crew has no head
+  start. Ties share a rank.
+- Crews are assigned by staff; learners can't pick or change their own.
+- The streak counts a first lesson completion, not every knowledge-check answer.
+- Only members with the `learner` role join crews.
+
+**Remaining for Phase 3:**
+
+- **Mission badges and credentials:** catalog and rules, instructor sign-off, Open Badges
+  3.0 issuance with a public verify page. Signing needs an issuer key pair (see
+  `docs/open-badges.md`), which is a deployment decision.
+- **Learner screens:** My Progress (score card, crew standing), the crew leaderboard page
+  (replaces the individual one), the award overlay driven by the completion `award`, and
+  Home's XP bar and badges card on real data.
+- **Staff screens:** cohort / section / crew management in the admin app.
+- **Cleanup:** remove the Firestore XP, leaderboard and member-doc gamification code
+  (`libs/gamification` services, `apps/functions` gamification and leaderboard jobs) at
+  cutover.
+
+**Slice 2 done (2026-10-27): badges, the award overlay and the staff screens.**
+
+- **Mission badges** (`gamification.Badge`, `BadgeAward`, under tenant RLS): a per-tenant
+  catalog with rules (lessons, courses, passed quizzes, streak, level, XP) checked on the
+  server inside the completion transaction, so a replay never awards twice. New tenants get
+  a starter catalog of eight; existing tenants were backfilled by migration.
+- **Credentials** are always manual: an instructor signs them off (`POST /api/badges/{id}/award`).
+- Learner Home reads `GET /api/me/badges`; the completion `award` lists the badges it earned
+  and the award overlay shows them. Admin has Cohorts & crews and Badges pages.
+
+**Slice 3 done (2026-11-21): signed credentials end to end.** Open Badges 3.0 signing and
+the public endpoints, a public verification page (`/credentials/<award>`), and My Progress
+lists earned badges with a verification link and a credential download. The issuer key is
+provisioned on AWS. See `docs/open-badges.md`.
+
+**Remaining for Phase 3:** run one issued credential through a public Open Badges 3.0
+validator and walk My Progress and the award overlay against the walkthrough video. Both
+need the API reachable at its public URL.
+
+### Phase 4 progress (2026-11-21)
+
+**Built on the local pilot:** module-scoped retrieval, streamed answers (SSE), the four
+diagram types drawn as SVG with a text alternative, source chips, follow-up questions,
+thumbs, the staff review queue with a weekly helpful rate, pre-model guardrails and a
+pseudonymized exchange log with retention. Checked against the real local model through
+the ASGI server. See [local AI tutor](./local-ai-tutor.md#ask-forge-phase-4).
+
+**Remaining for Phase 4:**
+
+- **Hosted inference.** The coach still only talks to Ollama on the same machine, so it
+  cannot run on AWS or Railway. This needs the provider decision in §8.
+- **Exit gate:** an instructor-reviewed corpus and an eval set scored at 85% helpful.
+- **Look and feel:** the new chat features and diagrams have unit tests but have not been
+  checked in a browser against the walkthrough video.
+- **Operations:** schedule `purge_coach_log` daily and confirm the retention period.
+
+### Phase 5 progress (2026-11-21)
+
+**Built:** cohort access, live sessions with the block bar, Threat Hunt, live polls, the
+crew panel, crew huddle notes, raised hands, host moderation, attendance, the debrief heat
+map and crew-first paging of the video grid. Session state is in Postgres and announced
+over LiveKit data messages rather than Channels on Redis; see
+[video classrooms](./video-classrooms.md#live-sessions-phase-5) for why.
+
+**Remaining for Phase 5:** captions (needs a speech-to-text provider), the 20-learner
+load test with real browsers on a deployed media server, and the keyboard-only
+run-through in a browser.
+
+### Phase 6 progress (2026-11-21)
+
+**Built:** xAPI statements for quiz attempts, course completion and cmi5 lessons, beside
+the existing lesson completions; SCORM 1.2 and cmi5 export packages that list a Forge
+course in a tenant's own LMS and report progress back; cohort analytics and a rule-based
+at-risk list for instructors. See [SCORM and xAPI](./scorm-cmi5.md#exporting-to-an-lms).
+
+**Remaining for Phase 6:**
+
+- **Exit gate:** import both packages into Lakewood's LMS. Which LMS that is has not
+  been recorded, so only a generic SCORM 1.2 runtime has been tried.
+- **An LRS to send to.** Delivery (`forward_xapi`) has no destination configured on AWS
+  or Railway.
+- There is no TA role, so "instructor/TA" analytics means instructors and tenant admins.
 
 ## 5. Phases
 

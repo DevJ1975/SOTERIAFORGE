@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.tenants.models import Tenant
 
-from .models import Member, Role
+from .models import ASSIGNABLE_ROLES, Member
 
 
 class TenantSummarySerializer(serializers.ModelSerializer):
@@ -13,13 +13,17 @@ class TenantSummarySerializer(serializers.ModelSerializer):
 
 class MemberSerializer(serializers.ModelSerializer):
     tenantId = serializers.CharField(source="tenant_id", read_only=True, allow_null=True)
-    uid = serializers.CharField(source="firebase_uid", read_only=True)
+    # Alias of `id`, kept for clients that still read `uid`.
+    uid = serializers.SerializerMethodField()
     displayName = serializers.CharField(source="display_name", read_only=True)
 
     class Meta:
         model = Member
         fields = ["id", "uid", "tenantId", "email", "displayName", "role", "status"]
         read_only_fields = fields
+
+    def get_uid(self, obj: Member) -> str:
+        return str(obj.id)
 
 
 class MeSerializer(serializers.Serializer):
@@ -30,4 +34,4 @@ class MeSerializer(serializers.Serializer):
 
 class RoleChangeSerializer(serializers.Serializer):
     # Superadmin is granted out-of-band (manage.py grant_superadmin), never here.
-    role = serializers.ChoiceField(choices=[r for r in Role.values if r != Role.SUPERADMIN])
+    role = serializers.ChoiceField(choices=ASSIGNABLE_ROLES)

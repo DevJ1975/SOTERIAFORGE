@@ -7,7 +7,7 @@ import {
   tryParse,
 } from '@assurance/shared';
 
-/** Parse raw Firebase ID-token claims into a validated CustomClaims, or null. */
+/** Parse raw token claims into a validated CustomClaims, or null. */
 export function parseClaims(raw: unknown): CustomClaims | null {
   const result = tryParse(customClaims, raw);
   return result.ok ? result.value : null;

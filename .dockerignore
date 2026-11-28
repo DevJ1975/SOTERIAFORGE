@@ -7,11 +7,15 @@ node_modules
 dist
 coverage
 tmp
-.firebase
 .vercel
 backend
 mobile
 docs
+games
+rust
+materials
+infra
+deploy
 .env*
 **/.env*
 **/node_modules

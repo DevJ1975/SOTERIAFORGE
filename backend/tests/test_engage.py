@@ -35,7 +35,7 @@ def people(lakewood):
 
 
 def signed_in(uid):
-    return client_for(sign_in(uid, "lakewood-pool"))
+    return client_for(sign_in(uid))
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def test_token_has_only_scoped_media_permissions(classroom, provision, uid, scre
     assert response["Cache-Control"] == "no-store"
     result = response.json()
     claims = jwt.decode(result["token"], SECRET, algorithms=["HS256"], issuer="test-key")
-    assert claims["sub"] == str(Member.objects.get(firebase_uid=uid).pk)
+    assert claims["sub"] == str(Member.objects.get(email=f"{uid}@example.com").pk)
     assert claims["name"] == "Class participant"
     assert claims["exp"] - claims["nbf"] == timedelta(minutes=5).total_seconds()
     assert claims["roomConfig"]["maxParticipants"] == 21
@@ -202,11 +202,11 @@ def test_list_requires_authentication(classroom):
     assert client_for().get(BASE).status_code == 401
 
 
-def test_token_carries_no_email_or_firebase_identity(classroom, people, provision):
+def test_token_carries_no_email_or_account_identity(classroom, people, provision):
     token = signed_in("learner").post(f"{BASE}/{classroom.pk}/join").json()["token"]
     payload = str(decode(token))
     assert "example.com" not in payload  # members' emails are @example.com in these tests
-    assert "learner" not in decode(token)["sub"]  # opaque membership id, not the Firebase uid
+    assert "learner" not in decode(token)["sub"]  # opaque membership id, not the account name
 
 
 def test_display_name_is_used_when_the_member_has_one(classroom, people, provision):
@@ -240,7 +240,7 @@ def test_tenant_admin_may_share_their_screen_but_a_learner_may_not(classroom, la
 
 
 def test_superadmin_acting_in_another_tenant_cannot_join_this_tenants_room(classroom, provision):
-    Member.objects.create(tenant=None, firebase_uid="root", email="r@x.io", role=Role.SUPERADMIN)
+    Member.objects.create(tenant=None, email="root@example.com", role=Role.SUPERADMIN)
     acme = Tenant.objects.create(id="acme", name="Acme", status="active")
     assert acme.pk == "acme"
     response = client_for(sign_in("root"), tenant="acme").post(f"{BASE}/{classroom.pk}/join")
@@ -249,7 +249,7 @@ def test_superadmin_acting_in_another_tenant_cannot_join_this_tenants_room(class
 
 
 def test_superadmin_without_a_tenant_is_told_to_pick_one(classroom, provision):
-    Member.objects.create(tenant=None, firebase_uid="root", email="r@x.io", role=Role.SUPERADMIN)
+    Member.objects.create(tenant=None, email="root@example.com", role=Role.SUPERADMIN)
     root = client_for(sign_in("root"))
     assert root.get(BASE).status_code == 403
     assert root.post(f"{BASE}/{classroom.pk}/join").status_code == 403

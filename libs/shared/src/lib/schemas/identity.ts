@@ -3,7 +3,7 @@ import { ROLES } from '../constants';
 import { tenantId, uid } from './primitives';
 
 /**
- * Custom-claims shape. Set ONLY by Cloud Functions (never the client).
+ * Custom-claims shape. Issued ONLY by the Forge API (never the client).
  * Superadmin carries no single tenantId binding.
  */
 export const customClaims = z
@@ -11,10 +11,8 @@ export const customClaims = z
     role: z.enum(ROLES),
     /** Required for tenant-scoped roles; absent for superadmin. */
     tenantId: tenantId.optional(),
-    /** B2C entitlements (productIds) reflected from verified Stripe webhooks. */
+    /** B2C entitlements (productIds) granted by the Forge API. */
     entitlements: z.array(z.string()).default([]),
-    /** Identity Platform tenant id (GCIP). Mirrors the app tenantId. */
-    gcipTenantId: z.string().optional(),
   })
   .refine((c) => c.role === 'superadmin' || !!c.tenantId, {
     message: 'tenantId is required for all non-superadmin roles',

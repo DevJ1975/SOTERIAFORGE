@@ -83,6 +83,9 @@ class QuizAttempt(models.Model):
     score_pct = models.PositiveSmallIntegerField()
     passed = models.BooleanField()
     per_question = models.JSONField()
+    # The client's Idempotency-Key header: an offline replay of the same submission
+    # returns this attempt instead of spending another one.
+    idempotency_key = models.CharField(max_length=100, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -90,7 +93,12 @@ class QuizAttempt(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["enrollment", "quiz", "number"], name="quiz_attempt_number_unique"
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["enrollment", "quiz", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="quiz_attempt_idempotency_unique",
+            ),
         ]
 
     def __str__(self) -> str:

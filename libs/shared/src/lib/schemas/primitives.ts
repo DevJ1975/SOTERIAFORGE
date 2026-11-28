@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
 /**
- * Shared primitive schemas. Timestamps are stored as Firestore Timestamps at rest
- * but validated here as ISO strings or epoch millis at the application boundary.
+ * Shared primitive schemas. Timestamps cross the API boundary as ISO-8601 strings.
  */
 
 export const isoDateTime = z.string().datetime({ offset: true });
 
-/** Firestore document id constraints. */
+/** Document id constraints. */
 export const docId = z
   .string()
   .min(1)
@@ -21,10 +20,10 @@ export const tenantId = z
   .max(63)
   .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Must be a valid DNS label (subdomain-safe)');
 
-/** Firebase Auth uid. */
+/** Member uid (legacy alias of the member id). */
 export const uid = z.string().min(1).max(128);
 
-/** A Cloud Storage object reference (gs:// or bucket-relative path). */
+/** A storage object reference (asset ref or bucket-relative path). */
 export const storageRef = z.string().min(1);
 
 /** A non-negative integer count. */

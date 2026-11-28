@@ -1,124 +1,90 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { ASSURANCE_ENV, type AssuranceEnvironment, TenantService } from '@assurance/auth';
-import { QuizRepository } from '@assurance/data-access';
+import { AuthoringApi } from '@assurance/lms-core';
 import { QuizEditorComponent } from './quiz-editor.component';
-
-const testEnv: AssuranceEnvironment = {
-  production: false,
-  rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
-};
 
 const sampleQuiz = {
   id: 'quiz-1',
-  tenantId: 'acme',
   title: 'Sample Quiz',
-  questions: [],
+  questions: [
+    {
+      id: 'q1',
+      type: 'mcq' as const,
+      prompt: 'Which?',
+      points: 1,
+      options: [{ id: 'o1', text: 'A', isCorrect: true }],
+      answerKey: [],
+    },
+  ],
   passThreshold: 70,
-  randomize: false,
-  scoring: 'percent' as const,
-  createdAt: new Date().toISOString(),
+  maxAttempts: 3,
+  createdAt: '2026-10-01T00:00:00Z',
+  updatedAt: '2026-10-01T00:00:00Z',
 };
 
 describe('QuizEditorComponent', () => {
+  const api = { quiz: jest.fn(), updateQuiz: jest.fn() };
+
+  async function render() {
+    const fixture = TestBed.createComponent(QuizEditorComponent);
+    fixture.componentRef.setInput('id', 'quiz-1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
   beforeEach(async () => {
+    jest.resetAllMocks();
+    api.quiz.mockResolvedValue(sampleQuiz);
+    api.updateQuiz.mockImplementation(async (_id: string, patch: object) => ({
+      ...sampleQuiz,
+      ...patch,
+    }));
     await TestBed.configureTestingModule({
       imports: [QuizEditorComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: QuizRepository,
-          useValue: {
-            getById: async () => sampleQuiz,
-            set: jest.fn(),
-          },
-        },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
-      ],
+      providers: [provideRouter([]), { provide: AuthoringApi, useValue: api }],
     }).compileComponents();
   });
 
-  it('creates the component', () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    expect(fixture.componentInstance).toBeTruthy();
+  it('renders the back link, title, question form and save button', async () => {
+    const fixture = await render();
+    const text = fixture.nativeElement.textContent;
+    expect(api.quiz).toHaveBeenCalledWith('quiz-1');
+    expect(text).toContain('Back to Quizzes');
+    expect(text).toContain('Sample Quiz');
+    expect(text).toContain('Add Question');
+    expect(text).toContain('Save Quiz');
+    expect(text).toContain('Which?');
   });
 
-  it('renders the back link to quizzes', async () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Back to Quizzes');
-  });
-
-  it('renders the quiz title after loading', async () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Sample Quiz');
-  });
-
-  it('renders the Add Question form', async () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Add Question');
-  });
-
-  it('renders the Save Quiz button', async () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Save Quiz');
-  });
-});
-
-describe('QuizEditorComponent — save quiz', () => {
-  let setMock: jest.Mock;
-
-  beforeEach(async () => {
-    setMock = jest.fn().mockResolvedValue(undefined);
-    await TestBed.configureTestingModule({
-      imports: [QuizEditorComponent],
-      providers: [
-        provideRouter([]),
-        { provide: ASSURANCE_ENV, useValue: testEnv },
-        {
-          provide: QuizRepository,
-          useValue: { getById: async () => sampleQuiz, set: setMock },
-        },
-        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
-      ],
-    }).compileComponents();
-  });
-
-  it('calls QuizRepository.set when saving the quiz', async () => {
-    const fixture = TestBed.createComponent(QuizEditorComponent);
-    fixture.componentRef.setInput('id', 'quiz-1');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
+  it('saves the questions and settings through the API', async () => {
+    const fixture = await render();
     await fixture.componentInstance['saveQuiz']();
+    expect(api.updateQuiz).toHaveBeenCalledWith('quiz-1', {
+      title: 'Sample Quiz',
+      questions: sampleQuiz.questions,
+      passThreshold: 70,
+      maxAttempts: 3,
+    });
+  });
 
-    expect(setMock).toHaveBeenCalledWith('acme', expect.objectContaining({ id: 'quiz-1' }));
+  it('saves just the settings from the settings panel', async () => {
+    const fixture = await render();
+    fixture.componentInstance['editPassThreshold'] = 85;
+    fixture.componentInstance['editMaxAttempts'] = null;
+    await fixture.componentInstance['saveSettings']();
+    expect(api.updateQuiz).toHaveBeenCalledWith('quiz-1', {
+      passThreshold: 85,
+      maxAttempts: null,
+    });
+  });
+
+  it('shows the API validation message when saving fails', async () => {
+    api.updateQuiz.mockRejectedValue(new Error('nope'));
+    const fixture = await render();
+    await fixture.componentInstance['saveQuiz']();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Failed to save quiz');
   });
 });

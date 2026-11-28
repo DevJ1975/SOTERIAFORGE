@@ -33,6 +33,38 @@ describe('resolveTenantFromHost', () => {
     expect(r).toEqual({ tenantId: 'acme', isB2c: false, via: 'custom-domain' });
   });
 
+  describe('Railway host layout (docs/railway-go-live-plan.md, D2)', () => {
+    const staging = { rootDomain: 'staging.soteriaforge.com' };
+
+    it('resolves tenants under the staging root', () => {
+      expect(resolveTenantFromHost('lakewood.staging.soteriaforge.com', staging).tenantId).toBe(
+        'lakewood',
+      );
+      expect(resolveTenantFromHost('api.staging.soteriaforge.com', staging).tenantId).toBeNull();
+      expect(resolveTenantFromHost('app.staging.soteriaforge.com', staging).tenantId).toBeNull();
+    });
+
+    it('does not treat a production tenant host as staging, or the reverse', () => {
+      expect(resolveTenantFromHost('lakewood.soteriaforge.com', staging).via).toBe('none');
+      expect(resolveTenantFromHost('lakewood.staging.soteriaforge.com', opts).tenantId).toBeNull();
+    });
+
+    it('resolves the tenant admin host only for the admin root', () => {
+      const admin = { rootDomain: 'admin.soteriaforge.com' };
+      expect(resolveTenantFromHost('lakewood.admin.soteriaforge.com', admin).tenantId).toBe(
+        'lakewood',
+      );
+      // The learner app never takes an admin host for a tenant.
+      expect(resolveTenantFromHost('lakewood.admin.soteriaforge.com', opts).tenantId).toBeNull();
+    });
+
+    it('resolves no tenant on a Railway-generated domain', () => {
+      expect(resolveTenantFromHost('learner-production-1a2b.up.railway.app', opts).via).toBe(
+        'none',
+      );
+    });
+  });
+
   it('returns null for unrelated hosts', () => {
     expect(resolveTenantFromHost('example.org', opts).via).toBe('none');
     expect(resolveTenantFromHost(null, opts).tenantId).toBeNull();

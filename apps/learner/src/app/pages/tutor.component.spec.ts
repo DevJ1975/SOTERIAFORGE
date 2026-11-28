@@ -14,14 +14,7 @@ import type { ChatMessage } from '@assurance/shared';
 const testEnv: AssuranceEnvironment = {
   production: false,
   rootDomain: 'localhost',
-  firebase: {
-    apiKey: 'x',
-    authDomain: 'x',
-    projectId: 'x',
-    storageBucket: 'x',
-    messagingSenderId: 'x',
-    appId: 'x',
-  },
+  apiBaseUrl: '',
 };
 
 const mockMessages = signal<ChatMessage[]>([]);

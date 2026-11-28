@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { CoachApi } from '@assurance/ai-tutor';
+import { AuthService, TenantService } from '@assurance/auth';
 import { LearningApi, type ApiCourseOutline, type ApiLesson } from '@assurance/lms-core';
 import { LessonComponent } from './lesson.component';
+import { ManagedScormPlayerComponent, StandardsApi } from '@assurance/standards';
+import { By } from '@angular/platform-browser';
 
 function lesson(over: Partial<ApiLesson> = {}): ApiLesson {
   return {
@@ -12,11 +16,14 @@ function lesson(over: Partial<ApiLesson> = {}): ApiLesson {
     moduleLabel: 'Secure I',
     title: 'Prompt injection',
     order: 2,
-    contentType: 'cmi5',
+    contentType: 'game',
     assetRef: '',
     externalUrl: 'https://example.com/launch',
     scormVersion: '',
     estimatedMinutes: 8,
+    xpReward: 20,
+    standardsManaged: false,
+    transcript: '',
     frameworkTags: ['OWASP LLM01:2025'],
     keyPoints: [{ title: 'Validate input', body: 'Always.' }],
     quiz: null,
@@ -56,7 +63,18 @@ const outline = {
 } as unknown as ApiCourseOutline;
 
 describe('LessonComponent', () => {
-  let api: { lesson: jest.Mock; course: jest.Mock; complete: jest.Mock; enroll: jest.Mock };
+  let api: {
+    lesson: jest.Mock;
+    course: jest.Mock;
+    complete: jest.Mock;
+    enroll: jest.Mock;
+    assetUrl: jest.Mock;
+  };
+  const coach = {
+    profiles: jest.fn().mockResolvedValue([]),
+    courses: jest.fn().mockResolvedValue([]),
+    askStream: jest.fn(),
+  };
   let fixture: ComponentFixture<LessonComponent>;
   const el = (): HTMLElement => fixture.nativeElement;
 
@@ -77,10 +95,46 @@ describe('LessonComponent', () => {
       course: jest.fn().mockResolvedValue(outline),
       complete: jest.fn(),
       enroll: jest.fn().mockResolvedValue({}),
+      assetUrl: jest.fn(),
     };
     TestBed.configureTestingModule({
       imports: [LessonComponent],
-      providers: [provideRouter([]), { provide: LearningApi, useValue: api }],
+      providers: [
+        provideRouter([]),
+        { provide: LearningApi, useValue: api },
+        { provide: StandardsApi, useValue: { launch: jest.fn(), commit: jest.fn() } },
+        { provide: AuthService, useValue: { principal: () => ({ uid: 'u1' }) } },
+        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
+        { provide: CoachApi, useValue: coach },
+      ],
+    });
+  });
+
+  it('opens Ask Forge scoped to the lesson’s module, and only loads it on first open', async () => {
+    api.lesson.mockResolvedValue(lesson());
+    coach.profiles.mockClear();
+    coach.askStream.mockReset().mockResolvedValue({ answer: 'A', abstained: true, citations: [] });
+    await create();
+    const panel = el().querySelector('details.ls__tutor') as HTMLDetailsElement;
+    expect(panel.querySelector('assurance-tutor-chat')).toBeNull();
+    expect(coach.profiles).not.toHaveBeenCalled();
+
+    panel.open = true;
+    panel.dispatchEvent(new Event('toggle'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = panel.querySelector('.tutor-chat__input') as HTMLInputElement;
+    input.value = 'Why?';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (panel.querySelector('.tutor-chat__send-btn') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(coach.askStream.mock.calls[0][0]).toEqual({
+      question: 'Why?',
+      courseId: 'c1',
+      agent: 'general',
+      moduleId: lesson().moduleId,
     });
   });
 
@@ -92,9 +146,35 @@ describe('LessonComponent', () => {
     expect(text).toContain('OWASP LLM01:2025');
     expect(text).toContain('About 8 min');
     expect(text).toContain('Validate input');
-    expect(text).toContain('Open cmi5 content');
+    expect(text).toContain('Open game content');
     expect(text).toContain('Previous: Intro');
     expect(text).toContain('Next: Wrap up');
+  });
+
+  it.each(['cmi5', 'unity'] as const)(
+    'launches a %s lesson in its player and offers no manual completion',
+    async (contentType) => {
+      api.lesson.mockResolvedValue(lesson({ contentType }));
+      await create();
+      expect(el().querySelector('assurance-managed-cmi5-player')).not.toBeNull();
+      expect(el().textContent).toContain('Open lesson');
+      expect(el().textContent).not.toContain('Mark as complete');
+    },
+  );
+
+  it('plays an uploaded video from a signed URL', async () => {
+    const id = '0b6f2c1e-3d4a-4f5b-8c9d-1e2f3a4b5c6d';
+    api.lesson.mockResolvedValue(
+      lesson({ contentType: 'video', externalUrl: '', assetRef: `asset:${id}` }),
+    );
+    api.assetUrl.mockResolvedValue({ url: 'https://files.example/v.mp4?sig=1', expiresIn: 900 });
+    await create();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.assetUrl).toHaveBeenCalledWith(id);
+    expect(el().querySelector('video')?.getAttribute('src')).toBe(
+      'https://files.example/v.mp4?sig=1',
+    );
   });
 
   it('marks a quiz-less lesson complete via the API and shows progress', async () => {
@@ -128,6 +208,22 @@ describe('LessonComponent', () => {
     await create();
     expect(el().textContent).not.toContain('Mark as complete');
     expect(el().querySelector('assurance-knowledge-check')).not.toBeNull();
+  });
+
+  it('uses the managed player and does not allow manual completion of a package', async () => {
+    api.lesson.mockResolvedValue(lesson({ contentType: 'scorm', standardsManaged: true }));
+    await create();
+    expect(el().querySelector('assurance-managed-scorm-player')).not.toBeNull();
+    expect(el().textContent).not.toContain('Mark as complete');
+    expect(api.complete).not.toHaveBeenCalled();
+    const player: ManagedScormPlayerComponent = fixture.debugElement.query(
+      By.directive(ManagedScormPlayerComponent),
+    ).componentInstance;
+    jest.spyOn(player, 'hasUnsavedChanges').mockReturnValue(true);
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(fixture.componentInstance.canLeave()).toBe(false);
+    expect(confirm).toHaveBeenCalled();
+    confirm.mockRestore();
   });
 
   it('shows an error state with retry when loading fails', async () => {

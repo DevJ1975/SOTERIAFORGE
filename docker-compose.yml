@@ -1,14 +1,82 @@
+# Whole stack on localhost: Postgres + Django API + the four Angular apps.
+#
+#   docker compose up --build
+#
+# Open a tenant host, not bare localhost (the tenant comes from the subdomain):
+#   learner      http://lakewood.localhost:8080
+#   admin        http://lakewood.localhost:8081
+#   superadmin   http://localhost:8082      (platform-level, no tenant)
+#   storefront   http://localhost:8083
+#   API          http://localhost:8000/api/schema   (docs: /api/schema/swagger-ui/ if enabled)
+# Sign-in accounts and the password are printed by the api service on startup.
+# The apps are built with the "development" configuration, which points them at the API on
+# the same hostname, port 8000. Demo accounts exist only because DJANGO_DEBUG is on here.
 name: soteriaforge
 
 services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U forge']
+      interval: 2s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DJANGO_DEBUG: 'true'
+      DJANGO_SECRET_KEY: docker-local-only-not-a-secret
+      DJANGO_ALLOWED_HOSTS: 'localhost,.localhost,127.0.0.1'
+      DATABASE_URL: postgres://forge:forge@db:5432/forge
+      DB_APP_USER: forge_app
+      DB_APP_PASSWORD: forge_app_local
+      FORGE_ROOT_DOMAIN: localhost
+    # Migrate and refresh the RLS runtime role as the DB owner, load demo data, then serve as
+    # the restricted role (the same order the Railway pre-deploy uses).
+    command:
+      - sh
+      - -c
+      - >-
+        DB_USE_OWNER=1 python manage.py migrate --noinput &&
+        DB_USE_OWNER=1 python manage.py ensure_app_role &&
+        DB_USE_OWNER=1 python manage.py seed_demo &&
+        exec uvicorn forge.asgi:application --host 0.0.0.0 --port 8000 --proxy-headers
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request as u;
+          u.urlopen(u.Request('http://127.0.0.1:8000/healthz', headers={'Host': 'localhost'}))
+      interval: 3s
+      retries: 60
+      start_period: 20s
+    restart: unless-stopped
+
   learner:
     build:
       context: .
       target: static-runtime
       args:
         APP: learner
+        CONFIGURATION: development
     ports:
       - '8080:80'
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   admin:
@@ -17,8 +85,12 @@ services:
       target: static-runtime
       args:
         APP: admin
+        CONFIGURATION: development
     ports:
       - '8081:80'
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   superadmin:
@@ -27,8 +99,12 @@ services:
       target: static-runtime
       args:
         APP: superadmin
+        CONFIGURATION: development
     ports:
       - '8082:80'
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   storefront:
@@ -37,8 +113,12 @@ services:
       target: storefront-runtime
       args:
         APP: storefront
+        CONFIGURATION: development
     environment:
-      NG_ALLOWED_HOSTS: '${NG_ALLOWED_HOSTS:-localhost,127.0.0.1}'
+      NG_ALLOWED_HOSTS: '${NG_ALLOWED_HOSTS:-localhost,127.0.0.1,*.localhost}'
     ports:
       - '8083:4000'
     restart: unless-stopped
+
+volumes:
+  pgdata:

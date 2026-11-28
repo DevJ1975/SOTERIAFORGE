@@ -1,44 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { getApps, initializeApp } from 'firebase/app';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
-import { ASSURANCE_ENV } from '@assurance/auth';
+import { AuthoringApi, type UploadedAsset } from '@assurance/lms-core';
 
-/** Matches the per-object cap on `tenants/{tenantId}/**` in storage.rules. */
-export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
+/** Upper bound the agent tools accept; matches the server upload limit (apps/assets). */
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-export interface UploadedAsset {
-  /** Storage object path. */
-  path: string;
-  /** URL the learner player loads (module `assetRef`). */
-  downloadUrl: string;
-}
+export type { UploadedAsset };
 
 /**
- * Uploads course media to the tenant's asset folder. Storage rules allow writes
- * there only for tenant authors, so the signed-in user's role is enforced
- * server-side as well as by the callers.
- *
- * Interim: Phase 2 of docs/forge-platform-plan.md replaces Firebase Storage
- * with Django-issued signed upload URLs; only this class changes.
+ * Uploads course media through the Forge API (`POST /api/assets`). The server
+ * checks the caller is tenant staff and stores the file under the tenant; the
+ * returned `assetRef` (`asset:<id>`) is what a lesson keeps in `assetRef`.
  */
 @Injectable({ providedIn: 'root' })
 export class CourseAssetUploader {
-  private readonly env = inject(ASSURANCE_ENV);
+  private readonly api = inject(AuthoringApi);
 
-  async upload(
-    tenantId: string,
-    courseId: string,
-    file: Blob,
-    fileName: string,
-  ): Promise<UploadedAsset> {
+  upload(file: Blob, fileName: string): Promise<UploadedAsset> {
     if (file.size > MAX_UPLOAD_BYTES) {
       throw new Error(`File is ${file.size} bytes; the limit is ${MAX_UPLOAD_BYTES}.`);
     }
-    const app = getApps()[0] ?? initializeApp(this.env.firebase);
-    const path = `tenants/${tenantId}/courses/${courseId}/assets/${crypto.randomUUID()}-${safeFileName(fileName)}`;
-    const objectRef = ref(getStorage(app), path);
-    await uploadBytes(objectRef, file, { contentType: file.type || undefined });
-    return { path, downloadUrl: await getDownloadURL(objectRef) };
+    return this.api.uploadAsset(file, safeFileName(fileName));
   }
 }
 

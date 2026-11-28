@@ -1,60 +1,49 @@
-import { Injectable, Injector, computed, inject, signal } from '@angular/core';
-import { AuthService, TenantService } from '@assurance/auth';
-import { MemberRepository } from '@assurance/data-access';
-import type { Member } from '@assurance/shared';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { AuthService } from '@assurance/auth';
+import { type ApiScoreCard, GamificationApi } from '@assurance/lms-core';
 
 /**
- * Signed-in learner's member profile (name, XP, streak, earned badges), shared
- * by the Forge shell (top-bar name + streak pill) and the Home screen so the
- * member doc is read once per session.
- *
- * `MemberRepository` is resolved lazily on the first `load()` so that merely
- * rendering the shell (e.g. on the login page) never touches Firestore.
+ * The signed-in learner's profile (name, streak), shared by the Forge shell (top-bar
+ * name + streak pill) and the Home screen so the score card is read once per session.
+ * The name comes from the signed-in principal (`/api/me`); the streak and activity
+ * come from `/api/me/progress`.
  */
 @Injectable({ providedIn: 'root' })
 export class LearnerProfileStore {
   private readonly auth = inject(AuthService);
-  private readonly tenant = inject(TenantService);
-  private readonly injector = inject(Injector);
+  private readonly gamification = inject(GamificationApi);
 
-  private readonly memberState = signal<Member | null>(null);
-  private inflight: Promise<Member | null> | null = null;
-  private loadedKey = '';
+  private readonly cardState = signal<ApiScoreCard | null>(null);
+  private inflight: Promise<ApiScoreCard | null> | null = null;
+  private loadedFor = '';
 
-  /** The member doc, or `null` until loaded / when signed out. */
-  readonly member = this.memberState.asReadonly();
+  /** The learner's score card, or `null` until loaded / when signed out. */
+  readonly scoreCard = this.cardState.asReadonly();
 
-  /** Best available display name: member doc, then auth principal. */
-  readonly displayName = computed(
-    () => this.memberState()?.displayName || this.auth.principal()?.displayName || '',
-  );
+  readonly displayName = computed(() => this.auth.principal()?.displayName ?? '');
 
   /** First name for greetings ("Good morning, Marcus."). */
   readonly firstName = computed(() => this.displayName().trim().split(/\s+/)[0] ?? '');
 
-  /** Current streak; `null` until the member doc is known (hides the pill). */
-  readonly streakDays = computed(() => this.memberState()?.streakDays ?? null);
+  /** Current streak; `null` until the score card is known (hides the pill). */
+  readonly streakDays = computed(() => this.cardState()?.streakDays ?? null);
 
-  /** Loads the member doc for the current principal + tenant (deduplicated). */
-  load(): Promise<Member | null> {
+  /** Loads the score card for the current principal (deduplicated). */
+  load(): Promise<ApiScoreCard | null> {
     const uid = this.auth.principal()?.uid;
-    const tenantId = this.tenant.tenantId();
-    if (!uid || !tenantId) return Promise.resolve(null);
+    if (!uid) return Promise.resolve(null);
+    if (this.loadedFor === uid && this.inflight) return this.inflight;
+    this.loadedFor = uid;
 
-    const key = `${tenantId}/${uid}`;
-    if (this.loadedKey === key && this.inflight) return this.inflight;
-    this.loadedKey = key;
-
-    this.inflight = this.injector
-      .get(MemberRepository)
-      .getById(tenantId, uid)
-      .then((m) => {
-        this.memberState.set(m ?? null);
-        return m ?? null;
+    this.inflight = this.gamification
+      .progress()
+      .then((card) => {
+        this.cardState.set(card);
+        return card;
       })
       .catch((err: unknown) => {
-        console.warn('[LearnerProfileStore] Failed to load member', err);
-        this.loadedKey = '';
+        console.warn('[LearnerProfileStore] Failed to load progress', err);
+        this.loadedFor = '';
         this.inflight = null;
         return null;
       });
@@ -63,8 +52,8 @@ export class LearnerProfileStore {
 
   /** Clears cached state (call on sign-out). */
   reset(): void {
-    this.memberState.set(null);
+    this.cardState.set(null);
     this.inflight = null;
-    this.loadedKey = '';
+    this.loadedFor = '';
   }
 }
