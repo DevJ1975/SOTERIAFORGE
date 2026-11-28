@@ -46,13 +46,14 @@ export default defineRailway((ctx) => {
     DJANGO_SECRET_KEY: preserve(),
     DJANGO_DEBUG: 'false',
   };
-  // Railway Bucket credentials, copied from the bucket's variables in the dashboard.
+  // References to the `media` bucket's own variables: nobody copies the keys, and they
+  // follow a credential reset.
   const storage = {
-    STANDARDS_S3_ENDPOINT: preserve(),
-    STANDARDS_S3_BUCKET: preserve(),
-    STANDARDS_S3_REGION: 'auto',
-    STANDARDS_S3_ACCESS_KEY: preserve(),
-    STANDARDS_S3_SECRET_KEY: preserve(),
+    STANDARDS_S3_ENDPOINT: '${{media.ENDPOINT}}',
+    STANDARDS_S3_BUCKET: '${{media.BUCKET}}',
+    STANDARDS_S3_REGION: '${{media.REGION}}',
+    STANDARDS_S3_ACCESS_KEY: '${{media.ACCESS_KEY_ID}}',
+    STANDARDS_S3_SECRET_KEY: '${{media.SECRET_ACCESS_KEY}}',
     // Off until the content service passes its checks (plan S18).
     STANDARDS_ENABLED: preserve(),
   };
