@@ -144,6 +144,9 @@ def test_superadmin_provisions_and_manages_tenants(people, superadmin):
     assert again.status_code == 400
     bad = root().post("/api/tenants", {"id": "Bad_Id", "name": "x"}, format="json")
     assert bad.status_code == 400
+    for reserved in ("api", "app", "admin", "www", "staging", "content", "library"):
+        res = root().post("/api/tenants", {"id": reserved, "name": "x"}, format="json")
+        assert res.status_code == 400, reserved
     res = root().patch("/api/tenants/newco", {"status": "suspended"}, format="json")
     assert res.status_code == 200 and res.json()["status"] == "suspended"
     assert {t["id"] for t in root().get("/api/tenants").json()} >= {"newco", "lakewood"}
