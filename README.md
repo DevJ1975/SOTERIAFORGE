@@ -23,12 +23,13 @@ spec's recommended defaults and are revisited in their phases.
 
 - **Frontend:** Angular 22 (standalone, signals, new control flow, `@defer`,
   SSR for storefront), Nx monorepo, NgRx SignalStore, PrimeNG, PWA.
-- **Backend/data:** Django 6 + DRF on Railway, Postgres (+ pgvector), Redis,
+- **Backend/data:** Django 6 + DRF on Railway, Postgres (+ pgvector),
   S3-compatible bucket for media. See `backend/`.
 - **Standards:** SCORM 1.2/2004 (`scorm-again`), xAPI, cmi5, Open Badges 3.0.
 - **AI:** course tutor on Django (pgvector retrieval), per-tenant isolated sources.
 - **Interactive:** Rive, Phaser/PixiJS, Unity WebGL via cmi5.
-- **Hosting:** Vercel (Angular SSR/edge) + Railway (Django API, Postgres, Redis).
+- **Hosting:** Railway (Angular apps, Django API, SCORM content origin, Postgres,
+  bucket); see `docs/railway-go-live-plan.md`. AWS (`infra/aws/`) is next.
 
 ## Workspace layout
 
@@ -52,7 +53,7 @@ npm run lint                # lint all projects
 ```
 
 The only frontend setting is `FORGE_API_BASE_URL` (the Django API's public URL),
-read by `scripts/vercel-env.mjs` on Vercel; see `.env.example`. Local builds use
+read at image build time by `scripts/forge-env.mjs`; see `.env.example`. Local builds use
 the committed `environment*.ts` files (`http://localhost:8000` in development).
 Backend settings live in `backend/.env.example`; secrets are never committed.
 
@@ -71,9 +72,10 @@ superadmin apps are served by Nginx; the storefront runs on Node.js. Stop the
 containers with `docker compose down`.
 
 The frontend environment (API URL, root domain) is compiled into each Angular app during
-the image build; setting container environment variables does not override it.
-Configure the apps' production environment files before building. The API's
-local Postgres/Redis Compose stack remains in `backend/docker-compose.yml`.
+the image build; setting container environment variables does not override it. Pass
+`--build-arg FORGE_API_BASE_URL=... --build-arg FORGE_ROOT_DOMAIN=...` to point a build
+elsewhere; without them the committed environment files are used. The API's local
+Postgres Compose stack remains in `backend/docker-compose.yml`.
 The storefront SSR host allowlist defaults to `localhost,127.0.0.1`; set
 `NG_ALLOWED_HOSTS` in the Compose environment to a comma-separated list of
 hostnames (for example, `soteriaforge.com,*.soteriaforge.com`) when using

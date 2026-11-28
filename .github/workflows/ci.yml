@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # main is production; feat/angular-22-upgrade deploys staging on Railway, which
+    # waits for this workflow ("Wait for CI") before it builds.
+    branches: [main, feat/angular-22-upgrade]
   pull_request:
   workflow_dispatch:
 
@@ -46,6 +48,8 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - name: Test
         run: npx nx run-many -t test --parallel=2 --ci --coverage
+      - name: Build-script tests
+        run: node --test scripts/*.test.mjs
 
   build:
     runs-on: ubuntu-latest
@@ -182,3 +186,51 @@ jobs:
             echo "::error::backend/openapi.json is stale. Regenerate it (see libs/shared/src/lib/schemas/learning-contract.spec.ts) and commit it."
             exit 1
           }
+
+  # Railway builds these images; build them here first so a Dockerfile break fails CI,
+  # not a deploy. Nothing is pushed.
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: backend
+            file: backend/Dockerfile
+          - name: learner
+            context: .
+            file: Dockerfile
+            args: |
+              APP=learner
+              FORGE_API_BASE_URL=https://api.staging.soteriaforge.com
+              FORGE_ROOT_DOMAIN=staging.soteriaforge.com
+          - name: storefront
+            context: .
+            file: docker/storefront.Dockerfile
+            args: |
+              FORGE_ROOT_DOMAIN=staging.soteriaforge.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.args }}
+          tags: forge-${{ matrix.name }}:ci
+          load: true
+          push: false
+      - name: Django deploy checks
+        if: matrix.name == 'api'
+        run: |
+          docker run --rm -e DJANGO_SECRET_KEY="$(openssl rand -hex 32)" \
+            -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci \
+            -e DJANGO_ALLOWED_HOSTS=api.staging.soteriaforge.com \
+            -e EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend \
+            forge-api:ci python manage.py check --deploy --fail-level WARNING
+      - name: Bundle points at the build-time API
+        if: matrix.name == 'learner'
+        run: |
+          docker run --rm forge-learner:ci sh -c \
+            "grep -l 'api.staging.soteriaforge.com' /usr/share/nginx/html/main-*.js"

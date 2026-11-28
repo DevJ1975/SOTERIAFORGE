@@ -113,11 +113,24 @@ class SuperadminView(APIView):
             raise PermissionDenied("Superadmin only.")
 
 
+# Hosts the platform itself uses under the root domain, so no tenant may take them.
+# `staging` is the staging environment's root (staging.<root>). Mirrors
+# RESERVED_SUBDOMAINS in libs/shared/src/lib/constants.ts.
+RESERVED_TENANT_IDS = frozenset(
+    {"www", "app", "admin", "api", "static", "assets", "staging", "content", LIBRARY_TENANT_ID}
+)
+
+
 class ProvisionSerializer(serializers.Serializer):
     id = serializers.CharField(max_length=63, validators=[tenant_slug])
     name = serializers.CharField(max_length=200)
     plan = serializers.CharField(max_length=50, default="starter")
     adminEmail = serializers.EmailField(required=False)
+
+    def validate_id(self, value):
+        if value in RESERVED_TENANT_IDS:
+            raise ValidationError("This id is reserved for a platform host.")
+        return value
 
 
 class TenantUpdateSerializer(serializers.Serializer):

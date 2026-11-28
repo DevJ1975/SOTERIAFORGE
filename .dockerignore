@@ -11,6 +11,11 @@ tmp
 backend
 mobile
 docs
+games
+rust
+materials
+infra
+deploy
 .env*
 **/.env*
 **/node_modules

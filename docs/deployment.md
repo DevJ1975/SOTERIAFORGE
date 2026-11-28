@@ -17,9 +17,11 @@ For the **AWS environment** (ECS Fargate, RDS, S3) that runs alongside Railway, 
 the [AWS runbook](../infra/aws/README.md). It is defined in Terraform under
 `infra/aws/` and deployed with `infra/aws/deploy.sh`.
 
-Clean split: **Vercel** hosts the Angular apps (incl. storefront SSR/edge);
-**Railway** hosts the Django API, Postgres (+ pgvector) and Redis. There is no
-other backend.
+**Railway** hosts everything: the Angular apps (nginx, and Node SSR for the
+storefront), the Django API, the SCORM content origin, the SCORM import cron,
+Postgres (+ pgvector) and a private bucket. There is no Redis, Celery or other
+backend. The step-by-step go-live runbook, with variables, DNS and rollback, is
+[railway-go-live-plan.md](./railway-go-live-plan.md).
 
 ## Environments
 
@@ -31,8 +33,9 @@ set in Railway).
 
 ## One-time setup
 
-1. **Railway**: create the project; apply `.railway/railway.ts` (api service,
-   Postgres, Redis). Set the secret variables on the `api` service:
+1. **Railway**: create the project; set the secret variables, then apply
+   `.railway/railway.ts` (api, content, scorm-worker, learner, admin, superadmin,
+   storefront in production, Postgres, bucket). Secrets on the `api` service:
    `DJANGO_SECRET_KEY`, `DB_APP_PASSWORD`, `SENTRY_DSN`, and (for media) the
    Railway Bucket variables. See `backend/.env.example` for the full list.
 2. **Database**: migrations run in the service's pre-deploy command, as the
@@ -48,19 +51,22 @@ set in Railway).
    self-hosted LiveKit runbook above.
 7. **Open Badges 3.0**: provision the issuer key (Ed25519) + hosted issuer
    profile (see `docs/open-badges.md`).
-8. **DNS**: `api.soteriaforge.com` -> the Railway `api` service; wildcard
-   `*.soteriaforge.com` -> the learner/admin apps; apex + `www` -> the storefront.
+8. **DNS**: `api.<root>` -> `api`; `*.<root>` -> `learner`; `*.admin.<root>` ->
+   `admin`; `app.<root>` -> `superadmin`; apex + `www` -> `storefront`; the content
+   origin on its own domain. `<root>` is `soteriaforge.com` in production and
+   `staging.soteriaforge.com` in staging.
    Per-tenant custom domains map via `AssuranceEnvironment.customDomains`.
 
 ## Deploy
 
-- **API**: push to the tracked branch; Railway builds `backend/Dockerfile`.
-- **Vercel**: each Angular app is a Vercel project (`vercel.json` for the
-  storefront SSR). Push to `main` triggers production; PRs get preview deploys.
-- **Frontend environment**: the only required variable is `FORGE_API_BASE_URL` (the
-  API's public URL). `scripts/vercel-env.mjs` writes it into
-  `apps/<app>/src/environments/environment.ts` at build time and fails the build when
-  it is missing. `FORGE_ROOT_DOMAIN` is optional (default `soteriaforge.com`). If the
+- **API**: push to the tracked branch; once CI passes, Railway builds
+  `backend/Dockerfile` (api, content, scorm-worker).
+- **Frontends**: the same push builds the root `Dockerfile` (learner, admin,
+  superadmin; `APP` selects the app) and `docker/storefront.Dockerfile`.
+- **Frontend environment**: `FORGE_API_BASE_URL` (the API's public URL) is a build
+  variable on each frontend service. `scripts/forge-env.mjs` writes it into
+  `apps/<app>/src/environments/environment.ts` at build time. `vercel.json` still
+  works for the learner app and fails the build when it is missing. `FORGE_ROOT_DOMAIN` is optional (default `soteriaforge.com`). If the
   frontend runs on a different site than the API (for example `*.vercel.app`
   previews), also set `AUTH_COOKIE_SAMESITE=None` on the API.
 
@@ -69,7 +75,8 @@ set in Railway).
 - CI (`.github/workflows/ci.yml`): `format`, `lint`, `test`, per-project `build`
   matrix, `e2e` (Playwright, non-blocking until browsers/served app are wired) and
   `backend` (ruff, migrations check, pytest on Postgres/pgvector, OpenAPI schema).
-- Deploys are driven by the Railway and Vercel Git integrations.
+- `docker` builds every Railway image and runs `manage.py check --deploy`.
+- Deploys are driven by Railway's Git integration, with "Wait for CI" on.
 
 ## Provisioning a tenant
 
