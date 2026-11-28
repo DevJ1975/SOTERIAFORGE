@@ -11,9 +11,9 @@
  */
 import {
   bucket,
+  database,
   defineRailway,
   github,
-  postgres,
   preserve,
   project,
   service,
@@ -26,14 +26,27 @@ export default defineRailway((ctx) => {
   const production = ctx.isEnvironment('production');
   // Production deploys from main once the release pull request merges (plan D3).
   const branch = production ? 'main' : 'feat/angular-22-upgrade';
+  // Railway's "Wait for CI". Off while GitHub Actions is unavailable on the account:
+  // with no CI run to wait for, every deploy would stall.
+  const checkSuites = false;
   const root = production ? 'soteriaforge.com' : 'staging.soteriaforge.com';
   const apiOrigin = `https://api.${root}`;
 
-  const db = postgres('postgres');
-  const media = bucket('media');
+  // US East (Virginia) for every environment: tenants are in the US (plan D5).
+  const REGION = 'iad';
+  const regions = { [REGION]: 1 };
+  // Railway's SSL Postgres image, which bundles pgvector. Pinned to 17 to match CI,
+  // compose and AWS RDS (plan D6). Never change the major on a live database: the
+  // data directory does not upgrade in place.
+  const db = database('postgres', 'postgres', {
+    image: 'ghcr.io/railwayapp-templates/postgres-ssl:17',
+    defaultMountPath: '/var/lib/postgresql/data',
+    region: REGION,
+  });
+  const media = bucket('media', { region: REGION });
 
   // Shared by every service built from backend/Dockerfile.
-  const backendSource = github(REPO, { rootDirectory: 'backend', branch, checkSuites: true });
+  const backendSource = github(REPO, { rootDirectory: 'backend', branch, checkSuites });
   const backendBuild = {
     builder: 'DOCKERFILE' as const,
     dockerfilePath: 'Dockerfile',
@@ -46,18 +59,27 @@ export default defineRailway((ctx) => {
     DJANGO_SECRET_KEY: preserve(),
     DJANGO_DEBUG: 'false',
   };
-  // Railway Bucket credentials, copied from the bucket's variables in the dashboard.
+  // The content origin and the SCORM cron run the same code against the same database,
+  // so they take the API's secrets by reference instead of holding copies.
+  const fromApi = {
+    ...runtimeDb,
+    DB_APP_PASSWORD: '${{api.DB_APP_PASSWORD}}',
+    DJANGO_SECRET_KEY: '${{api.DJANGO_SECRET_KEY}}',
+  };
+  // References to the `media` bucket's own variables: nobody copies the keys, and they
+  // follow a credential reset.
   const storage = {
-    STANDARDS_S3_ENDPOINT: preserve(),
-    STANDARDS_S3_BUCKET: preserve(),
-    STANDARDS_S3_REGION: 'auto',
-    STANDARDS_S3_ACCESS_KEY: preserve(),
-    STANDARDS_S3_SECRET_KEY: preserve(),
+    STANDARDS_S3_ENDPOINT: '${{media.ENDPOINT}}',
+    STANDARDS_S3_BUCKET: '${{media.BUCKET}}',
+    STANDARDS_S3_REGION: '${{media.REGION}}',
+    STANDARDS_S3_ACCESS_KEY: '${{media.ACCESS_KEY_ID}}',
+    STANDARDS_S3_SECRET_KEY: '${{media.SECRET_ACCESS_KEY}}',
     // Off until the content service passes its checks (plan S18).
     STANDARDS_ENABLED: preserve(),
   };
 
   const api = service('api', {
+    regions,
     source: backendSource,
     build: backendBuild,
     // Migrate as the database owner, then refresh the RLS-bound runtime role the
@@ -73,17 +95,20 @@ export default defineRailway((ctx) => {
       PORT: '8000',
       DJANGO_ALLOWED_HOSTS: `api.${root}`,
       FORGE_ROOT_DOMAIN: root,
-      FORGE_PUBLIC_URL: apiOrigin,
+      // Set to the API's custom origin once its DNS and certificate work (plan 8.4);
+      // until then the OAuth issuer follows the Railway domain.
+      FORGE_PUBLIC_URL: preserve(),
       CSRF_TRUSTED_ORIGINS: apiOrigin,
       STANDARDS_CONTENT_ORIGIN: preserve(),
       STANDARDS_APP_ORIGINS: preserve(),
       SENTRY_DSN: preserve(),
-      EMAIL_BACKEND: 'django.core.mail.backends.smtp.EmailBackend',
+      // smtp once a provider is chosen (plan D14); until then emails go to the log.
+      EMAIL_BACKEND: preserve(),
       EMAIL_HOST: preserve(),
       EMAIL_PORT: preserve(),
       EMAIL_HOST_USER: preserve(),
       EMAIL_HOST_PASSWORD: preserve(),
-      EMAIL_USE_TLS: 'true',
+      EMAIL_USE_TLS: preserve(),
       DEFAULT_FROM_EMAIL: preserve(),
       // Open Badges signing key (docs/open-badges.md): `manage.py generate_badge_key`.
       BADGE_SIGNING_KEY: preserve(),
@@ -100,13 +125,14 @@ export default defineRailway((ctx) => {
 
   // SCORM content origin: same image, content-only settings, its own domain (plan D9).
   const content = service('content', {
+    regions,
     source: backendSource,
     build: backendBuild,
     healthcheck: '/healthz',
     healthcheckTimeout: 60,
     deploy: { restartPolicyType: 'ON_FAILURE', restartPolicyMaxRetries: 5 },
     env: {
-      ...runtimeDb,
+      ...fromApi,
       ...storage,
       PORT: '8000',
       DJANGO_SETTINGS_MODULE: 'forge.settings_content',
@@ -119,11 +145,12 @@ export default defineRailway((ctx) => {
 
   // Imports uploaded SCORM packages. Railway cron must exit; five minutes is the floor.
   const scormWorker = service('scorm-worker', {
+    regions,
     source: backendSource,
     build: backendBuild,
     startCommand: 'python manage.py process_scorm',
     deploy: { cronSchedule: '*/5 * * * *', restartPolicyType: 'NEVER' },
-    env: { ...runtimeDb, ...storage, SENTRY_DSN: preserve() },
+    env: { ...fromApi, ...storage, SENTRY_DSN: preserve() },
   });
 
   // Learner, admin and superadmin: root Dockerfile, last stage (nginx). Public values only.
@@ -138,7 +165,8 @@ export default defineRailway((ctx) => {
   ];
   const frontend = (app: string, rootDomain: string) =>
     service(app, {
-      source: github(REPO, { branch, checkSuites: true }),
+      regions,
+      source: github(REPO, { branch, checkSuites }),
       build: { builder: 'DOCKERFILE', dockerfilePath: 'Dockerfile', watchPatterns: frontendWatch },
       healthcheck: '/',
       deploy: { restartPolicyType: 'ON_FAILURE', restartPolicyMaxRetries: 5 },
@@ -170,7 +198,8 @@ export default defineRailway((ctx) => {
     // Public storefront on the apex and www.
     resources.push(
       service('storefront', {
-        source: github(REPO, { branch, checkSuites: true }),
+        regions,
+        source: github(REPO, { branch, checkSuites }),
         build: {
           builder: 'DOCKERFILE',
           dockerfilePath: 'docker/storefront.Dockerfile',
