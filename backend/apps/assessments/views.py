@@ -13,6 +13,7 @@ from apps.audit.models import record
 from apps.gamification.awards import XP_PER_QUIZ_POINT
 from apps.learning.access import Conflict, acting_tenant, get_lesson, require_enrollment
 from apps.learning.progress import Completion, complete_lesson, lock_enrollment, touch
+from apps.standards import events
 
 from .grading import MalformedQuiz, grade, is_correct, parse_questions
 from .models import CheckAnswer, Quiz, QuizAttempt
@@ -253,6 +254,7 @@ class LessonAttemptView(APIView):
                 passed=result.passed,
                 number=attempt.number,
             )
+            events.quiz_event(attempt)
             if result.passed:
                 completion = complete_lesson(
                     enrollment,

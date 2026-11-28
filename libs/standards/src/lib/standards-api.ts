@@ -69,6 +69,63 @@ export interface StandardsConfiguration {
   lrsConfigured: boolean;
 }
 
+export type DispatchFormat = 'scorm12' | 'cmi5';
+
+/** A course exported as a thin package another LMS imports (backend `Dispatch`). */
+export interface StandardsDispatch {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  format: DispatchFormat;
+  /** Origins the LMS serves the package from; the learner app reports only to these. */
+  lmsOrigins: string[];
+  revoked: boolean;
+  createdAt: string;
+  launchUrl: string;
+}
+
+export interface NewDispatchInput {
+  courseId: string;
+  format: DispatchFormat;
+  lmsOrigins: string[];
+}
+
+/** The signed-in learner's standing in a dispatched course. */
+export interface DispatchSession {
+  dispatchId: string;
+  courseId: string;
+  courseTitle: string;
+  format: DispatchFormat;
+  lmsOrigins: string[];
+  enrolled: boolean;
+  progressPct: number;
+  completed: boolean;
+  completedAt: string | null;
+  scorePct: number | null;
+}
+
+export interface DispatchPackageFile {
+  blob: Blob;
+  filename: string;
+}
+
+/** The filename in a `Content-Disposition: attachment` header, if it has a safe one. */
+export function attachmentFilename(header: string | null): string | null {
+  if (!header) return null;
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  let name = plain?.[1] ?? null;
+  if (star) {
+    try {
+      name = decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''));
+    } catch {
+      // keep the plain filename
+    }
+  }
+  name = name?.trim().replace(/[\\/]/g, '_') ?? null;
+  return name || null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StandardsApi {
   private readonly http = inject(HttpClient);
@@ -147,5 +204,52 @@ export class StandardsApi {
 
   configuration(): Promise<StandardsConfiguration> {
     return firstValueFrom(this.http.get<StandardsConfiguration>(this.url('configuration')));
+  }
+
+  // --- LMS export packages ("dispatches") ---------------------------------
+
+  dispatches(): Promise<StandardsDispatch[]> {
+    return firstValueFrom(this.http.get<StandardsDispatch[]>(this.url('dispatches')));
+  }
+
+  createDispatch(input: NewDispatchInput): Promise<StandardsDispatch> {
+    return firstValueFrom(this.http.post<StandardsDispatch>(this.url('dispatches'), input));
+  }
+
+  updateDispatch(
+    dispatchId: string,
+    changes: { lmsOrigins?: string[]; revoked?: boolean },
+  ): Promise<StandardsDispatch> {
+    return firstValueFrom(
+      this.http.patch<StandardsDispatch>(this.url(`dispatches/${dispatchId}`), changes),
+    );
+  }
+
+  async dispatchPackage(dispatch: {
+    id: string;
+    format: DispatchFormat;
+  }): Promise<DispatchPackageFile> {
+    const response = await firstValueFrom(
+      this.http
+        .get(this.url(`dispatches/${dispatch.id}/package`), {
+          observe: 'response',
+          responseType: 'blob',
+        })
+        .pipe(timeout(60_000)),
+    );
+    return {
+      blob: response.body ?? new Blob([], { type: 'application/zip' }),
+      filename:
+        attachmentFilename(response.headers.get('Content-Disposition')) ??
+        `forge-${dispatch.format}.zip`,
+    };
+  }
+
+  dispatchSession(dispatchId: string): Promise<DispatchSession> {
+    return firstValueFrom(
+      this.http
+        .get<DispatchSession>(this.url(`dispatches/${dispatchId}/session`))
+        .pipe(timeout(15_000)),
+    );
   }
 }

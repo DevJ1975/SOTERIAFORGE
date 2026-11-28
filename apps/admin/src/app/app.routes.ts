@@ -80,6 +80,11 @@ export const appRoutes: Routes = [
     loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent),
   },
   {
+    path: 'analytics',
+    canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
+    loadComponent: () => import('./pages/analytics.component').then((m) => m.AnalyticsComponent),
+  },
+  {
     path: 'cohorts',
     canActivate: [authGuard, tenantGuard, roleGuard('tenant_admin', 'instructor')],
     loadComponent: () => import('./pages/cohorts.component').then((m) => m.CohortsComponent),

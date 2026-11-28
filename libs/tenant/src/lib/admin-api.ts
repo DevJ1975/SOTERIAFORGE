@@ -140,16 +140,114 @@ export interface EnrollmentReportRow {
   lastActivityAt: string | null;
 }
 
+/** Optional scope for the staff analytics endpoints. */
+export interface ReportScope {
+  courseId?: string | null;
+  cohortId?: string | null;
+}
+
+export interface AnalyticsTotals {
+  learners: number;
+  activeLast7Days: number;
+  enrollments: number;
+  completions: number;
+  /** 0-100 with one decimal. */
+  completionRate: number;
+  averageProgressPct: number;
+  /** Share of knowledge-check questions answered correctly first try; null with no answers. */
+  firstTryPct: number | null;
+}
+
+export interface AnalyticsCourseRow {
+  courseId: string;
+  title: string;
+  enrollments: number;
+  completions: number;
+  averageProgressPct: number;
+}
+
+export interface AnalyticsLessonRow {
+  lessonId: string;
+  title: string;
+  moduleTitle: string;
+  completions: number;
+  enrollments: number;
+  firstTryPct: number | null;
+}
+
+export interface AnalyticsWeek {
+  /** Monday of the week, `YYYY-MM-DD`. */
+  weekStart: string;
+  activeLearners: number;
+  lessonsCompleted: number;
+}
+
+export interface TenantAnalytics {
+  generatedAt: string;
+  totals: AnalyticsTotals;
+  courses: AnalyticsCourseRow[];
+  /** Empty unless a course is selected. */
+  lessons: AnalyticsLessonRow[];
+  /** The last eight weeks, oldest first. */
+  weeks: AnalyticsWeek[];
+}
+
+export type AtRiskReason = 'inactive' | 'overdue' | 'behind' | 'low_scores' | 'missed_sessions';
+
+export interface AtRiskRules {
+  inactiveDays: number;
+  behindPoints: number;
+  firstTryPct: number;
+  missedSessions: number;
+}
+
+export interface AtRiskLearner {
+  memberId: string;
+  memberName: string;
+  email: string;
+  cohortName: string | null;
+  crewName: string | null;
+  progressPct: number;
+  lastActivityAt: string | null;
+  firstTryPct: number | null;
+  sessionsMissed: number;
+  reasons: AtRiskReason[];
+}
+
+export interface AtRiskReport {
+  generatedAt: string;
+  rules: AtRiskRules;
+  /** Most at risk first. */
+  learners: AtRiskLearner[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportsApi {
   private readonly http = inject(HttpClient);
   private readonly base = inject(ASSURANCE_ENV).apiBaseUrl;
 
-  enrollments(): Promise<EnrollmentReportRow[]> {
+  private url(path: string): string {
     if (!this.base) throw new Error('The Forge API is not configured.');
-    return firstValueFrom(
-      this.http.get<EnrollmentReportRow[]>(forgeApiUrl(this.base, '/api/reports/enrollments')),
-    );
+    return forgeApiUrl(this.base, `/api/reports/${path}`);
+  }
+
+  private scope(scope: ReportScope): { params: Record<string, string> } {
+    const params: Record<string, string> = {};
+    if (scope.courseId) params['courseId'] = scope.courseId;
+    if (scope.cohortId) params['cohortId'] = scope.cohortId;
+    return { params };
+  }
+
+  enrollments(): Promise<EnrollmentReportRow[]> {
+    return firstValueFrom(this.http.get<EnrollmentReportRow[]>(this.url('enrollments')));
+  }
+
+  analytics(scope: ReportScope = {}): Promise<TenantAnalytics> {
+    return firstValueFrom(this.http.get<TenantAnalytics>(this.url('analytics'), this.scope(scope)));
+  }
+
+  atRisk(scope: ReportScope = {}): Promise<AtRiskReport> {
+    return firstValueFrom(this.http.get<AtRiskReport>(this.url('at-risk'), this.scope(scope)));
   }
 }
 

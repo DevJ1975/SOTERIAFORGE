@@ -3803,6 +3803,90 @@
                 }
             }
         },
+        "/api/reports/analytics": {
+            "get": {
+                "operationId": "reports_analytics_retrieve",
+                "description": "Progress, first-try accuracy and weekly activity for the learners staff teach.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cohortId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "courseId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CohortAnalytics"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/reports/at-risk": {
+            "get": {
+                "operationId": "reports_at_risk_retrieve",
+                "description": "Learners who match a plain at-risk rule, with the rules that matched.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cohortId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "courseId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AtRisk"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
         "/api/reports/enrollments": {
             "get": {
                 "operationId": "reports_enrollments_list",
@@ -3979,6 +4063,206 @@
                                     "items": {
                                         "$ref": "#/components/schemas/Statement"
                                     }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/standards/dispatches": {
+            "get": {
+                "operationId": "standards_dispatches_list",
+                "tags": [
+                    "standards"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Dispatch"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "standards_dispatches_create",
+                "tags": [
+                    "standards"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DispatchCreateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DispatchCreateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DispatchCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Dispatch"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/standards/dispatches/{dispatch_id}": {
+            "patch": {
+                "operationId": "standards_dispatches_partial_update",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "dispatch_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "standards"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDispatchUpdateRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDispatchUpdateRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedDispatchUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Dispatch"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/standards/dispatches/{dispatch_id}/package": {
+            "get": {
+                "operationId": "standards_dispatches_package_retrieve",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "dispatch_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "standards"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/zip": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/standards/dispatches/{dispatch_id}/session": {
+            "get": {
+                "operationId": "standards_dispatches_session_retrieve",
+                "description": "What the learner app reports to the LMS: this member's progress in the course.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "dispatch_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "standards"
+                ],
+                "security": [
+                    {
+                        "accessToken": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DispatchSession"
                                 }
                             }
                         },
@@ -4734,6 +5018,67 @@
                     "title"
                 ]
             },
+            "AnalyticsCourse": {
+                "type": "object",
+                "properties": {
+                    "courseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "enrollments": {
+                        "type": "integer"
+                    },
+                    "completions": {
+                        "type": "integer"
+                    },
+                    "averageProgressPct": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "averageProgressPct",
+                    "completions",
+                    "courseId",
+                    "enrollments",
+                    "title"
+                ]
+            },
+            "AnalyticsLesson": {
+                "type": "object",
+                "properties": {
+                    "lessonId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "moduleTitle": {
+                        "type": "string"
+                    },
+                    "completions": {
+                        "type": "integer"
+                    },
+                    "enrollments": {
+                        "type": "integer"
+                    },
+                    "firstTryPct": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "completions",
+                    "enrollments",
+                    "firstTryPct",
+                    "lessonId",
+                    "moduleTitle",
+                    "title"
+                ]
+            },
             "AnalyticsTotals": {
                 "type": "object",
                 "properties": {
@@ -4764,6 +5109,63 @@
                     "learners",
                     "members",
                     "tenants"
+                ]
+            },
+            "AnalyticsTotalsRow": {
+                "type": "object",
+                "properties": {
+                    "learners": {
+                        "type": "integer"
+                    },
+                    "activeLast7Days": {
+                        "type": "integer"
+                    },
+                    "enrollments": {
+                        "type": "integer"
+                    },
+                    "completions": {
+                        "type": "integer"
+                    },
+                    "completionRate": {
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "averageProgressPct": {
+                        "type": "integer"
+                    },
+                    "firstTryPct": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "activeLast7Days",
+                    "averageProgressPct",
+                    "completionRate",
+                    "completions",
+                    "enrollments",
+                    "firstTryPct",
+                    "learners"
+                ]
+            },
+            "AnalyticsWeek": {
+                "type": "object",
+                "properties": {
+                    "weekStart": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "activeLearners": {
+                        "type": "integer"
+                    },
+                    "lessonsCompleted": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "activeLearners",
+                    "lessonsCompleted",
+                    "weekStart"
                 ]
             },
             "Answer": {
@@ -4924,6 +5326,109 @@
                 ],
                 "type": "string",
                 "description": "* `tenant_admin` - tenant_admin\n* `instructor` - instructor\n* `learner` - learner\n* `b2c_customer` - b2c_customer"
+            },
+            "AtRisk": {
+                "type": "object",
+                "properties": {
+                    "generatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "rules": {
+                        "$ref": "#/components/schemas/AtRiskRules"
+                    },
+                    "learners": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AtRiskLearner"
+                        }
+                    }
+                },
+                "required": [
+                    "generatedAt",
+                    "learners",
+                    "rules"
+                ]
+            },
+            "AtRiskLearner": {
+                "type": "object",
+                "properties": {
+                    "memberId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "memberName": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "cohortName": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "crewName": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "progressPct": {
+                        "type": "integer"
+                    },
+                    "lastActivityAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "firstTryPct": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "sessionsMissed": {
+                        "type": "integer"
+                    },
+                    "reasons": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReasonsEnum"
+                        }
+                    }
+                },
+                "required": [
+                    "cohortName",
+                    "crewName",
+                    "email",
+                    "firstTryPct",
+                    "lastActivityAt",
+                    "memberId",
+                    "memberName",
+                    "progressPct",
+                    "reasons",
+                    "sessionsMissed"
+                ]
+            },
+            "AtRiskRules": {
+                "type": "object",
+                "properties": {
+                    "inactiveDays": {
+                        "type": "integer"
+                    },
+                    "behindPoints": {
+                        "type": "integer"
+                    },
+                    "firstTryPct": {
+                        "type": "integer"
+                    },
+                    "missedSessions": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "behindPoints",
+                    "firstTryPct",
+                    "inactiveDays",
+                    "missedSessions"
+                ]
             },
             "AttachRequest": {
                 "type": "object",
@@ -5678,6 +6183,43 @@
                     "startsOn"
                 ]
             },
+            "CohortAnalytics": {
+                "type": "object",
+                "properties": {
+                    "generatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "totals": {
+                        "$ref": "#/components/schemas/AnalyticsTotalsRow"
+                    },
+                    "courses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnalyticsCourse"
+                        }
+                    },
+                    "lessons": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnalyticsLesson"
+                        }
+                    },
+                    "weeks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnalyticsWeek"
+                        }
+                    }
+                },
+                "required": [
+                    "courses",
+                    "generatedAt",
+                    "lessons",
+                    "totals",
+                    "weeks"
+                ]
+            },
             "CohortRef": {
                 "type": "object",
                 "properties": {
@@ -6170,6 +6712,132 @@
                     "totalXp"
                 ]
             },
+            "Dispatch": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "courseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "courseTitle": {
+                        "type": "string"
+                    },
+                    "format": {
+                        "$ref": "#/components/schemas/FormatEnum"
+                    },
+                    "lmsOrigins": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "revoked": {
+                        "type": "boolean"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "launchUrl": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "courseId",
+                    "courseTitle",
+                    "createdAt",
+                    "format",
+                    "id",
+                    "launchUrl",
+                    "lmsOrigins",
+                    "revoked"
+                ]
+            },
+            "DispatchCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "courseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "format": {
+                        "$ref": "#/components/schemas/FormatEnum"
+                    },
+                    "lmsOrigins": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 300
+                        },
+                        "maxItems": 50
+                    }
+                },
+                "required": [
+                    "courseId",
+                    "format"
+                ]
+            },
+            "DispatchSession": {
+                "type": "object",
+                "properties": {
+                    "dispatchId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "courseId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "courseTitle": {
+                        "type": "string"
+                    },
+                    "format": {
+                        "$ref": "#/components/schemas/FormatEnum"
+                    },
+                    "lmsOrigins": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "enrolled": {
+                        "type": "boolean"
+                    },
+                    "progressPct": {
+                        "type": "integer"
+                    },
+                    "completed": {
+                        "type": "boolean"
+                    },
+                    "completedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "scorePct": {
+                        "type": "integer",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "completed",
+                    "completedAt",
+                    "courseId",
+                    "courseTitle",
+                    "dispatchId",
+                    "enrolled",
+                    "format",
+                    "lmsOrigins",
+                    "progressPct",
+                    "scorePct"
+                ]
+            },
             "EngineEnum": {
                 "enum": [
                     "phaser",
@@ -6303,6 +6971,14 @@
                 "required": [
                     "confirm"
                 ]
+            },
+            "FormatEnum": {
+                "enum": [
+                    "scorm12",
+                    "cmi5"
+                ],
+                "type": "string",
+                "description": "* `scorm12` - SCORM 1.2\n* `cmi5` - cmi5"
             },
             "Game": {
                 "type": "object",
@@ -7613,6 +8289,23 @@
                     }
                 }
             },
+            "PatchedDispatchUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "lmsOrigins": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 300
+                        },
+                        "maxItems": 50
+                    },
+                    "revoked": {
+                        "type": "boolean"
+                    }
+                }
+            },
             "PatchedGameRequest": {
                 "type": "object",
                 "properties": {
@@ -8076,6 +8769,17 @@
                 ],
                 "type": "string",
                 "description": "* `thumbs_down` - thumbs_down\n* `abstained` - abstained\n* `blocked` - blocked"
+            },
+            "ReasonsEnum": {
+                "enum": [
+                    "inactive",
+                    "overdue",
+                    "behind",
+                    "low_scores",
+                    "missed_sessions"
+                ],
+                "type": "string",
+                "description": "* `inactive` - inactive\n* `overdue` - overdue\n* `behind` - behind\n* `low_scores` - low_scores\n* `missed_sessions` - missed_sessions"
             },
             "Reference": {
                 "type": "object",

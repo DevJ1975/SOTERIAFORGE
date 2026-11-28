@@ -410,6 +410,21 @@ over LiveKit data messages rather than Channels on Redis; see
 load test with real browsers on a deployed media server, and the keyboard-only
 run-through in a browser.
 
+### Phase 6 progress (2026-11-21)
+
+**Built:** xAPI statements for quiz attempts, course completion and cmi5 lessons, beside
+the existing lesson completions; SCORM 1.2 and cmi5 export packages that list a Forge
+course in a tenant's own LMS and report progress back; cohort analytics and a rule-based
+at-risk list for instructors. See [SCORM and xAPI](./scorm-cmi5.md#exporting-to-an-lms).
+
+**Remaining for Phase 6:**
+
+- **Exit gate:** import both packages into Lakewood's LMS. Which LMS that is has not
+  been recorded, so only a generic SCORM 1.2 runtime has been tried.
+- **An LRS to send to.** Delivery (`forward_xapi`) has no destination configured on AWS
+  or Railway.
+- There is no TA role, so "instructor/TA" analytics means instructors and tenant admins.
+
 ## 5. Phases
 
 Dates depend on the Cohort 1 target, which the spec leaves open. Sizes assume one

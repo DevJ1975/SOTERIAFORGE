@@ -8,13 +8,13 @@ are awarded (gamification.awards); badges join this path next.
 
 from dataclasses import dataclass, replace
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.models import record
 from apps.gamification import badges
 from apps.gamification.awards import Award, award_lesson
+from apps.standards import events
 
 from .models import Enrollment, Lesson, LessonProgress
 
@@ -71,10 +71,7 @@ def complete_lesson(
 
         award = None
         if first:
-            if settings.XAPI_RECORDING_ENABLED:
-                from apps.standards.events import completed_event
-
-                completed_event(enrollment, lesson, score)
+            events.completed_event(enrollment, lesson, score)
             award = award_lesson(enrollment=enrollment, lesson=lesson, extra_xp=extra_xp, now=now)
             earned = badges.evaluate(tenant=enrollment.tenant, member=enrollment.member, now=now)
             award = replace(
@@ -90,6 +87,7 @@ def complete_lesson(
                 score=score,
             )
         if course_finished:
+            events.course_completed_event(enrollment)
             record(
                 action="learning.course.completed",
                 actor=enrollment.member,

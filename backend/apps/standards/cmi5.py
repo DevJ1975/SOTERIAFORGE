@@ -36,6 +36,7 @@ from apps.learning.access import Conflict
 from apps.learning.models import AU_CONTENT_TYPES, PublishStatus
 from apps.learning.progress import complete_lesson, touch
 
+from . import events
 from .models import AuSession, AuStatement
 
 # Paths an AU calls from its own origin (see apps.py for the CORS rule).
@@ -458,14 +459,16 @@ def record(session: AuSession, statements: list, statement_id: str | None = None
         if session.statement_count >= MAX_SESSION_STATEMENTS:
             raise TooManyStatements()
         stored = _apply_verb(session, verb, statement, now)
+        stamped = _stamp(session, stored, parsed_id, now)
         AuStatement.objects.create(
             tenant_id=session.tenant_id,
             session=session,
             statement_id=parsed_id,
             verb=stored["verb"]["id"],
             digest=digest,
-            payload=_stamp(session, stored, parsed_id, now),
+            payload=stamped,
         )
+        events.au_statement_event(session.tenant_id, stamped)
         session.statement_count += 1
         ids.append(str(parsed_id))
     session.save()

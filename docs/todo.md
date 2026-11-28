@@ -36,6 +36,11 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
 - [ ] **Decide:** AI tutor hosting. Ask Forge (Phase 4) is built but only talks to a local
       Ollama model, so it is off on AWS and Railway until a hosted model and embedding
       provider are chosen.
+- [ ] **Tell me which LMS Lakewood uses**, then import the SCORM 1.2 and cmi5 exports
+      there (admin console → SCORM and xAPI → Export for an LMS). That is the Phase 6
+      exit gate, and only a generic SCORM runtime has been tried so far.
+- [ ] **Choose an LRS** if Lakewood wants xAPI statements, then set `XAPI_LRS_ENDPOINT`
+      and `XAPI_LRS_AUTH` and schedule `manage.py forward_xapi`.
 - [ ] **Decide:** how long coach questions and answers are kept (default 90 days), then
       schedule `manage.py purge_coach_log` daily.
 - [ ] Review and push the branch: `feat/angular-22-upgrade` is ~11 commits ahead of
