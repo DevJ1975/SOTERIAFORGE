@@ -101,8 +101,19 @@ export class AdminDashboardComponent {
       link: '/knowledge',
     },
     {
+      title: 'Coach review',
+      description: 'Check Ask Forge answers learners marked unhelpful or that went unanswered.',
+      link: '/coach-review',
+    },
+    {
+      title: 'Analytics',
+      description: 'See progress and weekly activity, and which learners may need a check-in.',
+      link: '/analytics',
+    },
+    {
       title: 'SCORM and xAPI',
-      description: 'Import SCORM packages, attach lessons, and monitor external LRS delivery.',
+      description:
+        'Import SCORM packages, export courses for another LMS, and monitor LRS delivery.',
       link: '/standards',
     },
     {

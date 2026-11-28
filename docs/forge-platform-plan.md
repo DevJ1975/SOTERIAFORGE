@@ -221,7 +221,7 @@ web process connecting as `forge_app` (no superuser, no BYPASSRLS; superusers
 skip RLS even when forced, and Railway's default user is one); migrations run
 as the owner and `ensure_app_role` refreshes grants on each deploy. The learner
 and admin apps call the API (`forgeApiInterceptor`, `ForgeSession` →
-`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` signs
+`/api/me`). **Exit gate met locally:** `backend/scripts/e2e_emulator.sh` (since removed with Firebase) signed
 in real Firebase Auth emulator users against Django running as `forge_app` and
 checks auth, tenant isolation, the role change, claim mirroring, audit and
 revocation (10/10).
@@ -372,9 +372,58 @@ is not wired into any app.
 - Learner Home reads `GET /api/me/badges`; the completion `award` lists the badges it earned
   and the award overlay shows them. Admin has Cohorts & crews and Badges pages.
 
-**Remaining for Phase 3:** signed Open Badges 3.0 credentials and the public verify page.
-This needs an issuer key pair and a hosted issuer profile, which is a deployment decision
-(see `docs/open-badges.md`). Learner-facing My Progress already shows level, streak and crew.
+**Slice 3 done (2026-11-21): signed credentials end to end.** Open Badges 3.0 signing and
+the public endpoints, a public verification page (`/credentials/<award>`), and My Progress
+lists earned badges with a verification link and a credential download. The issuer key is
+provisioned on AWS. See `docs/open-badges.md`.
+
+**Remaining for Phase 3:** run one issued credential through a public Open Badges 3.0
+validator and walk My Progress and the award overlay against the walkthrough video. Both
+need the API reachable at its public URL.
+
+### Phase 4 progress (2026-11-21)
+
+**Built on the local pilot:** module-scoped retrieval, streamed answers (SSE), the four
+diagram types drawn as SVG with a text alternative, source chips, follow-up questions,
+thumbs, the staff review queue with a weekly helpful rate, pre-model guardrails and a
+pseudonymized exchange log with retention. Checked against the real local model through
+the ASGI server. See [local AI tutor](./local-ai-tutor.md#ask-forge-phase-4).
+
+**Remaining for Phase 4:**
+
+- **Hosted inference.** The coach still only talks to Ollama on the same machine, so it
+  cannot run on AWS or Railway. This needs the provider decision in §8.
+- **Exit gate:** an instructor-reviewed corpus and an eval set scored at 85% helpful.
+- **Look and feel:** the new chat features and diagrams have unit tests but have not been
+  checked in a browser against the walkthrough video.
+- **Operations:** schedule `purge_coach_log` daily and confirm the retention period.
+
+### Phase 5 progress (2026-11-21)
+
+**Built:** cohort access, live sessions with the block bar, Threat Hunt, live polls, the
+crew panel, crew huddle notes, raised hands, host moderation, attendance, the debrief heat
+map and crew-first paging of the video grid. Session state is in Postgres and announced
+over LiveKit data messages rather than Channels on Redis; see
+[video classrooms](./video-classrooms.md#live-sessions-phase-5) for why.
+
+**Remaining for Phase 5:** captions (needs a speech-to-text provider), the 20-learner
+load test with real browsers on a deployed media server, and the keyboard-only
+run-through in a browser.
+
+### Phase 6 progress (2026-11-21)
+
+**Built:** xAPI statements for quiz attempts, course completion and cmi5 lessons, beside
+the existing lesson completions; SCORM 1.2 and cmi5 export packages that list a Forge
+course in a tenant's own LMS and report progress back; cohort analytics and a rule-based
+at-risk list for instructors. See [SCORM and xAPI](./scorm-cmi5.md#exporting-to-an-lms).
+
+**Remaining for Phase 6:**
+
+- **Exit gate:** import both packages into Lakewood's LMS. Which LMS that is has not
+  been recorded, so only a generic SCORM 1.2 runtime has been tried.
+- **An LRS to send to.** Delivery (`forward_xapi`) has no destination configured on AWS
+  or Railway.
+- There is no TA role, so "instructor/TA" analytics means instructors and tenant admins.
 
 ## 5. Phases
 

@@ -18,6 +18,8 @@ from apps.tenants import rls
 from apps.tenants.library import LIBRARY_TENANT_ID
 from apps.tenants.models import Tenant
 
+from . import analytics
+
 
 class EnrollmentRowSerializer(serializers.Serializer):
     memberId = serializers.UUIDField()
@@ -67,6 +69,109 @@ class EnrollmentReportView(APIView):
                 for e in rows.order_by("course__title", "member__display_name", "member__email")
             ]
         )
+
+
+class AnalyticsTotalsRowSerializer(serializers.Serializer):
+    learners = serializers.IntegerField()
+    activeLast7Days = serializers.IntegerField()
+    enrollments = serializers.IntegerField()
+    completions = serializers.IntegerField()
+    completionRate = serializers.FloatField()
+    averageProgressPct = serializers.IntegerField()
+    firstTryPct = serializers.IntegerField(allow_null=True)
+
+
+class AnalyticsCourseSerializer(serializers.Serializer):
+    courseId = serializers.UUIDField()
+    title = serializers.CharField()
+    enrollments = serializers.IntegerField()
+    completions = serializers.IntegerField()
+    averageProgressPct = serializers.IntegerField()
+
+
+class AnalyticsLessonSerializer(serializers.Serializer):
+    lessonId = serializers.UUIDField()
+    title = serializers.CharField()
+    moduleTitle = serializers.CharField()
+    completions = serializers.IntegerField()
+    enrollments = serializers.IntegerField()
+    firstTryPct = serializers.IntegerField(allow_null=True)
+
+
+class AnalyticsWeekSerializer(serializers.Serializer):
+    weekStart = serializers.DateField()
+    activeLearners = serializers.IntegerField()
+    lessonsCompleted = serializers.IntegerField()
+
+
+class CohortAnalyticsSerializer(serializers.Serializer):
+    generatedAt = serializers.DateTimeField()
+    totals = AnalyticsTotalsRowSerializer()
+    courses = AnalyticsCourseSerializer(many=True)
+    lessons = AnalyticsLessonSerializer(many=True)
+    weeks = AnalyticsWeekSerializer(many=True)
+
+
+class AtRiskRulesSerializer(serializers.Serializer):
+    inactiveDays = serializers.IntegerField()
+    behindPoints = serializers.IntegerField()
+    firstTryPct = serializers.IntegerField()
+    missedSessions = serializers.IntegerField()
+
+
+class AtRiskLearnerSerializer(serializers.Serializer):
+    memberId = serializers.UUIDField()
+    memberName = serializers.CharField()
+    email = serializers.EmailField()
+    cohortName = serializers.CharField(allow_null=True)
+    crewName = serializers.CharField(allow_null=True)
+    progressPct = serializers.IntegerField()
+    lastActivityAt = serializers.DateTimeField(allow_null=True)
+    firstTryPct = serializers.IntegerField(allow_null=True)
+    sessionsMissed = serializers.IntegerField()
+    reasons = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=["inactive", "overdue", "behind", "low_scores", "missed_sessions"]
+        )
+    )
+
+
+class AtRiskSerializer(serializers.Serializer):
+    generatedAt = serializers.DateTimeField()
+    rules = AtRiskRulesSerializer()
+    learners = AtRiskLearnerSerializer(many=True)
+
+
+SCOPE_PARAMETERS = [
+    OpenApiParameter("courseId", str, required=False),
+    OpenApiParameter("cohortId", str, required=False),
+]
+
+
+class CohortAnalyticsView(APIView):
+    """Progress, first-try accuracy and weekly activity for the learners staff teach."""
+
+    permission_classes = [IsActiveMember, HasTenantRole]
+    tenant_roles = TENANT_STAFF
+
+    @extend_schema(parameters=SCOPE_PARAMETERS, responses=CohortAnalyticsSerializer)
+    def get(self, request):
+        data = analytics.analytics(analytics.Scope(request, acting_tenant(request)))
+        return Response(CohortAnalyticsSerializer(data).data)
+
+
+class AtRiskView(APIView):
+    """Learners who match a plain at-risk rule, with the rules that matched."""
+
+    permission_classes = [IsActiveMember, HasTenantRole]
+    tenant_roles = TENANT_STAFF
+
+    @extend_schema(parameters=SCOPE_PARAMETERS, responses=AtRiskSerializer)
+    def get(self, request):
+        data = analytics.at_risk(analytics.Scope(request, acting_tenant(request)))
+        response = Response(AtRiskSerializer(data).data)
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 class TenantAnalyticsRowSerializer(serializers.Serializer):

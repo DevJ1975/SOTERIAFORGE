@@ -63,7 +63,21 @@ export type QuestionType = (typeof QUESTION_TYPES)[number];
 export const B2C_TENANT_ID = 'b2c';
 
 /** Reserved subdomains that never resolve to a tenant. */
-export const RESERVED_SUBDOMAINS = ['www', 'app', 'admin', 'api', 'static', 'assets'] as const;
+/**
+ * Platform hosts under the root domain; never a tenant. `staging` is the staging
+ * environment's root (staging.<root>). Mirrors RESERVED_TENANT_IDS in
+ * backend/apps/tenants/admin_views.py.
+ */
+export const RESERVED_SUBDOMAINS = [
+  'www',
+  'app',
+  'admin',
+  'api',
+  'static',
+  'assets',
+  'staging',
+  'content',
+] as const;
 
 /** xAPI verbs emitted by the platform (ADL + custom). */
 export const XAPI_VERBS = {

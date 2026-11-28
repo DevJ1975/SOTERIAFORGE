@@ -141,7 +141,10 @@ def test_specialist_generation_schema_bounds_citations_and_answer(monkeypatch):
         return {
             "done": True,
             "done_reason": "stop",
-            "message": {"content": '{"answer":"Supported","citations":[42],"abstained":false}'},
+            "message": {
+                "content": '{"answer":"Supported","citations":[42],"abstained":false,'
+                '"diagram":{"type":"none","title":"","groups":[]},"followUps":[]}'
+            },
         }
 
     monkeypatch.setattr(Ollama, "call", call)
@@ -151,7 +154,10 @@ def test_specialist_generation_schema_bounds_citations_and_answer(monkeypatch):
     assert fields["citations"]["items"]["enum"] == [42]
     assert fields["answer"]["maxLength"] == 1600
     assert seen["think"] is False
-    assert seen["options"]["num_predict"] == 512
+    assert seen["options"]["num_predict"] == 900
+    # The answer comes first so it can be streamed while the rest is written.
+    assert next(iter(fields)) == "answer"
+    assert fields["diagram"]["properties"]["type"]["enum"][0] == "none"
 
 
 @pytest.mark.parametrize("agent", [Agent.GENERAL, Agent.WORKPLACE, Agent.CYBERSECURITY])

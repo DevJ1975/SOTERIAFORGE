@@ -10,9 +10,9 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
       Uploads and `forge_import_media` need it. Claude can't create it.
 - [ ] **Set `MCP_MEDIA_IMPORT_HOSTS`** on the API to the media hosts Claude may import
       from (e.g. the ElevenLabs download host). Empty keeps media import off.
-- [ ] **Badge signing key:** run `manage.py generate_badge_key`, store the output as the
-      `BADGE_SIGNING_KEY` secret, and set `FORGE_PUBLIC_URL` to the API's permanent URL.
-      Then run one issued credential through a public Open Badges 3.0 validator.
+- [ ] **Badge credentials:** the signing key is set on AWS. Once the API is reachable,
+      run one issued credential through a public Open Badges 3.0 validator. Railway
+      still has no key (credential endpoints answer 503 there).
 - [ ] **MCP platform tools (optional):** `RAILWAY_API_TOKEN` and a fine-grained
       `GITHUB_TOKEN` (this repo, Contents + Pull requests, no Workflows).
 - [ ] **Connect Claude to staging** (`docs/forge-mcp.md` → Connect) and author one real
@@ -33,8 +33,16 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
       retire them once MCP authoring is proven? (Default plan: keep them for now.)
 - [x] **Decided:** B2C storefront is a public catalog with a request-access path; no B2C
       signup or Stripe checkout.
-- [ ] **Decide:** Anthropic/AI tutor hosting. The Django coach runs on a local Ollama model
-      only; production needs a hosted model or the tutor stays off.
+- [ ] **Decide:** AI tutor hosting. Ask Forge (Phase 4) is built but only talks to a local
+      Ollama model, so it is off on AWS and Railway until a hosted model and embedding
+      provider are chosen.
+- [ ] **Tell me which LMS Lakewood uses**, then import the SCORM 1.2 and cmi5 exports
+      there (admin console → SCORM and xAPI → Export for an LMS). That is the Phase 6
+      exit gate, and only a generic SCORM runtime has been tried so far.
+- [ ] **Choose an LRS** if Lakewood wants xAPI statements, then set `XAPI_LRS_ENDPOINT`
+      and `XAPI_LRS_AUTH` and schedule `manage.py forward_xapi`.
+- [ ] **Decide:** how long coach questions and answers are kept (default 90 days), then
+      schedule `manage.py purge_coach_log` daily.
 - [ ] Review and push the branch: `feat/angular-22-upgrade` is ~11 commits ahead of
       `origin`. Two of them (gamification, My Progress) came from another session.
 - [ ] Optional: delete the stale worktrees. `SOTERIAFORGE-mcp` is ported except its
@@ -66,7 +74,6 @@ is authored by Claude through MCP (see `docs/forge-mcp.md`).
 
 ### 2. Frontend
 
-- [ ] Learner app: "export credential" on an earned badge (`awardId` is in `/api/me/badges`).
 - [ ] Admin lesson editor: a transcript field.
 - [ ] `OfflineXapiQueue` (libs/standards) has no sender and nothing enqueues to it. The
       server writes its own xAPI statements on completion, so a client ingest endpoint

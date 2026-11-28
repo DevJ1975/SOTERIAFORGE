@@ -92,6 +92,27 @@ describe('tenant admin API clients', () => {
     expect(await p).toEqual([]);
   });
 
+  it('ReportsApi scopes analytics and the at-risk list by course and cohort', async () => {
+    const api = TestBed.inject(ReportsApi);
+
+    const all = api.analytics();
+    const allReq = http.expectOne(`${BASE}/api/reports/analytics`);
+    expect(allReq.request.params.keys()).toEqual([]);
+    allReq.flush({ lessons: [] });
+    expect(await all).toEqual({ lessons: [] });
+
+    const scoped = api.analytics({ courseId: 'c1', cohortId: null });
+    http.expectOne(`${BASE}/api/reports/analytics?courseId=c1`).flush({ lessons: [{}] });
+    await scoped;
+
+    const risk = api.atRisk({ courseId: 'c1', cohortId: 'k1' });
+    const riskReq = http.expectOne((r) => r.url === `${BASE}/api/reports/at-risk`);
+    expect(riskReq.request.params.get('courseId')).toBe('c1');
+    expect(riskReq.request.params.get('cohortId')).toBe('k1');
+    riskReq.flush({ learners: [] });
+    expect(await risk).toEqual({ learners: [] });
+  });
+
   it('BrandingService reads tenant/branding and PUTs updates', async () => {
     const svc = TestBed.inject(BrandingService);
 

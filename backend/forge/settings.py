@@ -3,6 +3,7 @@
 locally)."""
 
 import os
+import re
 from pathlib import Path
 
 import dj_database_url
@@ -176,12 +177,19 @@ SPECTACULAR_SETTINGS = {
         "RoleEnum": "apps.accounts.models.Role",
         "AssignableRoleEnum": "apps.accounts.models.ASSIGNABLE_ROLES",
         "BadgeKindEnum": "apps.gamification.models.Badge.Kind",
+        "CoachReviewStatusEnum": "apps.coach.models.Exchange.ReviewStatus",
+        "CoachRatingEnum": "apps.coach.models.Exchange.Rating",
     },
 }
 
-# Angular apps on Vercel: tenant subdomains + the apex storefront.
+# Angular apps: learner on <tenant>.<root>, superadmin on app.<root>, the storefront on
+# the apex, and admin on <tenant>.<admin root> (docs/railway-go-live-plan.md, D2). Each
+# pattern allows exactly one label under its root.
 ROOT_DOMAIN = os.environ.get("FORGE_ROOT_DOMAIN", "soteriaforge.com")
-CORS_ALLOWED_ORIGIN_REGEXES = [rf"^https://([a-z0-9-]+\.)?{ROOT_DOMAIN.replace('.', r'\.')}$"]
+ADMIN_ROOT_DOMAIN = os.environ.get("FORGE_ADMIN_ROOT_DOMAIN", f"admin.{ROOT_DOMAIN}")
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    rf"^https://([a-z0-9-]+\.)?{re.escape(domain)}$" for domain in (ROOT_DOMAIN, ADMIN_ROOT_DOMAIN)
+]
 CORS_ALLOWED_ORIGINS = env_list("CORS_EXTRA_ORIGINS")
 # Bearer token + the host-resolved tenant (apps/accounts/authentication.py), and the
 # client marker the refresh endpoint requires alongside its cookie.
@@ -248,6 +256,8 @@ LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
 
 # Local AI pilot: intentionally loopback-only; Railway cannot reach a Mac's localhost.
 COACH_ENABLED = env_bool("COACH_ENABLED")
+# Questions and answers are kept this long for the thumbs and the staff review queue.
+COACH_LOG_RETENTION_DAYS = int(os.environ.get("COACH_LOG_RETENTION_DAYS", "90"))
 COACH_MODEL = "qwen3:8b"
 COACH_MODEL_DIGEST = "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
 COACH_EMBED_MODEL = "qwen3-embedding:0.6b"
@@ -327,7 +337,13 @@ OAUTH2_PROVIDER = {
 
 # W008 flags http redirect URIs; they're needed for loopback clients (RFC 8252), and
 # registration accepts http only for loopback hosts (apps/mcp/dcr.py).
-SILENCED_SYSTEM_CHECKS = ["oauth2_provider.W008"]
+SILENCED_SYSTEM_CHECKS = [
+    "oauth2_provider.W008",
+    # HSTS stays host-only and unpreloaded until every host is confirmed HTTPS-only
+    # (docs/railway-go-live-plan.md, F12). Preload is hard to undo.
+    "security.W005",
+    "security.W021",
+]
 
 # Release and code tools (platform superadmins). Tokens are Railway service variables.
 RAILWAY_API_TOKEN = os.environ.get("RAILWAY_API_TOKEN", "")

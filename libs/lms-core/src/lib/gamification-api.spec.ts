@@ -64,6 +64,7 @@ describe('GamificationApi', () => {
         state: 'progress',
         progress: { current: 2, target: 5 },
         earnedAt: null,
+        awardId: null,
       },
     ];
     const pending = api.badges();
@@ -71,6 +72,20 @@ describe('GamificationApi', () => {
     expect(request.request.method).toBe('GET');
     request.flush(rows);
     expect(await pending).toEqual(rows);
+  });
+
+  it('fetches the signed credential for an earned badge', async () => {
+    setup();
+    const signed = {
+      credential: { name: 'Operator' },
+      jwt: 'a.b.c',
+      verifyUrl: `${base}/credentials/x`,
+    };
+    const pending = api.credential('b1');
+    const request = http.expectOne(`${base}/api/me/badges/b1/credential`);
+    expect(request.request.method).toBe('GET');
+    request.flush(signed);
+    expect(await pending).toEqual(signed);
   });
 
   it('asks for the weekly crew board by default', async () => {

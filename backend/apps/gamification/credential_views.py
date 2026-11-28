@@ -43,7 +43,11 @@ def _awards():
 
 def _signed(award: BadgeAward) -> dict:
     document = credentials.credential(award)
-    return {"credential": document, "jwt": credentials.sign(award), "verifyUrl": document["id"]}
+    return {
+        "credential": document,
+        "jwt": credentials.sign(award),
+        "verifyUrl": credentials.page_url(award),
+    }
 
 
 class MyCredentialView(APIView):

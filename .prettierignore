@@ -24,3 +24,8 @@ libs/ui/src/styles/forge/forge.css
 libs/ui/src/styles/forge/fonts/inter.css
 # Django templates (not plain HTML)
 backend/**/templates
+# Written by drf-spectacular; CI regenerates it and fails on any diff
+backend/openapi.json
+# Unity writes these itself
+games/forge-unity/Packages
+games/forge-unity/ProjectSettings

@@ -14,6 +14,7 @@ from django.utils import timezone
 
 class XpSource(models.TextChoices):
     LESSON = "lesson", "Lesson completed"
+    ENGAGE_HUNT = "engage_hunt", "Threat Hunt solved in a live class"
 
 
 class XpEvent(models.Model):

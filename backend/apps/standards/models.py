@@ -163,3 +163,29 @@ class Scenario(models.Model):
 
     def __str__(self):
         return str(self.lesson_id)
+
+
+class Dispatch(models.Model):
+    """An export of one course as a package a tenant imports into its own LMS.
+
+    `lms_origins` are the only addresses the learner app will report progress to.
+    """
+
+    class Format(models.TextChoices):
+        SCORM12 = "scorm12", "SCORM 1.2"
+        CMI5 = "cmi5", "cmi5"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    course = models.ForeignKey("learning.Course", on_delete=models.PROTECT, related_name="+")
+    format = models.CharField(max_length=10, choices=Format)
+    lms_origins = models.JSONField(default=list, blank=True)
+    revoked = models.BooleanField(default=False)
+    created_by = models.ForeignKey("accounts.Member", on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return str(self.pk)

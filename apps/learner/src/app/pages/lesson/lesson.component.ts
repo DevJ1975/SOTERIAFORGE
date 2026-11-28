@@ -12,6 +12,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TutorChatComponent } from '@assurance/ai-tutor';
+import { AuthService, TenantService } from '@assurance/auth';
 import {
   LearningApi,
   apiErrorMessage,
@@ -40,6 +42,7 @@ const ASSET_REF = /^asset:([0-9a-f-]{36})$/i;
     ManagedScormPlayerComponent,
     ManagedCmi5PlayerComponent,
     AwardOverlayComponent,
+    TutorChatComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -163,6 +166,23 @@ const ASSET_REF = /^asset:([0-9a-f-]{36})$/i;
               }
             </ul>
           </section>
+        }
+
+        @if (tenantId() && uid()) {
+          <details class="sf-card ls__tutor" (toggle)="onTutorToggle($event)">
+            <summary class="ls__tutor-summary">Ask Forge about this lesson</summary>
+            <!-- Mounted on first open, so reading a lesson makes no coach requests. -->
+            @if (tutorOpened()) {
+              <div class="ls__tutor-chat" role="region" aria-label="Ask Forge chat">
+                <assurance-tutor-chat
+                  [tenantId]="tenantId()!"
+                  [uid]="uid()!"
+                  [courseId]="courseId()"
+                  [moduleId]="l.moduleId"
+                />
+              </div>
+            }
+          </details>
         }
 
         @if (l.quiz; as quiz) {
@@ -310,6 +330,14 @@ const ASSET_REF = /^asset:([0-9a-f-]{36})$/i;
         outline: 3px solid rgba(220, 72, 27, 0.45);
         outline-offset: 4px;
       }
+      .ls__tutor-summary {
+        cursor: pointer;
+        padding: var(--sf-space-3) 0;
+        font-weight: var(--sf-weight-semibold);
+      }
+      .ls__tutor-chat {
+        height: 28rem;
+      }
       .ls__error {
         color: var(--sf-danger);
         font-weight: var(--sf-weight-semibold);
@@ -328,6 +356,15 @@ export class LessonComponent {
     );
   }
   private readonly api = inject(LearningApi);
+  private readonly auth = inject(AuthService);
+  private readonly tenantSvc = inject(TenantService);
+  protected readonly tenantId = computed(() => this.tenantSvc.tenantId() ?? null);
+  protected readonly uid = computed(() => this.auth.principal()?.uid ?? null);
+  /** The coach chat is created the first time its panel is opened, then kept. */
+  protected readonly tutorOpened = signal(false);
+  protected onTutorToggle(event: Event): void {
+    if ((event.target as HTMLDetailsElement).open) this.tutorOpened.set(true);
+  }
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private hasShownLesson = false;

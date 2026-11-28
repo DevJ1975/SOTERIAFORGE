@@ -75,6 +75,11 @@ def _url(path: str) -> str:
     return f"{settings.PUBLIC_URL}/api/credentials/{path}"
 
 
+def page_url(award: BadgeAward) -> str:
+    """The human-readable verification page (verify_page.py)."""
+    return f"{settings.PUBLIC_URL}/credentials/{award.pk}"
+
+
 def issuer_url(tenant_id: str) -> str:
     return _url(f"issuers/{tenant_id}")
 

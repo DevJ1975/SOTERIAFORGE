@@ -7,6 +7,7 @@ import {
   SetPasswordComponent,
 } from '@assurance/auth-ui';
 import type { SfCrumb } from '@assurance/ui';
+import { dispatchLaunchGuard } from './pages/dispatch/dispatch-launch';
 import type { LessonComponent } from './pages/lesson/lesson.component';
 
 /**
@@ -111,6 +112,15 @@ export const appRoutes: Routes = [
     canActivate: [authGuard, tenantGuard],
     data: { crumbs: crumb('Ask Forge') },
     loadComponent: () => import('./pages/tutor.component').then((m) => m.TutorPageComponent),
+  },
+  {
+    // A course opened from another LMS (SCORM or cmi5 export). The launch guard runs
+    // first so cmi5 launch parameters survive the redirect to sign in.
+    path: 'dispatch/:id',
+    canActivate: [dispatchLaunchGuard, authGuard, tenantGuard],
+    data: { sfShell: 'none' },
+    loadComponent: () =>
+      import('./pages/dispatch/dispatch.component').then((m) => m.DispatchComponent),
   },
   { path: '**', redirectTo: '' },
 ];

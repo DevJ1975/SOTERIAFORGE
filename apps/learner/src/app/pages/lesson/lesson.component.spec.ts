@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { CoachApi } from '@assurance/ai-tutor';
+import { AuthService, TenantService } from '@assurance/auth';
 import { LearningApi, type ApiCourseOutline, type ApiLesson } from '@assurance/lms-core';
 import { LessonComponent } from './lesson.component';
 import { ManagedScormPlayerComponent, StandardsApi } from '@assurance/standards';
@@ -68,6 +70,11 @@ describe('LessonComponent', () => {
     enroll: jest.Mock;
     assetUrl: jest.Mock;
   };
+  const coach = {
+    profiles: jest.fn().mockResolvedValue([]),
+    courses: jest.fn().mockResolvedValue([]),
+    askStream: jest.fn(),
+  };
   let fixture: ComponentFixture<LessonComponent>;
   const el = (): HTMLElement => fixture.nativeElement;
 
@@ -96,7 +103,38 @@ describe('LessonComponent', () => {
         provideRouter([]),
         { provide: LearningApi, useValue: api },
         { provide: StandardsApi, useValue: { launch: jest.fn(), commit: jest.fn() } },
+        { provide: AuthService, useValue: { principal: () => ({ uid: 'u1' }) } },
+        { provide: TenantService, useValue: { tenantId: () => 'acme' } },
+        { provide: CoachApi, useValue: coach },
       ],
+    });
+  });
+
+  it('opens Ask Forge scoped to the lesson’s module, and only loads it on first open', async () => {
+    api.lesson.mockResolvedValue(lesson());
+    coach.profiles.mockClear();
+    coach.askStream.mockReset().mockResolvedValue({ answer: 'A', abstained: true, citations: [] });
+    await create();
+    const panel = el().querySelector('details.ls__tutor') as HTMLDetailsElement;
+    expect(panel.querySelector('assurance-tutor-chat')).toBeNull();
+    expect(coach.profiles).not.toHaveBeenCalled();
+
+    panel.open = true;
+    panel.dispatchEvent(new Event('toggle'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = panel.querySelector('.tutor-chat__input') as HTMLInputElement;
+    input.value = 'Why?';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (panel.querySelector('.tutor-chat__send-btn') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(coach.askStream.mock.calls[0][0]).toEqual({
+      question: 'Why?',
+      courseId: 'c1',
+      agent: 'general',
+      moduleId: lesson().moduleId,
     });
   });
 

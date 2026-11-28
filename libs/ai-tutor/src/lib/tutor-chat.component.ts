@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TutorService } from './tutor.service';
+import { CoachDiagramComponent } from './coach-diagram.component';
+import { TutorService, type TutorMessage } from './tutor.service';
 import {
   CoachApi,
   coachError,
@@ -14,11 +15,12 @@ import {
  *
  * Django derives identity and tenant from authentication, never the chat body.
  * Each mounted chat owns transient history, cleared when its context changes.
+ * Answers stream in as they are written and are always rendered as plain text.
  */
 @Component({
   selector: 'assurance-tutor-chat',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CoachDiagramComponent],
   providers: [TutorService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
@@ -69,7 +71,9 @@ import {
         display: flex;
         flex-wrap: wrap;
         gap: 0.375rem;
-        margin-top: 0.5rem;
+        margin: 0.25rem 0 0;
+        padding: 0;
+        list-style: none;
       }
 
       .tutor-chat__citation-chip {
@@ -79,6 +83,93 @@ import {
         background: var(--assurance-color-primary, #4f46e5);
         color: #fff;
         opacity: 0.85;
+      }
+
+      .tutor-chat__message--streaming {
+        opacity: 0.85;
+      }
+
+      .tutor-chat__text {
+        white-space: pre-wrap;
+      }
+
+      .tutor-chat__sources-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin: 0.5rem 0 0;
+      }
+
+      .tutor-chat__tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.375rem;
+        margin-top: 0.5rem;
+      }
+
+      .tutor-chat__thumb,
+      .tutor-chat__followup,
+      .tutor-chat__note-send {
+        min-height: 44px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--surface-300, #d1d5db);
+        border-radius: 0.5rem;
+        background: #fff;
+        color: var(--text-color, #111827);
+        font: inherit;
+        font-size: 0.875rem;
+        cursor: pointer;
+      }
+
+      .tutor-chat__thumb[aria-pressed='true'] {
+        border-color: var(--text-color, #111827);
+        border-width: 2px;
+        font-weight: 700;
+      }
+
+      .tutor-chat__followups {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.375rem;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .tutor-chat__followup {
+        text-align: left;
+        min-height: 44px;
+        height: auto;
+        padding: 0.5rem 0.75rem;
+      }
+
+      .tutor-chat__note {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        align-items: flex-end;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+      }
+
+      .tutor-chat__note input {
+        display: block;
+        min-height: 44px;
+        min-width: 14rem;
+        padding: 0 0.5rem;
+        border: 1px solid var(--surface-300, #d1d5db);
+        border-radius: 0.5rem;
+        font: inherit;
+      }
+
+      .tutor-chat__sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
       }
 
       .tutor-chat__error {
@@ -182,29 +273,110 @@ import {
             class="tutor-chat__message"
             [class.tutor-chat__message--user]="msg.role === 'user'"
             [class.tutor-chat__message--assistant]="msg.role === 'assistant'"
+            [class.tutor-chat__message--streaming]="msg.streaming"
           >
-            <span>{{ msg.content }}</span>
+            <span class="tutor-chat__text">{{ msg.content }}</span>
 
-            @if (msg.role === 'assistant' && msg.citations.length > 0) {
-              <div class="tutor-chat__citations">
-                @for (citation of msg.citations; track $index) {
-                  <span class="tutor-chat__citation-chip">
-                    {{ citation.label ?? citation.sourceId }}
-                  </span>
+            @if (msg.role === 'assistant' && !msg.streaming) {
+              @if (msg.diagram; as diagram) {
+                <assurance-coach-diagram [diagram]="diagram" />
+              }
+
+              @if (msg.citations.length > 0) {
+                <p class="tutor-chat__sources-label" [id]="'src-' + msg.id">Sources</p>
+                <ul class="tutor-chat__citations" [attr.aria-labelledby]="'src-' + msg.id">
+                  @for (citation of msg.citations; track $index) {
+                    <li class="tutor-chat__citation-chip">
+                      {{ citation.label ?? citation.sourceId }}
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (msg.exchangeId) {
+                <div class="tutor-chat__tools" role="group" aria-label="Rate this answer">
+                  <button
+                    type="button"
+                    class="tutor-chat__thumb"
+                    [attr.aria-pressed]="msg.rating === 'up'"
+                    (click)="rate(msg, 'up')"
+                  >
+                    <span aria-hidden="true">👍</span> Helpful
+                  </button>
+                  <button
+                    type="button"
+                    class="tutor-chat__thumb"
+                    [attr.aria-pressed]="msg.rating === 'down'"
+                    (click)="rate(msg, 'down')"
+                  >
+                    <span aria-hidden="true">👎</span> Not helpful
+                  </button>
+                </div>
+                @if (msg.rating === 'down' && noteFor() === msg.id) {
+                  <div class="tutor-chat__note">
+                    <label>
+                      What was wrong? (optional)
+                      <input
+                        type="text"
+                        maxlength="500"
+                        aria-label="What was wrong with this answer? Optional"
+                        [ngModel]="noteText()"
+                        (ngModelChange)="noteText.set($event)"
+                        (keydown.enter)="sendNote(msg)"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      class="tutor-chat__note-send"
+                      [disabled]="!noteText().trim()"
+                      (click)="sendNote(msg)"
+                    >
+                      Send note
+                    </button>
+                  </div>
                 }
-              </div>
+                @if (noteSent() === msg.id) {
+                  <p class="tutor-chat__pending" role="status">
+                    Thanks. Your instructor will see this.
+                  </p>
+                }
+              }
+
+              @if (msg.followUps?.length) {
+                <p class="tutor-chat__sources-label" [id]="'fu-' + msg.id">Ask next</p>
+                <ul class="tutor-chat__followups" [attr.aria-labelledby]="'fu-' + msg.id">
+                  @for (followUp of msg.followUps; track $index) {
+                    <li>
+                      <button
+                        type="button"
+                        class="tutor-chat__followup"
+                        [disabled]="tutorService.pending()"
+                        (click)="ask(followUp)"
+                      >
+                        {{ followUp }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
             }
           </div>
         }
 
         @if (tutorService.pending()) {
-          <div class="tutor-chat__pending">Thinking…</div>
+          <div class="tutor-chat__pending">
+            {{ tutorService.stage() === 'generating' ? 'Writing an answer…' : 'Finding sources…' }}
+          </div>
         }
 
         @if (tutorService.error()) {
           <div class="tutor-chat__error" role="alert">{{ tutorService.error() }}</div>
         }
       </div>
+      <!-- One announcement when an answer starts and one when it is complete, never per token. -->
+      <p class="tutor-chat__sr" role="status" aria-live="polite">
+        {{ tutorService.announcement() }}
+      </p>
 
       <div class="tutor-chat__input-row">
         <input
@@ -232,6 +404,8 @@ export class TutorChatComponent {
   readonly tenantId = input.required<string>();
   readonly uid = input.required<string>();
   readonly courseId = input('');
+  /** Narrows answers to this module's sources (plus course-wide ones) when set. */
+  readonly moduleId = input('');
   private readonly api = inject(CoachApi);
   protected readonly courses = signal<CoachCourse[]>([]);
   protected readonly selectedCourse = signal('');
@@ -243,6 +417,10 @@ export class TutorChatComponent {
   protected readonly tutorService = inject(TutorService);
 
   protected readonly questionText = signal('');
+  /** The answer whose "what was wrong" note is open, and the note being typed. */
+  protected readonly noteFor = signal('');
+  protected readonly noteText = signal('');
+  protected readonly noteSent = signal('');
 
   protected activeCourse(): string {
     return this.courseId() || this.selectedCourse();
@@ -289,18 +467,45 @@ export class TutorChatComponent {
       this.selectedAgent();
       this.tutorService.reset();
       this.questionText.set('');
+      this.noteFor.set('');
+      this.noteText.set('');
+      this.noteSent.set('');
     });
   }
 
   protected send(): void {
     const question = this.questionText().trim();
-    if (!question || !this.activeCourse() || this.tutorService.pending()) return;
+    if (!question) return;
     this.questionText.set('');
+    this.ask(question);
+  }
+
+  /** Asks a typed question or a suggested follow-up. */
+  protected ask(question: string): void {
+    if (!question || !this.activeCourse() || this.tutorService.pending()) return;
     void this.tutorService.ask(question, {
       tenantId: this.tenantId(),
       uid: this.uid(),
       courseId: this.activeCourse(),
       agent: this.selectedAgent(),
+      ...(this.moduleId() ? { moduleId: this.moduleId() } : {}),
     });
+  }
+
+  protected rate(message: TutorMessage, rating: 'up' | 'down'): void {
+    const turningOn = message.rating !== rating;
+    this.noteSent.set('');
+    this.noteText.set('');
+    this.noteFor.set(rating === 'down' && turningOn ? message.id : '');
+    void this.tutorService.rate(message.id, rating);
+  }
+
+  protected sendNote(message: TutorMessage): void {
+    const note = this.noteText().trim();
+    if (!note) return;
+    this.noteFor.set('');
+    this.noteText.set('');
+    this.noteSent.set(message.id);
+    void this.tutorService.rate(message.id, 'down', note);
   }
 }

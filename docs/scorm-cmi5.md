@@ -15,8 +15,9 @@ Archive revokes playback, including already-issued launches, but retains objects
 for audit/retention. There is no automatic object deletion or retention job yet;
 set an organizational retention policy before production use.
 
-This is an import/playback pilot, **not an LMS exporter, certified SCORM LMS,
-complete LRS, or completed cmi5 integration**. (cmi5 / Unity lessons have their own
+This is an import/playback pilot, **not a certified SCORM LMS or a complete LRS**.
+Sending a Forge course out to another LMS is covered under
+[Exporting to an LMS](#exporting-to-an-lms). (cmi5 / Unity lessons have their own
 launch, fetch and statement intake: see [unity-cmi5-contract.md](./unity-cmi5-contract.md) §5.) Multi-SCO navigation, sequencing,
 resource dependencies, `xml:base`, launch query parameters/fragments, externally
 hosted assets, offline package playback, cmi5 launch/fetch/state/lifecycle and
@@ -134,11 +135,19 @@ No live Railway resources are created by this implementation.
 
 ## Existing external LRS
 
-Completion of any Django lesson, including native quiz/check grading and SCORM,
-can atomically enqueue one xAPI `completed` statement alongside authoritative
-progress and XP. Browser telemetry, individual quiz interactions, failed attempts
-and cmi5 statements are not yet exported. There is no IndexedDB/offline replay
-of these server events.
+With recording on, these events each queue one xAPI statement in the same
+transaction as the progress they describe:
+
+| Event                            | Verb                 | Object                                                                                        |
+| -------------------------------- | -------------------- | --------------------------------------------------------------------------------------------- |
+| A lesson is completed (any type) | `completed`          | `…/lessons/{id}`                                                                              |
+| A graded quiz attempt            | `passed` or `failed` | `…/quizzes/{id}`, with the score and attempt number; the lesson is the parent                 |
+| A course is completed            | `completed`          | `…/courses/{id}`                                                                              |
+| A cmi5 / Unity lesson reports    | whatever it sent     | as stamped by the server; its own `completed` is dropped because the lesson's is already sent |
+
+Each event has a key, so a retried request queues nothing twice. Browser telemetry
+and single knowledge-check answers are not exported. There is no IndexedDB/offline
+replay of these server events.
 
 Enable recording only after selecting the destination and tenant data policy:
 
@@ -174,6 +183,65 @@ Missing endpoint/credentials makes the delivery command fail explicitly.
 Recording is disabled by default; enabling it without a worker intentionally
 accumulates pending rows and needs monitoring. Set alerts on oldest pending row,
 failures, storage use and worker health before production rollout.
+
+## Exporting to an LMS
+
+A tenant that runs its own LMS can list a Forge course there. Staff open **SCORM and
+xAPI → Export for an LMS** in the admin console, pick a published course and a format,
+and download a small package to import into the LMS. The package holds no course
+content: Forge stays the system of record, and the learner signs in to Forge.
+
+| Format    | What the LMS gets                           | How progress gets back                                                                                                                                                     |
+| --------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SCORM 1.2 | `imsmanifest.xml` and a launcher page       | The launcher opens the course in a new window. The learner app posts progress to it, and it writes `cmi.core.lesson_status`, `score.raw` and `lesson_location` to the LMS. |
+| cmi5      | `cmi5.xml` naming the learner app as the AU | The learner app sends `initialized`, `completed` and `terminated` to the LMS's own xAPI endpoint.                                                                          |
+
+Rules worth knowing:
+
+- **LMS origins.** A SCORM export lists the addresses the LMS serves content from
+  (often not the address in the browser bar). The learner app reports progress only to
+  those. If nothing reaches the LMS, the launcher page prints the address it is served
+  from; add that to the export. Origins can be edited without re-importing the package.
+- **Enrollment stays in Forge.** A learner who is not enrolled in the course sees a
+  message to ask their instructor. The export does not enroll anyone.
+- **Revoking** an export stops its launch link and its download. Packages already in
+  the LMS then show the learner an inactive-link message.
+- **Completion** is reported once every lesson is complete. The score is the average of
+  the lesson scores that have one.
+- **Trust.** As with any SCORM content, the LMS records what the browser tells it. The
+  authoritative record is Forge's.
+- The learner must keep the LMS page open while taking the course (SCORM), and the
+  browser must allow the pop-up.
+
+Endpoints: `GET/POST /api/standards/dispatches`, `PATCH /api/standards/dispatches/{id}`,
+`GET …/{id}/package` (staff) and `GET …/{id}/session` (the learner's own progress).
+The launch link is built from `AUTH_LINK_BASE_URL`, or the tenant's domain when that
+is unset, the same way invite links are.
+
+**Not yet verified against a real LMS.** The SCORM package passes Forge's own importer
+and a Chrome run against the `scorm-again` 1.2 runtime
+(`SCORM_BROWSER=1 uv run pytest tests/test_phase6.py -k real_chrome`). The cmi5 path
+has unit tests only. Import both into the target LMS before telling a tenant it works.
+
+## Analytics and the at-risk list
+
+`GET /api/reports/analytics` and `GET /api/reports/at-risk` (instructors and tenant
+admins; optional `courseId` and `cohortId`) feed the admin console's **Analytics** page.
+Analytics gives totals, per-course and per-lesson completion, first-try accuracy on
+knowledge checks and eight weeks of activity.
+
+The at-risk list uses fixed rules, not a model, so every flag can be explained:
+
+| Reason            | Rule                                                                             |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `inactive`        | An unfinished course and no activity for 7 days                                  |
+| `overdue`         | An unfinished course past its due date                                           |
+| `behind`          | 25 points or more below the median progress in a course with at least 4 learners |
+| `low_scores`      | Under 60% right first time, over at least 5 knowledge-check answers              |
+| `missed_sessions` | Missed 2 or more of the cohort's last 3 ended live sessions                      |
+
+The thresholds are constants in `backend/apps/reports/analytics.py`. The list is for
+outreach by staff; learners never see it.
 
 ## Local verification
 

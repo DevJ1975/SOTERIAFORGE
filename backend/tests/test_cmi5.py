@@ -190,7 +190,13 @@ def test_completed_and_passed_complete_the_lesson_once_with_the_score(lesson):
     assert send(client, statement(launched, CUSTOM)).status_code == 409
     progress.refresh_from_db()
     assert progress.score == 85
-    assert Statement.objects.count() == 1  # one outbox `completed` for the external LRS
+    # The external LRS gets the server's `completed` plus what the AU sent, bar its own.
+    keys = [key.split(":")[0] for key in Statement.objects.values_list("event_key", flat=True)]
+    assert keys.count("lesson-completed") == 1
+    forwarded = [
+        row.payload["verb"]["id"] for row in Statement.objects.filter(event_key__startswith="au:")
+    ]
+    assert PASSED in forwarded and TERMINATED in forwarded and COMPLETED not in forwarded
     session = as_("learner").get(f"/api/standards/cmi5/sessions/{launched['id']}")
     assert session.status_code == 200
     assert session.data["completed"] and session.data["success"] and session.data["terminated"]
