@@ -26,9 +26,8 @@ export default defineRailway((ctx) => {
   const production = ctx.isEnvironment('production');
   // Production deploys from main once the release pull request merges (plan D3).
   const branch = production ? 'main' : 'feat/angular-22-upgrade';
-  // Railway's "Wait for CI". Off while GitHub Actions is unavailable on the account:
-  // with no CI run to wait for, every deploy would stall.
-  const checkSuites = false;
+  // Railway's "Wait for CI": a commit deploys only after its GitHub checks pass.
+  const checkSuites = true;
   const root = production ? 'soteriaforge.com' : 'staging.soteriaforge.com';
   const apiOrigin = `https://api.${root}`;
 

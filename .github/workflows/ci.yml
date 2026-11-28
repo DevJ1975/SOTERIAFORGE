@@ -87,7 +87,8 @@ jobs:
   # E2E needs a served app + browsers; run on main pushes and manual dispatch,
   # not on every PR (the learner-e2e project is still linted in the lint job).
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright has no Chromium build for ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
     continue-on-error: true
     steps:
@@ -161,6 +162,12 @@ jobs:
         with:
           version: '0.12.23'
       - run: uv sync --frozen
+      # The SCORM player serves scorm-again from backend/runtime, as the image does.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install the SCORM runtime
+        run: npm ci --omit=dev --ignore-scripts --prefix runtime
       - uses: actions/download-artifact@v4
         with:
           name: forge-sim-wheel
