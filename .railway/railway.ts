@@ -28,7 +28,9 @@ export default defineRailway((ctx) => {
   const branch = production ? 'main' : 'feat/angular-22-upgrade';
   // Railway's "Wait for CI": a commit deploys only after its GitHub checks pass.
   const checkSuites = true;
-  const root = production ? 'soteriaforge.com' : 'staging.soteriaforge.com';
+  // Staging lives under trainovate.ai (DNS on Vercel) until soteriaforge.com's DNS
+  // moves off JustHost; production stays on soteriaforge.com.
+  const root = production ? 'soteriaforge.com' : 'forge.trainovate.ai';
   const apiOrigin = `https://api.${root}`;
 
   // US East (Virginia) for every environment: tenants are in the US (plan D5).

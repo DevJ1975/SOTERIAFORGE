@@ -210,13 +210,13 @@ jobs:
             file: Dockerfile
             args: |
               APP=learner
-              FORGE_API_BASE_URL=https://api.staging.soteriaforge.com
-              FORGE_ROOT_DOMAIN=staging.soteriaforge.com
+              FORGE_API_BASE_URL=https://api.forge.trainovate.ai
+              FORGE_ROOT_DOMAIN=forge.trainovate.ai
           - name: storefront
             context: .
             file: docker/storefront.Dockerfile
             args: |
-              FORGE_ROOT_DOMAIN=staging.soteriaforge.com
+              FORGE_ROOT_DOMAIN=forge.trainovate.ai
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -233,11 +233,11 @@ jobs:
         run: |
           docker run --rm -e DJANGO_SECRET_KEY="$(openssl rand -hex 32)" \
             -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci \
-            -e DJANGO_ALLOWED_HOSTS=api.staging.soteriaforge.com \
+            -e DJANGO_ALLOWED_HOSTS=api.forge.trainovate.ai \
             -e EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend \
             forge-api:ci python manage.py check --deploy --fail-level WARNING
       - name: Bundle points at the build-time API
         if: matrix.name == 'learner'
         run: |
           docker run --rm forge-learner:ci sh -c \
-            "grep -l 'api.staging.soteriaforge.com' /usr/share/nginx/html/main-*.js"
+            "grep -l 'api.forge.trainovate.ai' /usr/share/nginx/html/main-*.js"
